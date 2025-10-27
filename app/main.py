@@ -1,0 +1,94 @@
+from fastapi import FastAPI, Header, HTTPException, Query
+from .models import NotePayload
+from datetime import datetime, timezone
+import os
+
+from typing import Any, Dict, Optional
+
+from . import storage
+
+app = FastAPI(title="Personal Notes API", version="v1")
+
+NOTES_API_KEY = os.environ.get("NOTES_API_KEY")
+NOTES_BUCKET = os.environ.get("NOTES_BUCKET")
+
+if not NOTES_API_KEY:
+    raise RuntimeError("NOTES_API_KEY env var not set")
+if not NOTES_BUCKET:
+    raise RuntimeError("NOTES_BUCKET env var not set")
+
+
+def _timestamp_header() -> str:
+    # Example: ## 2025-10-24 12:34:56
+    now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+    return f"\n## {now}\n"
+
+
+@app.get("/ping")
+def ping() -> Dict[str, str]:
+    """Health check"""
+    return {"status": "ok"}
+
+
+@app.post("/api/v1/notes")
+def create_or_update_note(
+    payload: NotePayload,
+    x_notes_key: Optional[str] = Header(None),
+) -> Dict[str, Any]:
+    if x_notes_key != NOTES_API_KEY:
+        raise HTTPException(status_code=401, detail="unauthorized")
+
+    blob_path = storage.note_path(payload.project, payload.section, payload.title)
+
+    if payload.mode == "replace" or not storage.blob_exists(blob_path):
+        new_content = f"# {payload.title}\n" + _timestamp_header() + payload.body.strip() + "\n"
+    else:
+        existing = storage.download_blob_text(blob_path)
+        new_content = existing.rstrip() + _timestamp_header() + payload.body.strip() + "\n"
+
+    storage.upload_blob_text(blob_path, new_content)
+
+    # update index helpers in storage module
+    storage.ensure_index_files(payload.project, payload.section)
+    storage.update_section_index(payload.project, payload.section, payload.title)
+
+    return {
+        "status": "ok",
+        "path": blob_path,
+        "content": new_content,
+    }
+
+
+@app.get("/api/v1/notes")
+def get_note(
+    project: str = Query(...),
+    section: str = Query(...),
+    title: str = Query(...),
+    x_notes_key: Optional[str] = Header(None),
+) -> Dict[str, Any]:
+    if x_notes_key != NOTES_API_KEY:
+        raise HTTPException(status_code=401, detail="unauthorized")
+
+    blob_path = storage.note_path(project, section, title)
+    if not storage.blob_exists(blob_path):
+        raise HTTPException(status_code=404, detail="note not found")
+
+    return {
+        "status": "ok",
+        "path": blob_path,
+        "content": storage.download_blob_text(blob_path),
+    }
+
+
+@app.get("/api/v1/index")
+def get_index(
+    x_notes_key: Optional[str] = Header(None),
+) -> Dict[str, Any]:
+    if x_notes_key != NOTES_API_KEY:
+        raise HTTPException(status_code=401, detail="unauthorized")
+
+    projects_out = storage.list_tree(prefix="notes/")
+    return {
+        "status": "ok",
+        "projects": projects_out,
+    }
