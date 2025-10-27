@@ -97,6 +97,10 @@ resource "google_artifact_registry_repository" "notes_repo" {
 resource "google_cloud_run_service" "notes_service" {
   name     = var.service_name
   location = var.region
+  depends_on = [
+    google_secret_manager_secret_version.notes_api_key,
+    google_secret_manager_secret_iam_member.notes_api_key_accessor,
+  ]
 
   template {
     spec {
