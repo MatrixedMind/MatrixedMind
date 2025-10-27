@@ -6,6 +6,7 @@ output "cloud_run_url" {
 output "service_account_email" {
   description = "Service account used by Cloud Run"
   value       = google_service_account.notes_sa.email
+  sensitive   = true
 }
 
 output "bucket_name" {
