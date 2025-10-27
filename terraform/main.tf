@@ -21,6 +21,11 @@ resource "google_project_service" "storage_api" {
   service = "storage.googleapis.com"
 }
 
+resource "google_project_service" "secretmanager_api" {
+  project = var.project_id
+  service = "secretmanager.googleapis.com"
+}
+
 #
 # GCS bucket for notes
 #
@@ -30,6 +35,7 @@ resource "google_storage_bucket" "notes_bucket" {
   force_destroy = false
 
   uniform_bucket_level_access = true
+  public_access_prevention    = "enforced"
 
   versioning {
     enabled = true
@@ -42,6 +48,28 @@ resource "google_storage_bucket" "notes_bucket" {
 resource "google_service_account" "notes_sa" {
   account_id   = "${var.service_name}-sa"
   display_name = "Service Account for MatrixedMind Notes API"
+}
+
+#
+# Secret Manager secret for the API key
+#
+resource "google_secret_manager_secret" "notes_api_key" {
+  secret_id = "${var.service_name}-notes-api-key"
+  replication {
+    automatic = true
+  }
+}
+
+resource "google_secret_manager_secret_version" "notes_api_key" {
+  secret      = google_secret_manager_secret.notes_api_key.id
+  secret_data = var.api_key
+}
+
+resource "google_secret_manager_secret_iam_member" "notes_api_key_accessor" {
+  project   = google_secret_manager_secret.notes_api_key.project
+  secret_id = google_secret_manager_secret.notes_api_key.secret_id
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${google_service_account.notes_sa.email}"
 }
 
 #
@@ -79,7 +107,12 @@ resource "google_cloud_run_service" "notes_service" {
 
         env {
           name  = "NOTES_API_KEY"
-          value = var.api_key
+          value_source {
+            secret_key_ref {
+              secret  = google_secret_manager_secret.notes_api_key.secret_id
+              version = "latest"
+            }
+          }
         }
 
         env {
