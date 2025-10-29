@@ -11,7 +11,7 @@ if not BUCKET_NAME:
 client = storage.Client()
 bucket = client.bucket(BUCKET_NAME)
 
-LEGACY_SAFE_CHARS = "-_.()[]{}!@#$%^&+=,;'%%"  # includes % to avoid re-encoding legacy names
+LEGACY_SAFE_CHARS = "-_.()[]{}!@#$%^&+=,;'%'"  # includes % to avoid re-encoding legacy names
 
 
 def sanitize(segment: str) -> str:
