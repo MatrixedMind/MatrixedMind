@@ -155,7 +155,10 @@ At this point you’re live.
 
 ```
 app/
+  __init__.py
   main.py
+  models.py
+  storage.py
   requirements.txt
   Dockerfile
 terraform/
