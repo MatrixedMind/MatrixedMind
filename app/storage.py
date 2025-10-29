@@ -11,7 +11,41 @@ client = storage.Client()
 bucket = client.bucket(BUCKET_NAME)
 
 def sanitize(segment: str) -> str:
-    return "_".join(segment.strip().split())
+    r"""
+    Sanitize a segment for use in GCS object paths.
+    
+    Replaces whitespace with underscores and removes/replaces characters
+    that could be problematic in GCS paths, including:
+    - Path separators (/, \)
+    - Control characters
+    - Special characters that could cause issues
+    
+    This prevents path traversal attacks and unexpected storage behavior.
+    """
+    import re
+    
+    # First, strip leading/trailing whitespace
+    segment = segment.strip()
+    
+    # Replace internal whitespace with underscores
+    segment = "_".join(segment.split())
+    
+    # Remove control characters (ASCII 0-31 and 127)
+    segment = "".join(char for char in segment if ord(char) >= 32 and ord(char) != 127)
+    
+    # Replace path separators and other problematic characters with underscores
+    # This includes: / \ : * ? " < > | and dots (to prevent hidden files and path traversal)
+    problematic_chars = r'[/\\:*?"<>|.]'
+    segment = re.sub(problematic_chars, "_", segment)
+    
+    # Remove leading/trailing underscores that may result from sanitization
+    segment = segment.strip("_")
+    
+    # If the segment is empty after sanitization, return a safe default
+    if not segment:
+        segment = "unnamed"
+    
+    return segment
 
 def note_path(project: str, section: str, title: str) -> str:
     return f"notes/{sanitize(project)}/{sanitize(section)}/{sanitize(title)}.md"
