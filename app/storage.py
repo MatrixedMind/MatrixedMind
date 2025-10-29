@@ -65,21 +65,20 @@ def ensure_index_files(project: str, section: str) -> None:
     def _update_project_index():
         project_path = _index_path(project)
         blob = bucket.blob(project_path)
+        
+        # Try to create first - this will fail if blob already exists
+        try:
+            blob.upload_from_string(
+                f"# {project}\n\nSections:\n- [[{section}]]\n",
+                if_generation_match=0
+            )
+            return  # Successfully created, we're done
+        except exceptions.PreconditionFailed:
+            # Blob already exists, need to update it
+            pass
+        
+        # Blob exists, reload to get current generation and content
         blob.reload()
-        
-        if not blob.exists():
-            # Try to create with generation 0 (only succeeds if blob doesn't exist)
-            try:
-                blob.upload_from_string(
-                    f"# {project}\n\nSections:\n- [[{section}]]\n",
-                    if_generation_match=0
-                )
-            except exceptions.PreconditionFailed:
-                # Blob was created by another process, retry to read and update it
-                raise
-            return
-        
-        # Blob exists, read current generation and content
         generation = blob.generation
         current = blob.download_as_text()
         link_line = f"- [[{section}]]"
@@ -98,19 +97,19 @@ def ensure_index_files(project: str, section: str) -> None:
     def _create_section_index():
         section_path = _index_path(project, section)
         blob = bucket.blob(section_path)
-        blob.reload()
         
-        if not blob.exists():
-            try:
-                blob.upload_from_string(
-                    f"# {section}\n\nNotes in this section:\n",
-                    if_generation_match=0
-                )
-            except exceptions.PreconditionFailed:
-                # Blob was created by another process, that's fine
-                pass
+        # Try to create - if it fails, blob already exists and we're done
+        try:
+            blob.upload_from_string(
+                f"# {section}\n\nNotes in this section:\n",
+                if_generation_match=0
+            )
+        except exceptions.PreconditionFailed:
+            # Blob already exists from another process, that's fine
+            # No need to retry as we only want to ensure it exists
+            pass
     
-    _retry_on_conflict(_create_section_index)
+    _create_section_index()  # No retry needed for section index creation
 
 def update_section_index(project: str, section: str, title: str) -> None:
     """Update section index with atomic operations to prevent race conditions."""
@@ -118,21 +117,20 @@ def update_section_index(project: str, section: str, title: str) -> None:
     
     def _update():
         blob = bucket.blob(path)
-        blob.reload()  # Get current generation
         
-        if not blob.exists():
-            # Try to create with generation 0 (only succeeds if blob doesn't exist)
-            try:
-                blob.upload_from_string(
-                    f"# {section}\n\nNotes in this section:\n- [[{title}]]\n",
-                    if_generation_match=0
-                )
-            except exceptions.PreconditionFailed:
-                # Blob was created by another process, retry to read and update it
-                raise
-            return
+        # Try to create first - this will fail if blob already exists
+        try:
+            blob.upload_from_string(
+                f"# {section}\n\nNotes in this section:\n- [[{title}]]\n",
+                if_generation_match=0
+            )
+            return  # Successfully created, we're done
+        except exceptions.PreconditionFailed:
+            # Blob already exists, need to update it
+            pass
         
-        # Blob exists, read current generation and content
+        # Blob exists, reload to get current generation and content
+        blob.reload()
         generation = blob.generation
         current = blob.download_as_text()
         link_line = f"- [[{title}]]"
