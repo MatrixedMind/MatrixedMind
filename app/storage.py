@@ -1,4 +1,5 @@
 import os
+import re
 from typing import Any, Dict, List
 from google.cloud import storage
 from fastapi import HTTPException
@@ -22,8 +23,6 @@ def sanitize(segment: str) -> str:
     
     This prevents path traversal attacks and unexpected storage behavior.
     """
-    import re
-    
     # First, strip leading/trailing whitespace
     segment = segment.strip()
     
@@ -35,7 +34,7 @@ def sanitize(segment: str) -> str:
     
     # Replace path separators and other problematic characters with underscores
     # This includes: / \ : * ? " < > | and dots (to prevent hidden files and path traversal)
-    problematic_chars = r'[/\\:*?"<>|.]'
+    problematic_chars = r'[/\\:*?"<>|\.]'
     segment = re.sub(problematic_chars, "_", segment)
     
     # Remove leading/trailing underscores that may result from sanitization
