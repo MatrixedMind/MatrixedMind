@@ -167,7 +167,8 @@ def ensure_index_files(project: str, section: str) -> None:
             parent_content = parent_content.rstrip() + "\n\nSections:\n"
         
         # Add all missing child links
-        modified = not blob_existed  # New blobs always need to be uploaded
+        # New blobs always need to be uploaded, even if no child links are added
+        modified = not blob_existed
         for child_name in child_names:
             link_line = f"- [[{child_name}]]"
             if link_line not in parent_content:
