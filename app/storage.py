@@ -103,7 +103,7 @@ def ensure_index_files(project: str, section: str) -> None:
         blob.reload()
         generation = blob.generation
         if generation is None:
-            raise exceptions.PreconditionFailed("Blob generation unavailable for conditional update")
+            raise exceptions.PreconditionFailed("Failed to retrieve blob generation for atomic update. The blob may have been deleted.")
 
         current = blob.download_as_text(if_generation_match=generation)
         link_line = f"- [[{section}]]"
@@ -154,7 +154,7 @@ def update_section_index(project: str, section: str, title: str) -> None:
         blob.reload()
         generation = blob.generation
         if generation is None:
-            raise exceptions.PreconditionFailed("Blob generation unavailable for conditional update")
+            raise exceptions.PreconditionFailed("Failed to retrieve blob generation for atomic update. The blob may have been deleted.")
 
         current = blob.download_as_text(if_generation_match=generation)
         link_line = f"- [[{title}]]"
