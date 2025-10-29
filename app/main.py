@@ -2,6 +2,7 @@ from fastapi import FastAPI, Header, HTTPException, Query
 from .models import NotePayload
 from datetime import datetime, timezone
 import os
+import secrets
 
 from typing import Any, Dict, Optional
 
@@ -35,7 +36,7 @@ def create_or_update_note(
     payload: NotePayload,
     x_notes_key: Optional[str] = Header(None),
 ) -> Dict[str, Any]:
-    if x_notes_key != NOTES_API_KEY:
+    if not x_notes_key or not secrets.compare_digest(x_notes_key, NOTES_API_KEY):
         raise HTTPException(status_code=401, detail="unauthorized")
 
     blob_path = storage.note_path(payload.project, payload.section, payload.title)
@@ -66,7 +67,7 @@ def get_note(
     title: str = Query(...),
     x_notes_key: Optional[str] = Header(None),
 ) -> Dict[str, Any]:
-    if x_notes_key != NOTES_API_KEY:
+    if not x_notes_key or not secrets.compare_digest(x_notes_key, NOTES_API_KEY):
         raise HTTPException(status_code=401, detail="unauthorized")
 
     blob_path = storage.note_path(project, section, title)
@@ -84,7 +85,7 @@ def get_note(
 def get_index(
     x_notes_key: Optional[str] = Header(None),
 ) -> Dict[str, Any]:
-    if x_notes_key != NOTES_API_KEY:
+    if not x_notes_key or not secrets.compare_digest(x_notes_key, NOTES_API_KEY):
         raise HTTPException(status_code=401, detail="unauthorized")
 
     projects_out = storage.list_tree(prefix="notes/")
