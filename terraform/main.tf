@@ -103,6 +103,7 @@ resource "google_cloud_run_service" "notes_service" {
   depends_on = [
     google_secret_manager_secret_version.notes_api_key,
     google_secret_manager_secret_iam_member.notes_api_key_accessor,
+    google_project_service.run_api,
   ]
 
   template {
