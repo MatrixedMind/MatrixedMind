@@ -155,7 +155,8 @@ def ensure_index_files(project: str, section: str) -> None:
     for parent_section, (parent_raw_name, child_names) in parent_updates.items():
         parent_blob = bucket.blob(_index_path(project, parent_section))
         
-        if not parent_blob.exists():
+        blob_existed = parent_blob.exists()
+        if not blob_existed:
             # Create the parent blob with default content if it doesn't exist
             parent_content = f"# {parent_raw_name}\n\nSections:\n\nNotes in this section:\n"
         else:
@@ -166,14 +167,14 @@ def ensure_index_files(project: str, section: str) -> None:
             parent_content = parent_content.rstrip() + "\n\nSections:\n"
         
         # Add all missing child links
-        modified = False
+        modified = not blob_existed  # New blobs always need to be uploaded
         for child_name in child_names:
             link_line = f"- [[{child_name}]]"
             if link_line not in parent_content:
                 parent_content = parent_content.rstrip() + "\n" + link_line + "\n"
                 modified = True
         
-        # Upload only if we made changes
+        # Upload if we created a new blob or made changes to an existing one
         if modified:
             parent_blob.upload_from_string(parent_content)
 
