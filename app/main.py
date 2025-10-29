@@ -81,14 +81,13 @@ def _truncate_content(content: str, mode: str, existing_content: Optional[str] =
             # Build truncated version
             truncated_existing = existing_content[-existing_chars:] if existing_chars < len(existing_content) else existing_content
             has_truncated_existing = existing_chars < len(existing_content)
+            prefix = _TRUNCATE_EXISTING if has_truncated_existing else ""
             
             if len(new_content) <= (new_first_chars + new_last_chars):
                 # New content fits in the allocation
-                prefix = _TRUNCATE_EXISTING if has_truncated_existing else ""
                 truncated = prefix + truncated_existing + new_content
             else:
                 # New content needs truncation too
-                prefix = _TRUNCATE_EXISTING if has_truncated_existing else ""
                 truncated = (
                     prefix +
                     truncated_existing +
