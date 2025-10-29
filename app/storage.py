@@ -1,7 +1,9 @@
 import os
 from typing import Any, Dict, List
 from google.cloud import storage
+from google.api_core import exceptions as gcs_exceptions
 from fastapi import HTTPException
+import time
 
 BUCKET_NAME = os.environ.get("NOTES_BUCKET")
 if not BUCKET_NAME:
@@ -45,38 +47,91 @@ def _index_path(project: str, section: str | None = None) -> str:
     else:
         return f"notes/{sanitize(project)}/{sanitize(section)}/_index.md"
 
+def _create_section_index_if_missing(path: str, section: str) -> None:
+    """Create section index file if it doesn't exist. Uses if_generation_match=0 for atomic creation."""
+    blob = bucket.blob(path)
+    try:
+        # if_generation_match=0 ensures we only create if the blob doesn't exist
+        blob.upload_from_string(
+            f"# {section}\n\nNotes in this section:\n",
+            if_generation_match=0
+        )
+    except gcs_exceptions.PreconditionFailed:
+        # File already exists, which is fine
+        pass
+
+def _update_index_with_retry(path: str, item: str, is_project: bool, max_retries: int = 5) -> None:
+    """
+    Update an index file with retry logic using generation-based preconditions.
+    
+    Args:
+        path: Path to the index file
+        item: Section name (for project index) or title (for section index)
+        is_project: True if updating project index, False if updating section index
+        max_retries: Maximum number of retry attempts
+    """
+    for attempt in range(max_retries):
+        try:
+            blob = bucket.blob(path)
+            blob.reload()  # Get current generation
+            
+            if blob.exists():
+                # File exists, read current content and generation
+                current_generation = blob.generation
+                current = blob.download_as_text()
+                
+                # Prepare the link line based on type
+                link_line = f"- [[{item}]]"
+                
+                # Check if update is needed
+                if link_line in current:
+                    return  # Already present, no update needed
+                
+                # Add the new link
+                new_content = current.strip() + "\n" + link_line + "\n"
+                
+                # Upload with generation precondition to ensure atomicity
+                blob.upload_from_string(new_content, if_generation_match=current_generation)
+                return
+            else:
+                # File doesn't exist, create it
+                if is_project:
+                    # Extract project name from path for header
+                    parts = path.split("/")
+                    project_name = parts[-2] if len(parts) >= 2 else "Project"
+                    initial_content = f"# {project_name}\n\nSections:\n- [[{item}]]\n"
+                else:
+                    # For section index, extract section name from path
+                    parts = path.split("/")
+                    section_name = parts[-2] if len(parts) >= 2 else "Section"
+                    initial_content = f"# {section_name}\n\nNotes in this section:\n- [[{item}]]\n"
+                
+                # if_generation_match=0 ensures we only create if it doesn't exist
+                blob.upload_from_string(initial_content, if_generation_match=0)
+                return
+                
+        except gcs_exceptions.PreconditionFailed:
+            # Someone else modified the file, retry
+            if attempt < max_retries - 1:
+                # Exponential backoff with jitter
+                time.sleep(0.1 * (2 ** attempt))
+                continue
+            else:
+                # Max retries exceeded
+                raise HTTPException(
+                    status_code=409,
+                    detail=f"Failed to update index after {max_retries} attempts due to concurrent modifications"
+                )
+
 def ensure_index_files(project: str, section: str) -> None:
     # Create project-level _index.md if missing, and add section link if necessary
-    project_index_blob = bucket.blob(_index_path(project))
-    if not project_index_blob.exists():
-        project_index_blob.upload_from_string(
-            f"# {project}\n\nSections:\n- [[{section}]]\n"
-        )
-    else:
-        current = project_index_blob.download_as_text()
-        link_line = f"- [[{section}]]"
-        if link_line not in current:
-            current = current.strip() + "\n" + link_line + "\n"
-            project_index_blob.upload_from_string(current)
-
+    _update_index_with_retry(_index_path(project), section, is_project=True)
+    
     # Create section-level _index.md if missing
-    section_index_blob = bucket.blob(_index_path(project, section))
-    if not section_index_blob.exists():
-        section_index_blob.upload_from_string(
-            f"# {section}\n\nNotes in this section:\n"
-        )
+    _create_section_index_if_missing(_index_path(project, section), section)
 
 def update_section_index(project: str, section: str, title: str) -> None:
-    blob = bucket.blob(_index_path(project, section))
-    if not blob.exists():
-        blob.upload_from_string(f"# {section}\n\nNotes in this section:\n- [[{title}]]\n")
-        return
-
-    current = blob.download_as_text()
-    link_line = f"- [[{title}]]"
-    if link_line not in current:
-        current = current.strip() + "\n" + link_line + "\n"
-        blob.upload_from_string(current)
+    _update_index_with_retry(_index_path(project, section), title, is_project=False)
 
 def list_tree(prefix: str = "notes/") -> List[Dict[str, Any]]:
     # Walk the bucket under the given prefix and return the same nested structure
