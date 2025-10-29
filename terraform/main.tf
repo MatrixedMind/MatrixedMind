@@ -7,23 +7,27 @@ provider "google" {
 # Enable required services/APIs
 #
 resource "google_project_service" "run_api" {
-  project = var.project_id
-  service = "run.googleapis.com"
+  project            = var.project_id
+  service            = "run.googleapis.com"
+  disable_on_destroy = false
 }
 
 resource "google_project_service" "artifact_api" {
-  project = var.project_id
-  service = "artifactregistry.googleapis.com"
+  project            = var.project_id
+  service            = "artifactregistry.googleapis.com"
+  disable_on_destroy = false
 }
 
 resource "google_project_service" "storage_api" {
-  project = var.project_id
-  service = "storage.googleapis.com"
+  project            = var.project_id
+  service            = "storage.googleapis.com"
+  disable_on_destroy = false
 }
 
 resource "google_project_service" "secretmanager_api" {
-  project = var.project_id
-  service = "secretmanager.googleapis.com"
+  project            = var.project_id
+  service            = "secretmanager.googleapis.com"
+  disable_on_destroy = false
 }
 
 #
@@ -92,6 +96,7 @@ resource "google_artifact_registry_repository" "notes_repo" {
   repository_id  = "${var.service_name}-repo"
   description    = "Container images for MatrixedMind"
   format         = "DOCKER"
+  depends_on     = [google_project_service.artifact_api]
 }
 
 #
