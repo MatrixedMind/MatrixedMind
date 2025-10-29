@@ -121,6 +121,10 @@ def ensure_index_files(project: str, section: str) -> None:
             current = current.rstrip() + "\n" + link_line + "\n"
             project_index_blob.upload_from_string(current)
 
+    # Track which parent sections need to have child links added
+    # Maps parent_section -> (parent_raw_name, set of child_raw_names)
+    parent_updates = {}
+    
     for idx, (raw_name, _) in enumerate(section_pairs, start=1):
         current_section = "/".join(pair[0] for pair in section_pairs[:idx])
         section_blob = bucket.blob(_index_path(project, current_section))
@@ -139,24 +143,38 @@ def ensure_index_files(project: str, section: str) -> None:
             if updated != existing:
                 section_blob.upload_from_string(updated)
 
-        if idx == 1:
-            continue
-
-        parent_section = "/".join(pair[0] for pair in section_pairs[: idx - 1])
+        # Track parent updates instead of applying them immediately
+        if idx > 1:
+            parent_section = "/".join(pair[0] for pair in section_pairs[: idx - 1])
+            parent_raw_name = section_pairs[idx - 2][0]
+            if parent_section not in parent_updates:
+                parent_updates[parent_section] = (parent_raw_name, set())
+            parent_updates[parent_section][1].add(raw_name)
+    
+    # Apply all parent updates in a single pass
+    for parent_section, (parent_raw_name, child_names) in parent_updates.items():
         parent_blob = bucket.blob(_index_path(project, parent_section))
+        
         if not parent_blob.exists():
             # Create the parent blob with default content if it doesn't exist
-            parent_raw_name = section_pairs[idx - 2][0]
-            parent_default_content = f"# {parent_raw_name}\n\nSections:\n\nNotes in this section:\n"
-            parent_blob.upload_from_string(parent_default_content)
-            parent_content = parent_default_content
+            parent_content = f"# {parent_raw_name}\n\nSections:\n\nNotes in this section:\n"
         else:
             parent_content = parent_blob.download_as_text()
+        
+        # Ensure sections header exists
         if "Sections:\n" not in parent_content:
             parent_content = parent_content.rstrip() + "\n\nSections:\n"
-        link_line = f"- [[{raw_name}]]"
-        if link_line not in parent_content:
-            parent_content = parent_content.rstrip() + "\n" + link_line + "\n"
+        
+        # Add all missing child links
+        modified = False
+        for child_name in child_names:
+            link_line = f"- [[{child_name}]]"
+            if link_line not in parent_content:
+                parent_content = parent_content.rstrip() + "\n" + link_line + "\n"
+                modified = True
+        
+        # Upload only if we made changes
+        if modified:
             parent_blob.upload_from_string(parent_content)
 
 def update_section_index(project: str, section: str, title: str) -> None:
