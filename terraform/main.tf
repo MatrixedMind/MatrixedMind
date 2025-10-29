@@ -40,6 +40,8 @@ resource "google_storage_bucket" "notes_bucket" {
   versioning {
     enabled = true
   }
+
+  depends_on = [google_project_service.storage_api]
 }
 
 #
