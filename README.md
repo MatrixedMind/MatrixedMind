@@ -126,8 +126,8 @@ Terraform will output the Cloud Run URL at the end.
 ```
 CLOUD_RUN_URL=$(terraform output -raw cloud_run_url)
 
-# Health check
-curl -H "X-Notes-Key: ${API_KEY}" "${CLOUD_RUN_URL}/ping"
+# Health check (no authentication required)
+curl "${CLOUD_RUN_URL}/ping"
 
 # Add a note
 curl -X POST \
@@ -179,11 +179,25 @@ README.md
 - All meaningful endpoints require a header:  
   X-Notes-Key: <your-secret>
 
-This means:
-- Random people on the internet can hit /ping but can’t write or read your notes without the secret.  
+### Public Health Check Endpoint
+
+The `/ping` endpoint is intentionally **public and unauthenticated** for the following reasons:
+- External monitoring tools and load balancers can verify service availability without API credentials
+- Cloud Run's built-in health checks can validate service status
+- Operational teams can quickly verify deployment success
+
+**Security considerations:**
+- The endpoint returns only `{"status": "ok"}` with no sensitive information
+- It does not expose service version, configuration, dependencies, or data
+- It confirms the service exists and is responsive, which is acceptable for a health check
+- All data access endpoints (`/api/v1/notes`, `/api/v1/index`) remain protected by API key authentication
+
+### Key Protection
+
+- Random people on the internet can hit /ping but can't write or read your notes without the secret.  
 - You can rotate the secret by updating the Cloud Run service via Terraform (-var="api_key=..." again).  
 
-If you want to lock it down further (private Cloud Run, VPC, etc.), that’s possible, but kept out of v1 for simplicity.
+If you want to lock it down further (private Cloud Run, VPC, etc.), that's possible, but kept out of v1 for simplicity.
 
 ---
 
