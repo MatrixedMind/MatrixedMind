@@ -74,7 +74,7 @@ def _retry_on_conflict(func, max_retries: int = 5):
     for attempt in range(max_retries):
         try:
             return func()
-        except exceptions.PreconditionFailed:
+        except (exceptions.PreconditionFailed, exceptions.NotFound):
             if attempt == max_retries - 1:
                 raise
             # Exponential backoff: 0.1s, 0.2s, 0.4s, 0.8s
@@ -99,11 +99,15 @@ def ensure_index_files(project: str, section: str) -> None:
             # Blob already exists, need to update it
             pass
         
-        # Blob exists, download content (which also populates generation)
-        current = blob.download_as_text()
-        generation = blob.generation  # Get generation immediately after download
+        # Blob exists, reload metadata to capture current generation before downloading
+        blob.reload()
+        generation = blob.generation
+        if generation is None:
+            raise exceptions.PreconditionFailed("Blob generation unavailable for conditional update")
+
+        current = blob.download_as_text(if_generation_match=generation)
         link_line = f"- [[{section}]]"
-        
+
         if link_line in current:
             # Already present, nothing to do
             return
@@ -146,11 +150,15 @@ def update_section_index(project: str, section: str, title: str) -> None:
             # Blob already exists, need to update it
             pass
         
-        # Blob exists, download content (which also populates generation)
-        current = blob.download_as_text()
-        generation = blob.generation  # Get generation immediately after download
+        # Blob exists, reload metadata to capture current generation before downloading
+        blob.reload()
+        generation = blob.generation
+        if generation is None:
+            raise exceptions.PreconditionFailed("Blob generation unavailable for conditional update")
+
+        current = blob.download_as_text(if_generation_match=generation)
         link_line = f"- [[{title}]]"
-        
+
         if link_line in current:
             # Already present, nothing to do
             return
