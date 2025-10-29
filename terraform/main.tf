@@ -92,6 +92,7 @@ resource "google_artifact_registry_repository" "notes_repo" {
   repository_id  = "${var.service_name}-repo"
   description    = "Container images for MatrixedMind"
   format         = "DOCKER"
+  depends_on     = [google_project_service.artifact_api]
 }
 
 #

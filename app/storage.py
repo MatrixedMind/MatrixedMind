@@ -27,17 +27,6 @@ def upload_blob_text(path: str, content: str) -> None:
     blob = bucket.blob(path)
     blob.upload_from_string(content)
 
-def get_note(project: str, section: str, title: str) -> str:
-    # Kept for compatibility: takes project/section/title and returns content
-    path = note_path(project, section, title)
-    if not blob_exists(path):
-        raise HTTPException(status_code=404, detail="note not found")
-    return download_blob_text(path)
-
-def save_note(path: str, content: str) -> None:
-    blob = bucket.blob(path)
-    blob.upload_from_string(content)
-
 # Index helpers moved here so main can remain simple
 def _index_path(project: str, section: str | None = None) -> str:
     if section is None:
