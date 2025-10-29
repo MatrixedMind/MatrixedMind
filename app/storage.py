@@ -93,21 +93,18 @@ def ensure_index_files(project: str, section: str) -> None:
     _retry_on_conflict(_update_project_index)
     
     # Create section-level index if it doesn't exist
-    def _create_section_index():
-        section_path = _index_path(project, section)
-        blob = bucket.blob(section_path)
-        
-        # Try to create - if it fails, blob already exists
-        try:
-            blob.upload_from_string(
-                f"# {section}\n\nNotes in this section:\n",
-                if_generation_match=0
-            )
-        except exceptions.PreconditionFailed:
-            # Blob already exists from another process, that's fine
-            pass
+    section_path = _index_path(project, section)
+    blob = bucket.blob(section_path)
     
-    _retry_on_conflict(_create_section_index)
+    # Try to create - if it fails, blob already exists (which is fine)
+    try:
+        blob.upload_from_string(
+            f"# {section}\n\nNotes in this section:\n",
+            if_generation_match=0
+        )
+    except exceptions.PreconditionFailed:
+        # Blob already exists from another process, no action needed
+        pass
 
 def update_section_index(project: str, section: str, title: str) -> None:
     """Update section index with atomic operations to prevent race conditions."""
