@@ -24,6 +24,12 @@ def _timestamp_header() -> str:
     return f"\n## {now}\n"
 
 
+# Truncation indicator constants
+_TRUNCATE_EXISTING = "...(existing)\n"
+_TRUNCATE_NEW_ENTRY = "\n...(new entry)\n"
+_TRUNCATE_ELLIPSIS = "\n...\n"
+
+
 def _truncate_content(content: str, mode: str, existing_content: Optional[str] = None, char_limit: int = 10000) -> str:
     """
     Truncate content intelligently based on size and mode.
@@ -47,7 +53,7 @@ def _truncate_content(content: str, mode: str, existing_content: Optional[str] =
         half_limit = char_limit // 2
         truncated = (
             content[:half_limit] +
-            "\n...\n" +
+            _TRUNCATE_ELLIPSIS +
             content[-half_limit:]
         )
         return truncated
@@ -60,9 +66,12 @@ def _truncate_content(content: str, mode: str, existing_content: Optional[str] =
         # - Show last 40% from new content
         
         if existing_content:
-            # Find where the new content starts (after the existing content)
-            existing_len = len(existing_content)
-            new_content = content[existing_len:]
+            # Find where the new content starts
+            # Note: existing_content was stripped before appending, so we need to account for that
+            existing_stripped = existing_content.rstrip()
+            # The new content includes everything after the stripped existing content
+            start_pos = len(existing_stripped)
+            new_content = content[start_pos:]
             
             # Calculate limits
             existing_chars = int(char_limit * 0.2)
@@ -71,22 +80,21 @@ def _truncate_content(content: str, mode: str, existing_content: Optional[str] =
             
             # Build truncated version
             truncated_existing = existing_content[-existing_chars:] if existing_chars < len(existing_content) else existing_content
+            has_truncated_existing = existing_chars < len(existing_content)
             
             if len(new_content) <= (new_first_chars + new_last_chars):
                 # New content fits in the allocation
-                truncated = (
-                    ("...(existing)\n" if existing_chars < len(existing_content) else "") +
-                    truncated_existing +
-                    new_content
-                )
+                prefix = _TRUNCATE_EXISTING if has_truncated_existing else ""
+                truncated = prefix + truncated_existing + new_content
             else:
                 # New content needs truncation too
+                prefix = _TRUNCATE_EXISTING if has_truncated_existing else ""
                 truncated = (
-                    ("...(existing)\n" if existing_chars < len(existing_content) else "") +
+                    prefix +
                     truncated_existing +
-                    "\n...(new entry)\n" +
+                    _TRUNCATE_NEW_ENTRY +
                     new_content[:new_first_chars] +
-                    "\n...\n" +
+                    _TRUNCATE_ELLIPSIS +
                     new_content[-new_last_chars:]
                 )
             
@@ -96,7 +104,7 @@ def _truncate_content(content: str, mode: str, existing_content: Optional[str] =
             half_limit = char_limit // 2
             return (
                 content[:half_limit] +
-                "\n...\n" +
+                _TRUNCATE_ELLIPSIS +
                 content[-half_limit:]
             )
 
