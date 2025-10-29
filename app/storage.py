@@ -1,7 +1,9 @@
 import os
+import time
 import re
 from typing import Any, Dict, List
 from google.cloud import storage
+from google.api_core import exceptions
 from fastapi import HTTPException
 
 BUCKET_NAME = os.environ.get("NOTES_BUCKET")
@@ -67,38 +69,113 @@ def _index_path(project: str, section: str | None = None) -> str:
     else:
         return f"notes/{sanitize(project)}/{sanitize(section)}/_index.md"
 
-def ensure_index_files(project: str, section: str) -> None:
-    # Create project-level _index.md if missing, and add section link if necessary
-    project_index_blob = bucket.blob(_index_path(project))
-    if not project_index_blob.exists():
-        project_index_blob.upload_from_string(
-            f"# {project}\n\nSections:\n- [[{section}]]\n"
-        )
-    else:
-        current = project_index_blob.download_as_text()
-        link_line = f"- [[{section}]]"
-        if link_line not in current:
-            current = current.strip() + "\n" + link_line + "\n"
-            project_index_blob.upload_from_string(current)
+def _retry_on_conflict(func, max_retries: int = 5):
+    """Retry a function that may encounter precondition failures due to concurrent updates."""
+    for attempt in range(max_retries):
+        try:
+            return func()
+        except exceptions.NotFound:
+            # NotFound indicates a permanent error (blob doesn't exist), not a transient conflict
+            # Re-raise immediately without retrying
+            raise
+        except exceptions.PreconditionFailed:
+            if attempt == max_retries - 1:
+                raise
+            # Exponential backoff: 0.1s, 0.2s, 0.4s, 0.8s
+            time.sleep(0.1 * (2 ** attempt))
+    
+    # This line should never be reached due to the return or raise in the loop
+    # but added for clarity and to satisfy linters
+    return None
 
-    # Create section-level _index.md if missing
-    section_index_blob = bucket.blob(_index_path(project, section))
-    if not section_index_blob.exists():
-        section_index_blob.upload_from_string(
-            f"# {section}\n\nNotes in this section:\n"
+def ensure_index_files(project: str, section: str) -> None:
+    """Ensure project and section index files exist with atomic operations to prevent race conditions."""
+    
+    # Update project-level index
+    def _update_project_index():
+        project_path = _index_path(project)
+        blob = bucket.blob(project_path)
+        
+        # Try to create first - this will fail if blob already exists
+        try:
+            blob.upload_from_string(
+                f"# {project}\n\nSections:\n- [[{section}]]\n",
+                if_generation_match=0
+            )
+            return  # Successfully created, we're done
+        except exceptions.PreconditionFailed:
+            # Blob already exists, need to update it
+            pass
+        
+        # Blob exists, reload metadata to capture current generation before downloading
+        blob.reload()
+        generation = blob.generation
+        if generation is None:
+            raise exceptions.PreconditionFailed("Failed to retrieve blob generation for atomic update. The blob may have been deleted.")
+
+        current = blob.download_as_text(if_generation_match=generation)
+        link_line = f"- [[{section}]]"
+
+        if link_line in current:
+            # Already present, nothing to do
+            return
+        
+        # Update content and upload only if generation hasn't changed
+        new_content = current.strip() + "\n" + link_line + "\n"
+        blob.upload_from_string(new_content, if_generation_match=generation)
+    
+    _retry_on_conflict(_update_project_index)
+    
+    # Create section-level index if it doesn't exist
+    section_path = _index_path(project, section)
+    blob = bucket.blob(section_path)
+    
+    # Try to create - if it fails, blob already exists (which is fine)
+    try:
+        blob.upload_from_string(
+            f"# {section}\n\nNotes in this section:\n",
+            if_generation_match=0
         )
+    except exceptions.PreconditionFailed:
+        # Blob already exists from another process, no action needed
+        pass
 
 def update_section_index(project: str, section: str, title: str) -> None:
-    blob = bucket.blob(_index_path(project, section))
-    if not blob.exists():
-        blob.upload_from_string(f"# {section}\n\nNotes in this section:\n- [[{title}]]\n")
-        return
+    """Update section index with atomic operations to prevent race conditions."""
+    path = _index_path(project, section)
+    
+    def _update():
+        blob = bucket.blob(path)
+        
+        # Try to create first - this will fail if blob already exists
+        try:
+            blob.upload_from_string(
+                f"# {section}\n\nNotes in this section:\n- [[{title}]]\n",
+                if_generation_match=0
+            )
+            return  # Successfully created, we're done
+        except exceptions.PreconditionFailed:
+            # Blob already exists, need to update it
+            pass
+        
+        # Blob exists, reload metadata to capture current generation before downloading
+        blob.reload()
+        generation = blob.generation
+        if generation is None:
+            raise exceptions.PreconditionFailed("Failed to retrieve blob generation for atomic update. The blob may have been deleted.")
 
-    current = blob.download_as_text()
-    link_line = f"- [[{title}]]"
-    if link_line not in current:
-        current = current.strip() + "\n" + link_line + "\n"
-        blob.upload_from_string(current)
+        current = blob.download_as_text(if_generation_match=generation)
+        link_line = f"- [[{title}]]"
+
+        if link_line in current:
+            # Already present, nothing to do
+            return
+        
+        # Update content and upload only if generation hasn't changed
+        new_content = current.strip() + "\n" + link_line + "\n"
+        blob.upload_from_string(new_content, if_generation_match=generation)
+    
+    _retry_on_conflict(_update)
 
 def list_tree(prefix: str = "notes/") -> List[Dict[str, Any]]:
     # Walk the bucket under the given prefix and return the same nested structure
