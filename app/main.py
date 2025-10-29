@@ -26,7 +26,16 @@ def _timestamp_header() -> str:
 
 @app.get("/ping")
 def ping() -> Dict[str, str]:
-    """Health check"""
+    """
+    Public health check endpoint for monitoring and load balancer probes.
+    
+    This endpoint is intentionally unauthenticated to allow external tools
+    (monitoring systems, load balancers, Cloud Run health checks) to verify
+    service reachability without requiring API credentials.
+    
+    Security note: Returns only a minimal status response with no sensitive
+    information about the service internals, configuration, or data.
+    """
     return {"status": "ok"}
 
 
