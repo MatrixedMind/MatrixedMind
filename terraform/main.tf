@@ -58,6 +58,7 @@ resource "google_secret_manager_secret" "notes_api_key" {
   replication {
     automatic = true
   }
+  depends_on = [google_project_service.secretmanager_api]
 }
 
 resource "google_secret_manager_secret_version" "notes_api_key" {
