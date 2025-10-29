@@ -73,9 +73,15 @@ def _update_index_with_retry(path: str, item: str, is_project: bool, max_retries
     for attempt in range(max_retries):
         try:
             blob = bucket.blob(path)
-            blob.reload()  # Get current generation
             
-            if blob.exists():
+            # Try to reload to get current generation; handle NotFound for missing blobs
+            try:
+                blob.reload()
+                blob_exists = True
+            except gcs_exceptions.NotFound:
+                blob_exists = False
+            
+            if blob_exists:
                 # File exists, read current content and generation
                 current_generation = blob.generation
                 current = blob.download_as_text()
