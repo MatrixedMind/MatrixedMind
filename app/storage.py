@@ -144,7 +144,14 @@ def ensure_index_files(project: str, section: str) -> None:
 
         parent_section = "/".join(pair[0] for pair in section_pairs[: idx - 1])
         parent_blob = bucket.blob(_index_path(project, parent_section))
-        parent_content = parent_blob.download_as_text()
+        if not parent_blob.exists():
+            # Create the parent blob with default content if it doesn't exist
+            parent_raw_name = section_pairs[idx - 2][0]
+            parent_default_content = f"# {parent_raw_name}\n\nSections:\n\nNotes in this section:\n"
+            parent_blob.upload_from_string(parent_default_content)
+            parent_content = parent_default_content
+        else:
+            parent_content = parent_blob.download_as_text()
         if "Sections:\n" not in parent_content:
             parent_content = parent_content.rstrip() + "\n\nSections:\n"
         link_line = f"- [[{raw_name}]]"
