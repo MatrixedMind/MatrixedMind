@@ -74,11 +74,19 @@ def _retry_on_conflict(func, max_retries: int = 5):
     for attempt in range(max_retries):
         try:
             return func()
-        except (exceptions.PreconditionFailed, exceptions.NotFound):
+        except exceptions.NotFound:
+            # NotFound indicates a permanent error (blob doesn't exist), not a transient conflict
+            # Re-raise immediately without retrying
+            raise
+        except exceptions.PreconditionFailed:
             if attempt == max_retries - 1:
                 raise
             # Exponential backoff: 0.1s, 0.2s, 0.4s, 0.8s
             time.sleep(0.1 * (2 ** attempt))
+    
+    # This line should never be reached due to the return or raise in the loop
+    # but added for clarity and to satisfy linters
+    return None
 
 def ensure_index_files(project: str, section: str) -> None:
     """Ensure project and section index files exist with atomic operations to prevent race conditions."""
