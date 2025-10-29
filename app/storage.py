@@ -171,7 +171,7 @@ def update_section_index(project: str, section: str, title: str) -> None:
     if "Notes in this section:\n" not in current:
         updated = updated.rstrip() + "\n\nNotes in this section:\n"
     if link_line not in updated:
-        updated = updated.strip() + "\n" + link_line + "\n"
+        updated = updated.rstrip() + "\n" + link_line + "\n"
     if updated != current:
         blob.upload_from_string(updated)
 
