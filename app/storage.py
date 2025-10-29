@@ -77,10 +77,9 @@ def ensure_index_files(project: str, section: str) -> None:
             # Blob already exists, need to update it
             pass
         
-        # Blob exists, reload to get current generation and content
-        blob.reload()
-        generation = blob.generation
+        # Blob exists, download content (which also populates generation)
         current = blob.download_as_text()
+        generation = blob.generation  # Get generation immediately after download
         link_line = f"- [[{section}]]"
         
         if link_line in current:
@@ -98,7 +97,7 @@ def ensure_index_files(project: str, section: str) -> None:
         section_path = _index_path(project, section)
         blob = bucket.blob(section_path)
         
-        # Try to create - if it fails, blob already exists and we're done
+        # Try to create - if it fails, blob already exists
         try:
             blob.upload_from_string(
                 f"# {section}\n\nNotes in this section:\n",
@@ -106,10 +105,9 @@ def ensure_index_files(project: str, section: str) -> None:
             )
         except exceptions.PreconditionFailed:
             # Blob already exists from another process, that's fine
-            # No need to retry as we only want to ensure it exists
             pass
     
-    _create_section_index()  # No retry needed for section index creation
+    _retry_on_conflict(_create_section_index)
 
 def update_section_index(project: str, section: str, title: str) -> None:
     """Update section index with atomic operations to prevent race conditions."""
@@ -129,10 +127,9 @@ def update_section_index(project: str, section: str, title: str) -> None:
             # Blob already exists, need to update it
             pass
         
-        # Blob exists, reload to get current generation and content
-        blob.reload()
-        generation = blob.generation
+        # Blob exists, download content (which also populates generation)
         current = blob.download_as_text()
+        generation = blob.generation  # Get generation immediately after download
         link_line = f"- [[{title}]]"
         
         if link_line in current:
