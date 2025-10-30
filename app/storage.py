@@ -235,13 +235,17 @@ def update_section_index(project: str, section: str, title: str) -> None:
     """Update section index with atomic operations to prevent race conditions."""
     path = _index_path(project, section)
     
+    # Get the last part of the section for display name
+    section_parts = [part for part in section.split("/") if part]
+    display_name = section_parts[-1] if section_parts else section
+    
     def _update():
         blob = bucket.blob(path)
         
         # Try to create first - this will fail if blob already exists
         try:
             blob.upload_from_string(
-                f"# {section}\n\nNotes in this section:\n- [[{title}]]\n",
+                f"# {display_name}\n\nNotes in this section:\n- [[{title}]]\n",
                 if_generation_match=0
             )
             return  # Successfully created, we're done
