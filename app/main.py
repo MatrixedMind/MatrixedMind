@@ -20,7 +20,7 @@ if not NOTES_BUCKET:
 
 
 def _timestamp_header() -> str:
-    # Example: ## 2025-10-24 12:34:56
+    # Example: ## 2025-10-24 12:34:56 UTC
     now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
     return f"\n## {now}\n"
 

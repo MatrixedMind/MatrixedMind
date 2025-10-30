@@ -35,7 +35,7 @@ resource "google_project_service" "secretmanager_api" {
 #
 resource "google_storage_bucket" "notes_bucket" {
   name          = var.bucket_name
-  location      = var.region
+  location      = "US"
   force_destroy = false
 
   uniform_bucket_level_access = true
@@ -123,7 +123,7 @@ resource "google_cloud_run_service" "notes_service" {
           value_source {
             secret_key_ref {
               secret  = google_secret_manager_secret.notes_api_key.secret_id
-              version = "latest"
+              version = google_secret_manager_secret_version.notes_api_key.version
             }
           }
         }

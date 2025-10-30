@@ -4,7 +4,6 @@ import re
 from typing import Any, Dict, List
 from google.cloud import storage
 from google.api_core import exceptions
-from fastapi import HTTPException
 
 BUCKET_NAME = os.environ.get("NOTES_BUCKET")
 if not BUCKET_NAME:
@@ -167,7 +166,7 @@ def update_section_index(project: str, section: str, title: str) -> None:
         current = blob.download_as_text(if_generation_match=generation)
         link_line = f"- [[{title}]]"
 
-        if link_line in current:
+        if link_line in current.splitlines():
             # Already present, nothing to do
             return
         
