@@ -48,7 +48,21 @@ def sanitize(segment: str) -> str:
     return segment
 
 def note_path(project: str, section: str, title: str) -> str:
-    return f"notes/{sanitize(project)}/{sanitize(section)}/{sanitize(title)}.md"
+    """
+    Generate path for a note with support for nested subsections.
+    
+    Args:
+        project: Project name
+        section: Section path (can include subsections separated by '/')
+        title: Note title
+    
+    Returns:
+        Path like: notes/<project>/<section>/<subsection>/<title>.md
+    """
+    # Split section by '/' to handle nested subsections
+    section_parts = [sanitize(part) for part in section.split("/") if part]
+    section_path = "/".join(section_parts)
+    return f"notes/{sanitize(project)}/{section_path}/{sanitize(title)}.md"
 
 def blob_exists(path: str) -> bool:
     return bucket.blob(path).exists()
@@ -63,10 +77,23 @@ def upload_blob_text(path: str, content: str) -> None:
 
 # Index helpers moved here so main can remain simple
 def _index_path(project: str, section: str | None = None) -> str:
+    """
+    Generate index path for a project or section.
+    
+    Args:
+        project: Project name
+        section: Section path (can include subsections separated by '/')
+    
+    Returns:
+        Path like: notes/<project>/_index.md or notes/<project>/<section>/_index.md
+    """
     if section is None:
         return f"notes/{sanitize(project)}/_index.md"
     else:
-        return f"notes/{sanitize(project)}/{sanitize(section)}/_index.md"
+        # Split section by '/' to handle nested subsections
+        section_parts = [sanitize(part) for part in section.split("/") if part]
+        section_path = "/".join(section_parts)
+        return f"notes/{sanitize(project)}/{section_path}/_index.md"
 
 def _retry_on_conflict(func, max_retries: int = 5):
     """Retry a function that may encounter precondition failures due to concurrent updates."""
@@ -88,9 +115,24 @@ def _retry_on_conflict(func, max_retries: int = 5):
     return None
 
 def ensure_index_files(project: str, section: str) -> None:
-    """Ensure project and section index files exist with atomic operations to prevent race conditions."""
+    """
+    Ensure project and section index files exist with atomic operations to prevent race conditions.
     
-    # Update project-level index
+    This function handles nested subsections by:
+    1. Creating/updating the project-level index with the top-level section
+    2. Creating index files for each level of nested subsections
+    """
+    
+    # Split section into parts for nested subsections
+    section_parts = [part for part in section.split("/") if part]
+    
+    if not section_parts:
+        return
+    
+    # Get the top-level section name for the project index
+    top_level_section = section_parts[0]
+    
+    # Update project-level index with the top-level section only
     def _update_project_index():
         project_path = _index_path(project)
         blob = bucket.blob(project_path)
@@ -98,7 +140,7 @@ def ensure_index_files(project: str, section: str) -> None:
         # Try to create first - this will fail if blob already exists
         try:
             blob.upload_from_string(
-                f"# {project}\n\nSections:\n- [[{section}]]\n",
+                f"# {project}\n\nSections:\n- [[{top_level_section}]]\n",
                 if_generation_match=0
             )
             return  # Successfully created, we're done
@@ -113,7 +155,7 @@ def ensure_index_files(project: str, section: str) -> None:
             raise exceptions.PreconditionFailed("Failed to retrieve blob generation for atomic update. The blob may have been deleted.")
 
         current = blob.download_as_text(if_generation_match=generation)
-        link_line = f"- [[{section}]]"
+        link_line = f"- [[{top_level_section}]]"
 
         if link_line in current:
             # Already present, nothing to do
@@ -125,23 +167,77 @@ def ensure_index_files(project: str, section: str) -> None:
     
     _retry_on_conflict(_update_project_index)
     
-    # Create section-level index if it doesn't exist
-    section_path = _index_path(project, section)
-    blob = bucket.blob(section_path)
-    
-    # Try to create - if it fails, blob already exists (which is fine)
-    try:
-        blob.upload_from_string(
-            f"# {section}\n\nNotes in this section:\n",
-            if_generation_match=0
-        )
-    except exceptions.PreconditionFailed:
-        # Blob already exists from another process, no action needed
-        pass
+    # Create index files for each level of the nested section hierarchy
+    for i in range(len(section_parts)):
+        # Build the partial section path (e.g., "section", "section/subsection1", etc.)
+        partial_section = "/".join(section_parts[:i+1])
+        section_path = _index_path(project, partial_section)
+        blob = bucket.blob(section_path)
+        
+        # Determine the display name for this level
+        display_name = section_parts[i]
+        
+        # Try to create - if it fails, blob already exists (which is fine)
+        try:
+            if i < len(section_parts) - 1:
+                # This is an intermediate level - it might have subsections
+                blob.upload_from_string(
+                    f"# {display_name}\n\nSubsections and notes:\n",
+                    if_generation_match=0
+                )
+            else:
+                # This is the final level - it contains notes
+                blob.upload_from_string(
+                    f"# {display_name}\n\nNotes in this section:\n",
+                    if_generation_match=0
+                )
+        except exceptions.PreconditionFailed:
+            # Blob already exists from another process, no action needed
+            pass
+        
+        # If there's a next level, update the current level's index to link to it
+        if i < len(section_parts) - 1:
+            next_subsection = section_parts[i+1]
+            
+            def _update_subsection_index():
+                blob = bucket.blob(section_path)
+                
+                # Blob should exist (we just created it or it existed), reload to get generation
+                blob.reload()
+                generation = blob.generation
+                if generation is None:
+                    # If blob doesn't exist, we can skip updating it
+                    return
+                
+                try:
+                    current = blob.download_as_text(if_generation_match=generation)
+                except exceptions.NotFound:
+                    # Blob was deleted between reload and download, skip
+                    return
+                
+                link_line = f"- [[{next_subsection}]]"
+                
+                if link_line in current:
+                    # Already present, nothing to do
+                    return
+                
+                # Update content and upload only if generation hasn't changed
+                new_content = current.strip() + "\n" + link_line + "\n"
+                try:
+                    blob.upload_from_string(new_content, if_generation_match=generation)
+                except exceptions.PreconditionFailed:
+                    # Generation changed, will retry
+                    raise
+            
+            _retry_on_conflict(_update_subsection_index)
 
 def update_section_index(project: str, section: str, title: str) -> None:
     """Update section index with atomic operations to prevent race conditions."""
     path = _index_path(project, section)
+    
+    # Get the last part of the section for display name
+    section_parts = [part for part in section.split("/") if part]
+    display_name = section_parts[-1] if section_parts else section
     
     def _update():
         blob = bucket.blob(path)
@@ -149,7 +245,7 @@ def update_section_index(project: str, section: str, title: str) -> None:
         # Try to create first - this will fail if blob already exists
         try:
             blob.upload_from_string(
-                f"# {section}\n\nNotes in this section:\n- [[{title}]]\n",
+                f"# {display_name}\n\nNotes in this section:\n- [[{title}]]\n",
                 if_generation_match=0
             )
             return  # Successfully created, we're done
@@ -177,7 +273,16 @@ def update_section_index(project: str, section: str, title: str) -> None:
     _retry_on_conflict(_update)
 
 def list_tree(prefix: str = "notes/") -> List[Dict[str, Any]]:
-    # Walk the bucket under the given prefix and return the same nested structure
+    """
+    Walk the bucket under the given prefix and return a nested structure.
+    
+    Now supports arbitrary depth of subsections. The structure returned is:
+    - projects: list of projects, each with:
+      - name: project name
+      - sections: list of sections, each with:
+        - name: section path (e.g., "section/subsection1/subsection2")
+        - notes: list of note titles
+    """
     blobs = bucket.list_blobs(prefix=prefix)
     tree = {}
 
@@ -185,12 +290,22 @@ def list_tree(prefix: str = "notes/") -> List[Dict[str, Any]]:
         if b.name.endswith("/"):
             continue
         parts = b.name.split("/")
-        if len(parts) != 4:
+        # Must have at least: notes/project/section/filename (4 parts minimum)
+        if len(parts) < 4:
             continue
-        _, project, section, filename = parts
+        
+        # First part is "notes", second is project, last is filename, everything in between is the section path
+        project = parts[1]
+        filename = parts[-1]
+        section_parts = parts[2:-1]  # Everything between project and filename
+        
         if filename == "_index.md":
             continue
+        
         title = filename[:-3] if filename.endswith(".md") else filename
+        
+        # Join section parts back together to form the full section path
+        section = "/".join(section_parts)
 
         proj = tree.setdefault(project, {})
         sec = proj.setdefault(section, [])
