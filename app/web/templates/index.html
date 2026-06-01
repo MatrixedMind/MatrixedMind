@@ -6,5 +6,14 @@
 <body>
     <h1>Welcome to the Portable Wiki</h1>
     <p>This is a FastAPI-powered wiki app.</p>
+
+    <h2>Recent Pages (Space: default)</h2>
+    <ul>
+    {% for record in records %}
+        <li><a href="/{{ record.space }}/{{ record.slug }}">{{ record.title }}</a></li>
+    {% else %}
+        <li>No pages yet.</li>
+    {% endfor %}
+    </ul>
 </body>
 </html>

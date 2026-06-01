@@ -1,10 +1,22 @@
+from collections.abc import AsyncGenerator
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 
+from app.adapters.mongo.connection import MongoConnection
 from app.api.routes import router as api_router
 from app.settings import settings
 from app.web.routes import router as web_router
 
-app = FastAPI(title="Wiki App")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
+    MongoConnection.connect()
+    yield
+    MongoConnection.disconnect()
+
+
+app = FastAPI(title="Wiki App", lifespan=lifespan)
 
 app.include_router(api_router, prefix="/api")
 app.include_router(web_router)

@@ -1,6 +1,6 @@
-from datetime import datetime
+from datetime import UTC, datetime
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class RecordRevision(BaseModel):
@@ -11,15 +11,14 @@ class RecordRevision(BaseModel):
 
 
 class Record(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
     id: str | None = Field(None, alias="_id")
     space: str
     slug: str
     title: str
     body_markdown: str
     tags: list[str] = []
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     revisions: list[RecordRevision] = []
-
-    class Config:
-        populate_by_name = True
