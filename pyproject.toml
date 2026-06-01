@@ -12,6 +12,7 @@ dependencies = [
   "markdown-it-py>=3.0.0",
   "pydantic>=2.0.0",
   "pymongo>=4.7.0",
+  "pyrefly>=0.60.0",
 ]
 
 [dependency-groups]

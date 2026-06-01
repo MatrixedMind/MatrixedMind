@@ -90,4 +90,4 @@ uv run pytest tests/demo_test.py
 - **GCP Auth**: If code works in terminal but not in app, verify Application Default Credentials (ADC) with `gcloud auth application-default login`.
 
 ## 5. Final Operating Rule
-Agents must leave the repository in a valid state: either passing all validations with a clear summary, or failing with an exact list of blockers and the next best fix path. Silent partial work is unacceptable.
+Agents must leave the repository in a valid state: either passing all validations with a clear summary or failing with an exact list of blockers and the next best fix path. Silent partial work is unacceptable.

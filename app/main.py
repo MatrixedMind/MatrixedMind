@@ -10,7 +10,7 @@ from app.web.routes import router as web_router
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
+async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
     MongoConnection.connect()
     yield
     MongoConnection.disconnect()

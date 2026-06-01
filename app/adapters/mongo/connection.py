@@ -13,7 +13,7 @@ class MongoConnection:
     @classmethod
     def connect(cls) -> None:
         if cls.client is None:
-            cls.client = MongoClient(settings.mongo_uri)
+            cls.client = MongoClient[dict[str, Any]](settings.mongo_uri)
             db_name = settings.mongo_uri.split("/")[-1].split("?")[0] or "matrixed_mind"
             cls.db = cls.client[db_name]
 

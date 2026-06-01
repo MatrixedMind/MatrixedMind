@@ -48,4 +48,4 @@ def test_view_record_html() -> None:
     response = client.get("/test/hello-world")
     assert response.status_code == 200
     assert "<h1>Hello World</h1>" in response.text
-    assert "<h1>Hello</h1>" in response.text  # Rendered markdown
+    assert "<h1>Hello</h1>" in response.text  # Rendered Markdown
