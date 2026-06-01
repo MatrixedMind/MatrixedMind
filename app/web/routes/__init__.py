@@ -1,8 +1,7 @@
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Request, Response
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from markdown_it import MarkdownIt
-from starlette.responses import Response
 
 from app.dependencies import RecordRepoDep
 
@@ -16,7 +15,7 @@ async def index(request: Request, repo: RecordRepoDep) -> Response:
     # Just list some records from the default space for now
     records = repo.list_children("default", None)
     return templates.TemplateResponse(
-        request=request, name="index.html", context={"title": "Wiki Home", "records": records}
+        request=request, name="index.html", context={"title": "MatrixedMind", "records": records}
     )
 
 

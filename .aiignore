@@ -1,12 +1,44 @@
-# An .aiignore file follows the same syntax as a .gitignore file.
-# .gitignore documentation: https://git-scm.com/docs/gitignore
+# .aiignore follows .gitignore syntax.
 
-# you can ignore files
-.DS_Store
+# VCS and editor state
+.git/
+.idea/
+.vscode/
+.junie/memory/
+.junie/plans/
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*service-account*.json
+application_default_credentials.json
+
+# Python environments and generated files
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+
+# Local scratch/output
+temp/
+tmp/
+out/
 *.log
 *.tmp
-
-# or folders
-dist/
-build/
-out/
+.DS_Store

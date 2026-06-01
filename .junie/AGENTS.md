@@ -12,7 +12,7 @@ The project uses `uv` for dependency management and Python 3.12+.
    ```bash
    uv sync --locked
    ```
-3. **Environment Variables**: Use `direnv` or a `.env` file for local configuration. See `.envrc.example` for required variables.
+3. **Environment Variables**: Use `.env.example` as the template for local configuration.
 4. **Pre-commit Hooks**: Must be used for local and CI validation.
    ```bash
    pre-commit install
@@ -20,7 +20,7 @@ The project uses `uv` for dependency management and Python 3.12+.
 
 ### Docker Development
 The repository includes a `Dockerfile` and `compose.yaml` for containerized development.
-- **Default Stack**: `web` (FastAPI) and `mongo`.
+- **Default Stack**: `api` (FastAPI) and `mongo`.
 - **Run with Compose**:
   ```bash
   docker compose up
@@ -66,7 +66,7 @@ uv run pytest tests/demo_test.py
   - Check: `uv run ruff check .`
   - Format: `uv run ruff format .`
 - **Type Checking**: `mypy` is required for static type checking.
-  - Run: `uv run mypy src tests`
+  - Run: `uv run mypy app tests`
 - **Pre-commit**: Agents must not disable hooks. If a hook is noisy, update its configuration.
 
 ### GCP and Terraform Policy

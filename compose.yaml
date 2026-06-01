@@ -7,7 +7,7 @@ services:
     env_file:
       - .env.local
     environment:
-      MONGO_URI: mongodb://wiki:wiki@mongo:27017/wiki?authSource=admin
+      MONGO_URI: mongodb://matrixed_mind:matrixed_mind@mongo:27017/matrixed_mind?authSource=admin
       APP_ENV: local
     volumes:
       - ./:/app
@@ -21,14 +21,14 @@ services:
     image: mongo:8
     restart: unless-stopped
     environment:
-      MONGO_INITDB_ROOT_USERNAME: wiki
-      MONGO_INITDB_ROOT_PASSWORD: wiki
+      MONGO_INITDB_ROOT_USERNAME: matrixed_mind
+      MONGO_INITDB_ROOT_PASSWORD: matrixed_mind
     ports:
       - "27017:27017"
     volumes:
       - mongo_data:/data/db
     healthcheck:
-      test: ["CMD", "mongosh", "--quiet", "mongodb://wiki:wiki@localhost:27017/admin?authSource=admin", "--eval", "db.adminCommand('ping')"]
+      test: ["CMD", "mongosh", "--quiet", "mongodb://matrixed_mind:matrixed_mind@localhost:27017/admin?authSource=admin", "--eval", "db.adminCommand('ping')"]
       interval: 10s
       timeout: 5s
       retries: 10

@@ -16,7 +16,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     MongoConnection.disconnect()
 
 
-app = FastAPI(title="Wiki App", lifespan=lifespan)
+app = FastAPI(title="MatrixedMind", lifespan=lifespan)
 
 app.include_router(api_router, prefix="/api")
 app.include_router(web_router)
