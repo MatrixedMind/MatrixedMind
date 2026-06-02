@@ -1,23 +1,19 @@
 # MatrixedMind
 
-MatrixedMind is a FastAPI app for storing and rendering structured markdown records.
+MatrixedMind is a personal knowledge/wiki application built with FastAPI, Markdown-first content, local-first development, and GCP deployment via Terraform.
 
-## Happy Paths
+## Current status
 
-### 1. Local Development
-```bash
-docker compose up --build
-```
-Access the app at http://localhost:8000.
+Pre-MVP / active rebuild.
 
-### 2. Local Tests
-```bash
-uv run pytest
-```
+## Developer quickstart
 
-### 3. GCP Dev Deploy
-```bash
-cd infra/terraform/envs/dev
-terraform init
-terraform apply
-```
+See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
+
+## Roadmap
+
+See [docs/ROADMAP.md](docs/ROADMAP.md).
+
+## Architecture
+
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
