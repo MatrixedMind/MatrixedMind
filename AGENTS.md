@@ -19,9 +19,20 @@ Always refer to the app as MatrixedMind.
 2. Work only on the current milestone unless instructed otherwise.
 3. Make small, reviewable changes.
 4. Add or update tests with implementation changes.
-5. Commit files before running pre-commit/lint checks if operating in an agent environment that requires committed state.
-6. Run the verification commands listed in the milestone.
-7. Report failures exactly, including IDE, type, lint, test, Docker, and Terraform errors.
+5. Update documentation in the same change when code changes behavior, routes, settings, commands, architecture boundaries, milestone status, or verification expectations.
+6. Commit files before running pre-commit/lint checks if operating in an agent environment that requires committed state.
+7. Run the verification commands listed in the milestone.
+8. Report failures exactly, including IDE, type, lint, test, Docker, and Terraform errors.
+
+## Documentation sync
+
+- Keep `docs/ROADMAP.md` aligned with actual milestone status and implemented-but-provisional code.
+- Keep `docs/ARCHITECTURE.md` aligned with application boundaries, implemented routes, adapters, and deferred components.
+- Keep `docs/DEVELOPMENT.md` aligned with local setup, environment variables, endpoints, and quality commands.
+- Keep `docs/TESTING.md` aligned with the actual test layout and verification expectations.
+- Keep `docs/OPERATIONS.md` aligned with health checks, deployment assumptions, Terraform roots, and operational commands.
+- Keep `README.md` as a short index plus accurate current-status summary.
+- If code and docs disagree, either update the docs to match the code or change the code to match the canonical docs before declaring the work complete.
 
 ## Milestone discipline
 

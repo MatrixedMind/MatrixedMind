@@ -32,7 +32,13 @@ The base health endpoint is:
 /health
 ```
 
-Milestone 1 should add a database-aware readiness check or expand health verification so local MongoDB connectivity can be proven.
+The database-aware readiness endpoint is:
+
+```text
+/ready
+```
+
+`/ready` pings MongoDB through the app's MongoDB connection and returns a 503 response with `MongoDB is not ready` when the ping fails.
 
 ## Terraform
 

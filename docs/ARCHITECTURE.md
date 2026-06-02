@@ -6,20 +6,33 @@ MatrixedMind is a single FastAPI service serving HTML and JSON. It is a Python-f
 
 ## Main components
 
-- Web routes: server-rendered pages for the local wiki experience.
-- API routes: JSON endpoints for records and future automation.
-- Domain models: Python/Pydantic models that describe MatrixedMind concepts.
-- Repository interfaces: stable protocols used by application code.
-- Storage adapters: MongoDB first, with future storage choices kept behind repository interfaces.
-- Auth layer: local/dev auth first, production auth selected later behind a dependency boundary.
-- Import/export commands: portable Markdown and metadata round trips.
-- GCP infrastructure: Terraform-managed Cloud Run, Artifact Registry, Secret Manager, and supporting IAM.
+- Web routes: server-rendered pages for the local wiki experience in `app/web/routes/`.
+- API routes: JSON endpoints for records and future automation in `app/api/routes/`.
+- Domain models: Python/Pydantic models in `app/domain/models.py`. The current implemented models are `Record` and `RecordRevision`.
+- Repository interfaces: protocols in `app/domain/ports.py` used by application code.
+- Storage adapters: memory and MongoDB adapters under `app/adapters/`, with future storage choices kept behind repository interfaces.
+- Auth layer: local/dev auth placeholder in `app/auth/dependencies.py`; production auth is intentionally not implemented yet.
+- Import/export commands: planned portable Markdown and metadata round trips.
+- GCP infrastructure: planned Terraform-managed Cloud Run, Artifact Registry, Secret Manager, and supporting IAM.
 
 ## Storage strategy
 
 Start with a local MongoDB adapter. Keep repository interfaces stable so Firestore, Firestore Mongo compatibility, or another backend can be added later without rewriting route and domain code.
 
-The application should depend on repository interfaces. Adapters own database-specific details such as clients, indexes, serialization, and duplicate-key handling.
+The application should depend on repository interfaces. Adapters own database-specific details such as clients, indexes, serialization, and duplicate-key handling. The current MongoDB repository is provisional: basic create/read/list/update methods exist, but Milestone 3 still needs contract hardening, unique indexes, revision behavior, and adapter-level error handling.
+
+## Implemented routes
+
+- `GET /health`: process health and local environment value.
+- `GET /ready`: MongoDB readiness check.
+- `GET /`: server-rendered home page listing records from the default space.
+- `GET /{space}/{slug}`: server-rendered record detail page.
+- `GET /api/status`: API status check.
+- `POST /api/records/`: create a record.
+- `GET /api/records/{space}`: list records for a space, optionally by `parent_id`.
+- `GET /api/records/{space}/{slug}`: read a record by space and slug.
+
+No update API route, record editor page, production auth flow, import/export command, or Terraform-managed deployment is implemented yet.
 
 ## Deployment strategy
 

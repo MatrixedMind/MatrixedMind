@@ -6,7 +6,19 @@ Each milestone must leave the repo in a working, verifiable state. Do not stack 
 
 ## Current focus
 
-Finish Milestone 1 verification against the local Docker Compose stack, then normalize the Milestone 2 domain model and repository contracts. The repo already contains provisional pieces of later milestones, including records, MongoDB, API routes, and server-rendered pages. Treat that code as material to harden, not as permission to skip milestone verification.
+Normalize the Milestone 2 domain model and repository contracts. Milestone 1 is implemented and documented with a MongoDB-aware readiness endpoint. The repo already contains provisional pieces of later milestones, including MongoDB record persistence, API routes, an auth dependency placeholder, and server-rendered pages. Treat that code as material to harden, not as permission to skip milestone verification.
+
+## Current implementation snapshot
+
+- `app/main.py` defines the FastAPI app, `/health`, `/ready`, API router mounting, web router mounting, and MongoDB lifespan hooks.
+- `app/settings.py` loads local settings from `.env` with safe local defaults matching `.env.example`.
+- `app/domain/models.py` contains initial `Record` and `RecordRevision` models only.
+- `app/domain/ports.py` contains the initial `RecordRepository` protocol.
+- `app/adapters/memory/repository.py` contains an in-memory repository used by route tests; it is not yet a full contract-tested adapter.
+- `app/adapters/mongo/repository.py` contains provisional create, read, list, and update methods; it is not yet hardened against the Milestone 3 contract.
+- `app/api/routes/records.py` exposes create, read, and list record routes; update and full validation/error behavior remain incomplete.
+- `app/web/routes/__init__.py` and `app/web/templates/` expose a minimal server-rendered home page and record detail page.
+- `app/auth/dependencies.py` contains a local dev-user placeholder and a production-not-implemented branch.
 
 ---
 

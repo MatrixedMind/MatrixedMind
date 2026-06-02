@@ -16,7 +16,7 @@ uv run pytest tests/unit
 
 ## Integration tests
 
-Use integration tests for local MongoDB behavior and adapter contract coverage. These tests may require Docker Compose or a test container, but they must not require GCP credentials for Mongo-only flows.
+Use integration tests for local MongoDB behavior, route behavior that crosses app boundaries, and adapter contract coverage. These tests may require Docker Compose or a test container for MongoDB-specific flows, but they must not require GCP credentials for Mongo-only flows.
 
 Expected checks:
 
@@ -24,6 +24,8 @@ Expected checks:
 docker compose up -d mongo
 uv run pytest tests/integration
 ```
+
+Current integration coverage includes a MongoDB ping test and FastAPI route tests that override the repository with the in-memory adapter. Full repository contract tests for both memory and MongoDB adapters are still part of Milestone 2 and Milestone 3.
 
 ## API tests
 
@@ -58,3 +60,7 @@ Prefer small fixtures with explicit records, spaces, users, and revisions. Tests
 ## Regression rule
 
 Every bug fix should add a test that fails before the fix and passes after it unless the failure is purely documentation, configuration, or an external service incident.
+
+## Documentation consistency
+
+When behavior changes, update the relevant documentation in the same change. At minimum, route changes should update `docs/ARCHITECTURE.md` or `docs/DEVELOPMENT.md`, verification changes should update `docs/TESTING.md`, and milestone status changes should update `docs/ROADMAP.md`.

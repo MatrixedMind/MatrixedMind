@@ -66,6 +66,19 @@ The readiness endpoint verifies MongoDB connectivity:
 http://localhost:8000/ready
 ```
 
+The initial JSON record routes are mounted under:
+
+```text
+http://localhost:8000/api/records
+```
+
+The initial server-rendered pages are:
+
+```text
+http://localhost:8000/
+http://localhost:8000/{space}/{slug}
+```
+
 ## Quality checks
 
 Run these before considering a milestone complete:
@@ -115,5 +128,6 @@ Use the local `uv` interpreter as the primary interpreter. Use the Docker Compos
 - Read `docs/ROADMAP.md` before adding features.
 - Build the current milestone before expanding later milestones.
 - Add or update tests with implementation changes.
+- Update docs in the same change when code changes routes, settings, commands, architecture boundaries, milestone status, or verification expectations.
 - Keep persistence behind repository interfaces and adapters.
 - Keep the server-rendered UI first unless the roadmap changes.
