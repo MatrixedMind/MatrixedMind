@@ -19,6 +19,21 @@ uv run pytest
 
 Use `.env.example` as the template for local environment variables. Do not commit `.env` or local credential files.
 
+## Environment variables
+
+Required local values:
+
+```text
+APP_ENV=local
+MONGO_URI=mongodb://matrixed_mind:matrixed_mind@localhost:27017/matrixed_mind?authSource=admin
+```
+
+When running through Docker Compose, the `api` service uses the same database credentials with the Compose service host:
+
+```text
+MONGO_URI=mongodb://matrixed_mind:matrixed_mind@mongo:27017/matrixed_mind?authSource=admin
+```
+
 ## Local app
 
 Run the app directly:
@@ -43,6 +58,12 @@ The health endpoint is:
 
 ```text
 http://localhost:8000/health
+```
+
+The readiness endpoint verifies MongoDB connectivity:
+
+```text
+http://localhost:8000/ready
 ```
 
 ## Quality checks

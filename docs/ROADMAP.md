@@ -83,17 +83,18 @@ Run MatrixedMind locally with Dockerized backing services.
 - [x] Keep a Docker Compose stack for the app and MongoDB.
 - [x] Keep local settings in `app/settings.py`.
 - [x] Keep `.env.example` as the local configuration template.
-- [ ] Add a database-aware health check or readiness check.
-- [ ] Add an integration test that proves the app can connect to local MongoDB.
-- [ ] Document required local environment variables in `docs/DEVELOPMENT.md`.
+- [x] Add a database-aware health check or readiness check.
+- [x] Add an integration test that proves the app can connect to local MongoDB.
+- [x] Document required local environment variables in `docs/DEVELOPMENT.md`.
 
 ### Verification
 
-- [ ] `docker compose up -d`
-- [ ] `docker compose ps`
-- [ ] `uv run pytest tests/integration`
-- [ ] `curl http://localhost:8000/health`
-- [ ] MongoDB connectivity is confirmed by an integration test or readiness endpoint.
+- [x] `docker compose up -d`
+- [x] `docker compose ps`
+- [x] `uv run pytest tests/integration`
+- [x] `curl http://localhost:8000/health`
+- [x] `curl http://localhost:8000/ready`
+- [x] MongoDB connectivity is confirmed by an integration test and readiness endpoint.
 
 ### Done when
 

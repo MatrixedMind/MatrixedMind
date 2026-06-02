@@ -5,12 +5,12 @@ services:
       dockerfile: Dockerfile
     command: uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
     env_file:
-      - .env.local
+      - .env.example
     environment:
       MONGO_URI: mongodb://matrixed_mind:matrixed_mind@mongo:27017/matrixed_mind?authSource=admin
       APP_ENV: local
     volumes:
-      - ./:/app
+      - ./app:/app/app
     ports:
       - "8000:8000"
     depends_on:
