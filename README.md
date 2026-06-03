@@ -9,7 +9,8 @@ Pre-MVP / active rebuild. The current codebase contains:
 - A single FastAPI app in `app/main.py`.
 - `/health` and `/ready` endpoints.
 - Local MongoDB wiring through Docker Compose.
-- Initial `Record` and `RecordRevision` domain models.
+- Core domain models for records, revisions, spaces, tags, users, and memberships.
+- Domain validation rules for slugs, paths, titles, Markdown bodies, and tag values.
 - Initial record repository protocol plus memory and MongoDB adapters.
 - Initial JSON record routes for `create`, `read`, and `list`.
 - Initial server-rendered home and record detail pages.

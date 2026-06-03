@@ -8,7 +8,8 @@ MatrixedMind is a single FastAPI service serving HTML and JSON. It is a Python-f
 
 - Web routes: server-rendered pages for the local wiki experience in `app/web/routes/`.
 - API routes: JSON endpoints for records and future automation in `app/api/routes/`.
-- Domain models: Python/Pydantic models in `app/domain/models.py`. The current implemented models are `Record` and `RecordRevision`.
+- Domain models: Python/Pydantic models in `app/domain/models.py`. The current implemented models are `Record`, `RecordRevision`, `Space`, `Tag`, `User`, and `Membership`.
+- Domain validation: reusable slug, path, title, and Markdown rules in `app/domain/validation.py`.
 - Repository interfaces: protocols in `app/domain/ports.py` used by application code.
 - Storage adapters: memory and MongoDB adapters under `app/adapters/`, with future storage choices kept behind repository interfaces.
 - Auth layer: local/dev auth placeholder in `app/auth/dependencies.py`; production auth is intentionally not implemented yet.
@@ -20,6 +21,8 @@ MatrixedMind is a single FastAPI service serving HTML and JSON. It is a Python-f
 Start with a local MongoDB adapter. Keep repository interfaces stable so Firestore, Firestore Mongo compatibility, or another backend can be added later without rewriting route and domain code.
 
 The application should depend on repository interfaces. Adapters own database-specific details such as clients, indexes, serialization, and duplicate-key handling. The current MongoDB repository is provisional: basic create/read/list/update methods exist, but Milestone 3 still needs contract hardening, unique indexes, revision behavior, and adapter-level error handling.
+
+Repository behavior is defined by reusable contract assertions under `tests/contracts/`. Milestone 2 applies the contract to the in-memory adapter; Milestone 3 should apply the same contract to MongoDB.
 
 ## Implemented routes
 

@@ -13,7 +13,7 @@ class InMemoryRecordRepository(RecordRepository):
         return None
 
     def list_children(self, space: str, parent_id: str | None) -> list[Record]:
-        return [r for r in self.records if r.space == space]
+        return [r for r in self.records if r.space == space and r.parent_id == parent_id]
 
     def create(self, record: Record) -> Record:
         if not record.id:
@@ -24,6 +24,7 @@ class InMemoryRecordRepository(RecordRepository):
     def update(self, record_id: str, record: Record) -> Record:
         for i, r in enumerate(self.records):
             if r.id == record_id:
+                record.id = record_id
                 self.records[i] = record
                 return record
-        return record
+        raise KeyError(f"record not found: {record_id}")

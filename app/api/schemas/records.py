@@ -1,4 +1,4 @@
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class RecordCreate(BaseModel):
@@ -6,7 +6,7 @@ class RecordCreate(BaseModel):
     slug: str
     title: str
     body_markdown: str
-    tags: list[str] = []
+    tags: list[str] = Field(default_factory=list)
 
 
 class RecordResponse(BaseModel):

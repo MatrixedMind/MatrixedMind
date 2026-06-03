@@ -1,6 +1,7 @@
 from typing import Any
 
 from bson import ObjectId
+from bson.errors import InvalidId
 from pymongo.database import Database
 
 from app.domain.models import Record
@@ -18,9 +19,7 @@ class MongoRecordRepository:
         return None
 
     def list_children(self, space: str, parent_id: str | None) -> list[Record]:
-        query = {"space": space}
-        if parent_id:
-            query["parent_id"] = parent_id
+        query = {"space": space, "parent_id": parent_id}
         docs = self.collection.find(query)
         records = []
         for doc in docs:
@@ -36,6 +35,13 @@ class MongoRecordRepository:
 
     def update(self, record_id: str, record: Record) -> Record:
         data = record.model_dump(by_alias=True, exclude={"id"})
-        self.collection.update_one({"_id": ObjectId(record_id)}, {"$set": data})
+        try:
+            object_id = ObjectId(record_id)
+        except InvalidId as exc:
+            raise KeyError(f"record not found: {record_id}") from exc
+
+        result = self.collection.update_one({"_id": object_id}, {"$set": data})
+        if result.matched_count == 0:
+            raise KeyError(f"record not found: {record_id}")
         record.id = record_id
         return record
