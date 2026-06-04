@@ -23,6 +23,9 @@ Build the Milestone 4 API layer. Milestone 3 is implemented and verified for Mon
 
 ## Idea backlog (research notes)
 
+<details>
+<summary><strong>Expand idea backlog</strong></summary>
+
 Use this section as the default landing zone for new ideas that are not yet active milestone work. Move items into milestone tasks, ADRs, and architecture docs once implementation starts.
 
 ### Candidate A: Separate security for public/private spaces
@@ -130,9 +133,12 @@ Use this section as the default landing zone for new ideas that are not yet acti
 - Apply "secure by default" posture: private by default, `noindex` by default, explicit publish action required for public indexing.
 - Reserve explicit handling for outbound surfaces beyond search crawlers (export APIs, feeds, embeddings, plugin callbacks) so the same policy model governs all data egress.
 
+</details>
+
 ---
 
-## Milestone 0: Repo reset and project skeleton
+<details>
+<summary><strong>Milestone 0: Repo reset and project skeleton</strong></summary>
 
 ### Goal
 
@@ -183,9 +189,12 @@ Create a clean MatrixedMind repository foundation.
 
 A clean FastAPI skeleton runs locally and all checks pass.
 
+</details>
+
 ---
 
-## Milestone 1: Local development stack
+<details>
+<summary><strong>Milestone 1: Local development stack</strong></summary>
 
 ### Goal
 
@@ -234,9 +243,12 @@ Run MatrixedMind locally with Dockerized backing services.
 
 A developer can clone the repo, run Compose, and verify the app talks to its local backing service.
 
+</details>
+
 ---
 
-## Milestone 2: Domain model and repository interfaces
+<details>
+<summary><strong>Milestone 2: Domain model and repository interfaces</strong></summary>
 
 ### Goal
 
@@ -286,9 +298,12 @@ Define the core MatrixedMind data model before building more UI features.
 
 The domain model is stable enough to support CRUD and storage adapters.
 
+</details>
+
 ---
 
-## Milestone 3: MongoDB storage adapter
+<details>
+<summary><strong>Milestone 3: MongoDB storage adapter</strong></summary>
 
 ### Goal
 
@@ -335,9 +350,12 @@ Persist and retrieve Markdown-first records locally.
 
 The app can round-trip real MatrixedMind records through MongoDB.
 
+</details>
+
 ---
 
-## Milestone 4: API layer
+<details>
+<summary><strong>Milestone 4: API layer</strong></summary>
 
 ### Goal
 
@@ -385,9 +403,12 @@ Expose stable JSON endpoints for records.
 
 The API can manage records end-to-end against local storage.
 
+</details>
+
 ---
 
-## Milestone 5: Web UI shell
+<details>
+<summary><strong>Milestone 5: Web UI shell</strong></summary>
 
 ### Goal
 
@@ -438,9 +459,12 @@ Add a minimal browser-facing interface.
 
 MatrixedMind is usable as a very rough local wiki.
 
+</details>
+
 ---
 
-## Milestone 6: Auth foundation
+<details>
+<summary><strong>Milestone 6: Auth foundation</strong></summary>
 
 ### Goal
 
@@ -490,9 +514,12 @@ Separate local/dev auth from future production auth.
 
 The app has real auth boundaries without committing to final production auth yet.
 
+</details>
+
 ---
 
-## Milestone 7: Import/export
+<details>
+<summary><strong>Milestone 7: Import/export</strong></summary>
 
 ### Goal
 
@@ -537,9 +564,12 @@ Keep MatrixedMind portable and recoverable.
 
 Content is not trapped inside the current database.
 
+</details>
+
 ---
 
-## Milestone 8: CI quality gate
+<details>
+<summary><strong>Milestone 8: CI quality gate</strong></summary>
 
 ### Goal
 
@@ -584,9 +614,12 @@ Make every PR automatically verifiable.
 
 No code merges without automated verification.
 
+</details>
+
 ---
 
-## Milestone 9: Terraform bootstrap
+<details>
+<summary><strong>Milestone 9: Terraform bootstrap</strong></summary>
 
 ### Goal
 
@@ -634,9 +667,12 @@ Prepare GCP infrastructure safely.
 
 GCP infrastructure can be planned repeatably from Terraform.
 
+</details>
+
 ---
 
-## Milestone 10: Dev Cloud Run deployment
+<details>
+<summary><strong>Milestone 10: Dev Cloud Run deployment</strong></summary>
 
 ### Goal
 
@@ -683,3 +719,5 @@ Deploy the first working MatrixedMind container to GCP.
 ### Done when
 
 MatrixedMind has a working dev deployment on GCP.
+
+</details>
