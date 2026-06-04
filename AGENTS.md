@@ -17,12 +17,13 @@ Always refer to the app as MatrixedMind.
 
 1. Read `docs/ROADMAP.md`.
 2. Work only on the current milestone unless instructed otherwise.
-3. Make small, reviewable changes.
-4. Add or update tests with implementation changes.
-5. Update documentation in the same change when code changes behavior, routes, settings, commands, architecture boundaries, milestone status, or verification expectations.
-6. Commit files before running pre-commit/lint checks if operating in an agent environment that requires a committed state.
-7. Run the verification commands listed in the milestone.
-8. Report failures exactly, including IDE, type, lint, test, Docker, and Terraform errors.
+3. Identify all milestone tasks marked as human intervention or decision tasks and confirm they are resolved (or explicitly blocked) before starting AI-agent implementation tasks.
+4. Make small, reviewable changes.
+5. Add or update tests with implementation changes.
+6. Update documentation in the same change when code changes behavior, routes, settings, commands, architecture boundaries, milestone status, or verification expectations.
+7. Commit files before running pre-commit/lint checks if operating in an agent environment that requires a committed state.
+8. Run the verification commands listed in the milestone.
+9. Report failures exactly, including IDE, type, lint, test, Docker, and Terraform errors.
 
 ## Documentation sync
 
