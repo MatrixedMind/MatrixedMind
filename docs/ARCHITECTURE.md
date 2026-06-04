@@ -20,9 +20,9 @@ MatrixedMind is a single FastAPI service serving HTML and JSON. It is a Python-f
 
 Start with a local MongoDB adapter. Keep repository interfaces stable so Firestore, Firestore Mongo compatibility, or another backend can be added later without rewriting route and domain code.
 
-The application should depend on repository interfaces. Adapters own database-specific details such as clients, indexes, serialization, and duplicate-key handling. The current MongoDB repository is provisional: basic create/read/list/update methods exist, but Milestone 3 still needs contract hardening, unique indexes, revision behavior, and adapter-level error handling.
+The application should depend on repository interfaces. Adapters own database-specific details such as clients, indexes, serialization, and duplicate-key handling. The MongoDB repository implements create/read/list/update behavior, creates a unique compound index for `space` and `slug`, indexes `space` and `parent_id` for child listings, converts duplicate-key failures into adapter-level `ValueError`s, and appends an embedded `RecordRevision` containing the previous Markdown body on each update.
 
-Repository behavior is defined by reusable contract assertions under `tests/contracts/`. Milestone 2 applies the contract to the in-memory adapter; Milestone 3 should apply the same contract to MongoDB.
+Repository behavior is defined by reusable contract assertions under `tests/contracts/`. The unit suite applies the contract to the in-memory adapter, and the integration suite applies the same contract to MongoDB.
 
 ## Implemented routes
 

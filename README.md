@@ -11,7 +11,7 @@ Pre-MVP / active rebuild. The current codebase contains:
 - Local MongoDB wiring through Docker Compose.
 - Core domain models for records, revisions, spaces, tags, users, and memberships.
 - Domain validation rules for slugs, paths, titles, Markdown bodies, and tag values.
-- Initial record repository protocol plus memory and MongoDB adapters.
+- Initial record repository protocol plus memory and MongoDB adapters, with MongoDB covered by the repository contract.
 - Initial JSON record routes for `create`, `read`, and `list`.
 - Initial server-rendered home and record detail pages.
 

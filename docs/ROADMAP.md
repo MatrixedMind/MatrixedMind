@@ -6,7 +6,7 @@ Each milestone must leave the repo in a working, verifiable state. Do not stack 
 
 ## Current focus
 
-Harden the Milestone 3 MongoDB storage adapter against the repository contract. Milestone 2 is implemented and verified for the domain model, validation rules, mutable defaults, and in-memory repository contract. The repo already contains provisional pieces of later milestones, including MongoDB record persistence, API routes, an auth dependency placeholder, and server-rendered pages. Treat that code as material to harden, not as permission to skip milestone verification.
+Build the Milestone 4 API layer. Milestone 3 is implemented and verified for MongoDB-backed record create, read, update, list, unique slug indexes, missing-record behavior, and revision creation. The repo already contains provisional pieces of later milestones, including API routes, an auth dependency placeholder, and server-rendered pages. Treat that code as material to harden, not as permission to skip milestone verification.
 
 ## Current implementation snapshot
 
@@ -16,7 +16,7 @@ Harden the Milestone 3 MongoDB storage adapter against the repository contract. 
 - `app/domain/validation.py` contains slug, path, title, and Markdown validation rules.
 - `app/domain/ports.py` contains the initial `RecordRepository` protocol.
 - `app/adapters/memory/repository.py` contains an in-memory repository covered by the reusable repository contract.
-- `app/adapters/mongo/repository.py` contains provisional create, read, list, and update methods; it is not yet hardened against the Milestone 3 contract.
+- `app/adapters/mongo/repository.py` contains a MongoDB repository hardened against the repository contract with unique slug indexes and update revisions.
 - `app/api/routes/records.py` exposes create, read, and list record routes; update and full validation/error behavior remain incomplete.
 - `app/web/routes/__init__.py` and `app/web/templates/` expose a minimal server-rendered home page and record detail page.
 - `app/auth/dependencies.py` contains a local dev-user placeholder and a production-not-implemented branch.
@@ -185,19 +185,19 @@ Persist and retrieve Markdown-first records locally.
 
 ### Implementation tasks
 
-- [ ] Harden the MongoDB repository implementation against the repository contract.
-- [ ] Add create, read, update, and list behavior for records.
-- [ ] Ensure updates create revisions.
-- [ ] Add unique indexes for `space` and `slug`.
-- [ ] Add tests for duplicate slugs and missing records.
+- [x] Harden the MongoDB repository implementation against the repository contract.
+- [x] Add create, read, update, and list behavior for records.
+- [x] Ensure updates create revisions.
+- [x] Add unique indexes for `space` and `slug`.
+- [x] Add tests for duplicate slugs and missing records.
 
 ### Verification
 
-- [ ] Integration test creates a record.
-- [ ] Integration test updates a record and creates a revision.
-- [ ] Integration test lists records by space and parent.
-- [ ] Repository contract tests pass against MongoDB.
-- [ ] `uv run pytest tests/integration`
+- [x] Integration test creates a record.
+- [x] Integration test updates a record and creates a revision.
+- [x] Integration test lists records by space and parent.
+- [x] Repository contract tests pass against MongoDB.
+- [x] `uv run pytest tests/integration`
 
 ### Done when
 
