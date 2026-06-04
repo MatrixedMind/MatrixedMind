@@ -20,7 +20,7 @@ Always refer to the app as MatrixedMind.
 3. Make small, reviewable changes.
 4. Add or update tests with implementation changes.
 5. Update documentation in the same change when code changes behavior, routes, settings, commands, architecture boundaries, milestone status, or verification expectations.
-6. Commit files before running pre-commit/lint checks if operating in an agent environment that requires committed state.
+6. Commit files before running pre-commit/lint checks if operating in an agent environment that requires a committed state.
 7. Run the verification commands listed in the milestone.
 8. Report failures exactly, including IDE, type, lint, test, Docker, and Terraform errors.
 
@@ -50,6 +50,15 @@ Always refer to the app as MatrixedMind.
 - `uv run pytest`
 - `docker build -t matrixedmind:local .` where relevant
 - `terraform fmt -check`, `terraform validate`, and `terraform plan` for infrastructure changes
+
+## Checklist for implementation changes
+
+- When adding or changing validation rules, include tests for valid inputs, invalid inputs, boundary lengths, empty values, malformed values, and security-sensitive edge cases such as traversal-like paths or null bytes where relevant.
+- When adding domain models or fields, verify optional/default behavior, avoid mutable defaults, and document whether the model is implemented, provisional, or planned.
+- When changing repository behavior, update reusable contract assertions where possible and add explicit tests for missing records, duplicate records, filtering behavior, and update/revision behavior where relevant.
+- When changing adapter behavior, verify both the in-memory adapter and MongoDB adapter remain consistent unless the difference is intentional and documented.
+- When updating milestone status or documentation, do not mark behavior as complete unless the listed verification has actually passed or the blocker is recorded exactly.
+- Keep documentation descriptive, not aspirational: distinguish implemented behavior from planned or provisional behavior.
 
 ## Local development
 
