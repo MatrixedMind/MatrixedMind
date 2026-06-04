@@ -45,12 +45,64 @@ Always refer to the app as MatrixedMind.
 
 ## Quality gates
 
-- `uv run ruff check .`
-- `uv run ruff format --check .`
-- `uv run mypy app`
-- `uv run pytest`
-- `docker build -t matrixedmind:local .` where relevant
-- `terraform fmt -check`, `terraform validate`, and `terraform plan` for infrastructure changes
+### Run pre-commit (covers formatting, linting, type checks, and infra checks automatically)
+
+```
+uv run pre-commit run --all-files
+```
+
+Run this before committing and after any significant batch of changes. It covers the path-specific checks below automatically based on which files changed.
+
+### Always run
+
+```
+uv run pre-commit run --all-files
+```
+
+These hooks always run regardless of what changed:
+- `end-of-file-fixer` — ensures files end with a newline.
+- `trailing-whitespace` — strips trailing whitespace.
+- `check-merge-conflict` — blocks accidental merge conflict markers.
+
+### App changes (`app/` or `tests/`)
+
+Run when any Python source or test file changes:
+
+```
+uv run ruff check .
+uv run ruff format --check .
+uv run mypy app
+uv run pytest
+```
+
+The pre-commit hooks for `ruff-check` and `ruff-format` are scoped to `app/` and `tests/` and will auto-fix on commit. `mypy` and `pytest` must be run manually or via CI.
+
+### Docker / container changes (`Dockerfile`, `compose.yaml`)
+
+```
+docker build -t matrixedmind:local .
+docker compose up -d
+```
+
+### Infrastructure changes (`infra/`)
+
+Run when any `.tf` file changes:
+
+```
+terraform fmt -recursive infra/
+terraform validate
+terraform plan
+```
+
+The pre-commit `terraform-fmt` hook runs automatically on `.tf` files. It skips gracefully if `terraform` is not installed, so it will not block commits on machines without Terraform. `terraform validate` and `terraform plan` require an initialized Terraform workspace (`terraform init`) and must be run manually or via CI when infra changes are intended.
+
+### Documentation changes (`docs/`, `*.md`)
+
+```
+uv run pre-commit run --all-files
+```
+
+Pre-commit will catch trailing whitespace and EOF issues. No additional lint step is required for documentation-only changes.
 
 ## Checklist for implementation changes
 
