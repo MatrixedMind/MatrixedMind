@@ -66,10 +66,19 @@ The readiness endpoint verifies MongoDB connectivity:
 http://localhost:8000/ready
 ```
 
-The initial JSON record routes are mounted under:
+The JSON record routes are mounted under:
 
 ```text
 http://localhost:8000/api/records
+```
+
+Implemented record API operations:
+
+```text
+POST /api/records/
+GET /api/records/{space}
+GET /api/records/{space}/{slug}
+PUT /api/records/{space}/{slug}
 ```
 
 The initial server-rendered pages are:

@@ -6,7 +6,7 @@ Each milestone must leave the repo in a working, verifiable state. Do not stack 
 
 ## Current focus
 
-Build the Milestone 4 API layer. Milestone 3 is implemented and verified for MongoDB-backed record create, read, update, list, unique slug indexes, missing-record behavior, and revision creation. The repo already contains provisional pieces of later milestones, including API routes, an auth dependency placeholder, and server-rendered pages. Treat that code as material to harden, not as permission to skip milestone verification.
+Milestone 4 is implemented and verified for record create, read, update, list, request validation, duplicate/not-found error handling, API docs rendering, and a manual create-read-update HTTP flow. Milestone 3 is implemented and verified for MongoDB-backed record create, read, update, list, unique slug indexes, missing-record behavior, and revision creation. The repo already contains provisional pieces of later milestones, including an auth dependency placeholder and server-rendered pages. Treat that code as material to harden, not as permission to skip milestone verification.
 
 ## Current implementation snapshot
 
@@ -17,7 +17,7 @@ Build the Milestone 4 API layer. Milestone 3 is implemented and verified for Mon
 - `app/domain/ports.py` contains the initial `RecordRepository` protocol.
 - `app/adapters/memory/repository.py` contains an in-memory repository covered by the reusable repository contract.
 - `app/adapters/mongo/repository.py` contains a MongoDB repository hardened against the repository contract with unique slug indexes and update revisions.
-- `app/api/routes/records.py` exposes create, read, and list record routes; update and full validation/error behavior remain incomplete.
+- `app/api/routes/records.py` exposes create, read, update, and list record routes with domain-aligned request schemas and consistent duplicate/not-found error handling.
 - `app/web/routes/__init__.py` and `app/web/templates/` expose a minimal server-rendered home page and record detail page.
 - `app/auth/dependencies.py` contains a local dev-user placeholder and a production-not-implemented branch.
 
@@ -386,18 +386,18 @@ Expose stable JSON endpoints for records.
 #### AI agent implementation tasks
 
 - [x] Add initial create, read, and list routes.
-- [ ] Add update record route.
-- [ ] Align API schemas with the domain validation rules.
-- [ ] Return consistent 400, 404, and validation responses.
-- [ ] Add route tests for happy paths and invalid payloads.
+- [x] Add update record route.
+- [x] Align API schemas with the domain validation rules.
+- [x] Return consistent 400, 404, and validation responses.
+- [x] Add route tests for happy paths and invalid payloads.
 
 ### Verification
 
-- [ ] FastAPI route tests pass.
-- [ ] Invalid payloads return correct errors.
-- [ ] API docs render at `/docs`.
-- [ ] Manual curl/httpie create-read-update flow works.
-- [ ] `uv run pytest tests/unit tests/integration`
+- [x] FastAPI route tests pass.
+- [x] Invalid payloads return correct errors.
+- [x] API docs render at `/docs`.
+- [x] Manual curl/httpie create-read-update flow works.
+- [x] `uv run pytest tests/unit tests/integration`
 
 ### Done when
 

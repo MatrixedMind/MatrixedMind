@@ -31,11 +31,12 @@ Repository behavior is defined by reusable contract assertions under `tests/cont
 - `GET /`: server-rendered home page listing records from the default space.
 - `GET /{space}/{slug}`: server-rendered record detail page.
 - `GET /api/status`: API status check.
-- `POST /api/records/`: create a record.
+- `POST /api/records/`: create a record with request validation aligned to the domain slug, path, title, Markdown, and tag rules.
 - `GET /api/records/{space}`: list records for a space, optionally by `parent_id`.
 - `GET /api/records/{space}/{slug}`: read a record by space and slug.
+- `PUT /api/records/{space}/{slug}`: partially update a record identified by space and slug. Supplied fields are validated with the same domain rules as create requests, then merged into the existing record before repository update.
 
-No update API route, record editor page, production auth flow, import/export command, or Terraform-managed deployment is implemented yet.
+No record editor page, production auth flow, import/export command, or Terraform-managed deployment is implemented yet.
 
 ## Deployment strategy
 
