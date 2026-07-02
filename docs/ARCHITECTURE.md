@@ -6,23 +6,61 @@ MatrixedMind is a single FastAPI service serving HTML and JSON. It is a Python-f
 
 ## Main components
 
-- Web routes: server-rendered pages for the local wiki experience in `app/web/routes/`.
-- API routes: JSON endpoints for records and future automation in `app/api/routes/`.
+- Web routes: server-rendered pages for the local personal knowledge experience in `app/web/routes/`.
+- API routes: JSON endpoints for records and future automation in `app/api/routes/`. The future LLM-facing API must live behind a separate `/api/llm/*` boundary rather than exposing the normal app API to ChatGPT.
 - Domain models: Python/Pydantic models in `app/domain/models.py`. The current implemented models are `Record`, `RecordRevision`, `Space`, `Tag`, `User`, and `Membership`.
 - Domain validation: reusable slug, path, title, and Markdown rules in `app/domain/validation.py`.
 - Repository interfaces: protocols in `app/domain/ports.py` used by application code.
 - Storage adapters: memory and MongoDB adapters under `app/adapters/`, with future storage choices kept behind repository interfaces.
 - Auth layer: local/dev auth placeholder in `app/auth/dependencies.py`; production auth is intentionally not implemented yet.
 - Import/export commands: planned portable Markdown and metadata round trips.
-- GCP infrastructure: planned Terraform-managed Cloud Run, Artifact Registry, Secret Manager, and supporting IAM.
+- GCP infrastructure: planned Terraform-managed Cloud Run, Artifact Registry, Secret Manager, Firestore Enterprise MongoDB compatibility, and supporting IAM.
 
 ## Storage strategy
 
-Start with a local MongoDB adapter. Keep repository interfaces stable so Firestore, Firestore Mongo compatibility, or another backend can be added later without rewriting route and domain code.
+Start with a local MongoDB adapter. Keep repository interfaces stable so Firestore Enterprise MongoDB compatibility, MongoDB Atlas, or another backend can be evaluated without rewriting route and domain code.
 
 The application should depend on repository interfaces. Adapters own database-specific details such as clients, indexes, serialization, and duplicate-key handling. The MongoDB repository implements create/read/list/update behavior, creates a unique compound index for `space` and `slug`, indexes `space` and `parent_id` for child listings, converts duplicate-key failures into adapter-level `ValueError`s, and appends an embedded `RecordRevision` containing the previous Markdown body on each update.
 
 Repository behavior is defined by reusable contract assertions under `tests/contracts/`. The unit suite applies the contract to the in-memory adapter, and the integration suite applies the same contract to MongoDB.
+
+For the Cloud MVP, Firestore Enterprise edition with MongoDB compatibility is the preferred cloud persistence target. This must be verified by running repository contract tests against Firestore compatibility before cloud deployment is considered unblocked. Local Docker Compose MongoDB remains the local development path. MongoDB Atlas is fallback only if Firestore compatibility blocks the MVP.
+
+The current embedded revision array is acceptable for the local pre-MVP adapter, but it should not grow unbounded in the cloud shape. Revisions should move toward append-only `record_revisions` documents, with LLM and other writes also creating append-only `audit_events`.
+
+## Cloud MVP architecture
+
+The Cloud MVP target is:
+
+```text
+ChatGPT Custom GPT Action
+        |
+        | HTTPS + API key auth
+        v
+Cloud Run service
+        |
+        | app-level token validation
+        v
+/api/llm/* narrow write API
+        |
+        v
+MatrixedMind repository layer
+        |
+        v
+Firestore Enterprise MongoDB compatibility
+```
+
+ChatGPT integration enters through a constrained LLM API boundary, not the normal browser or internal record API. The initial LLM endpoints are planned as:
+
+```text
+POST /api/llm/records/upsert
+GET  /api/llm/records/{space}/{slug}
+GET  /api/llm/records
+```
+
+The LLM boundary must remain scoped, non-destructive, and private-by-default. LLM-created records should default to private, draft, and noindex, and each LLM write should be attributed to a synthetic actor such as `llm:chatgpt`.
+
+Cloud Run filesystems are not persistent, so hosted persistence is required for deployed records, revisions, audit events, and LLM token metadata.
 
 ## Implemented routes
 
@@ -41,6 +79,8 @@ No record editor page, production auth flow, import/export command, or Terraform
 ## Deployment strategy
 
 Deploy the app as a container to Cloud Run. Images are stored in Artifact Registry. Secrets are stored in Secret Manager. Infrastructure is managed with Terraform and remote state in a versioned GCS backend. GitHub Actions authenticates to GCP with Workload Identity Federation, not service-account keys.
+
+Cloud Run may allow public unauthenticated invocation at the platform layer only after MatrixedMind enforces app-level auth for sensitive browser, internal API, and LLM API routes.
 
 ## Local development strategy
 
@@ -62,3 +102,4 @@ Local development should work without GCP credentials for core features. Docker 
 - No production auth shortcut using shared secrets.
 - No cloud-only development loop.
 - No database-specific assumptions outside adapters.
+- No broad ChatGPT access to the internal/general API.

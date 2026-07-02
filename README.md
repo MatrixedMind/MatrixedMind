@@ -1,6 +1,6 @@
 # MatrixedMind
 
-MatrixedMind is a personal knowledge/wiki application built with FastAPI, Markdown-first content, local-first development, and GCP deployment via Terraform.
+MatrixedMind is a personal knowledge application built with FastAPI, Markdown-first content, local-first development, and GCP deployment via Terraform.
 
 ## Current status
 
@@ -17,6 +17,8 @@ Pre-MVP / active rebuild. The current codebase contains:
 
 The canonical working plan remains [docs/ROADMAP.md](docs/ROADMAP.md). Some code reaches ahead of the current milestone; treat it as provisional until the roadmap verification for that milestone is complete.
 
+The near-term cloud MVP direction is documented in [docs/CLOUD_MVP.md](docs/CLOUD_MVP.md). It targets Cloud Run, Firestore Enterprise MongoDB compatibility pending repository contract verification, and a narrow ChatGPT Custom GPT Action API. No cloud MVP implementation is complete yet.
+
 ## Developer quickstart
 
 See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
@@ -28,3 +30,7 @@ See [docs/ROADMAP.md](docs/ROADMAP.md).
 ## Architecture
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+
+## Cloud MVP
+
+See [docs/CLOUD_MVP.md](docs/CLOUD_MVP.md).
