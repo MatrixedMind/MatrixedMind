@@ -6,7 +6,9 @@ Each milestone must leave the repo in a working, verifiable state. Do not stack 
 
 ## Current focus
 
-Milestone 4 is implemented and verified for record create, read, update, list, request validation, duplicate/not-found error handling, API docs rendering, and a manual create-read-update HTTP flow. Milestone 3 is implemented and verified for MongoDB-backed record create, read, update, list, unique slug indexes, missing-record behavior, and revision creation. The repo already contains provisional pieces of later milestones, including an auth dependency placeholder and server-rendered pages. Treat that code as material to harden, not as permission to skip milestone verification.
+Milestone 4 is implemented and verified for record create, read, update, list, request validation, duplicate/not-found error handling, API docs rendering, and a manual create-read-update HTTP flow. Milestone 3 is implemented and verified for MongoDB-backed record create, read, update, list, unique slug indexes, missing-record behavior, and revision creation.
+
+The repo already contains provisional pieces of later milestones, including an auth dependency placeholder and server-rendered pages. Treat that code as material to harden, not as permission to skip milestone verification.
 
 ## Current implementation snapshot
 
@@ -21,119 +23,94 @@ Milestone 4 is implemented and verified for record create, read, update, list, r
 - `app/web/routes/__init__.py` and `app/web/templates/` expose a minimal server-rendered home page and record detail page.
 - `app/auth/dependencies.py` contains a local dev-user placeholder and a production-not-implemented branch.
 
-## Idea backlog (research notes)
+## Roadmap decisions
 
-<details>
-<summary><strong>Expand idea backlog</strong></summary>
+Decision details live in `docs/DECISIONS/`. A short mapping of resolved roadmap decisions lives in `docs/ROADMAP_DECISIONS.md`.
 
-Use this section as the default landing zone for new ideas that are not yet active milestone work. Move items into milestone tasks, ADRs, and architecture docs once implementation starts.
+Current ADR-backed decisions:
+
+- FastAPI modular monolith: `docs/DECISIONS/0001-python-fastapi-modular-monolith.md`
+- Storage adapter strategy: `docs/DECISIONS/0002-storage-adapter-strategy.md`
+- Server-rendered UI first: `docs/DECISIONS/0003-server-rendered-ui-first.md`
+- GCP Cloud Run with Terraform: `docs/DECISIONS/0004-gcp-cloud-run-terraform.md`
+- Granular sharing and indexing policy model: `docs/DECISIONS/0005-granular-sharing-and-indexing-policy.md`
+- Stable record identity and references: `docs/DECISIONS/0006-stable-record-identity-and-references.md`
+- Detailed sharing, authorization, and indexing policy: `docs/DECISIONS/0007-sharing-authorization-and-indexing-policy.md`
+- Auth modes and production requirements: `docs/DECISIONS/0008-auth-modes-and-production-requirements.md`
+- Export directory format: `docs/DECISIONS/0009-export-directory-format.md`
+- CI quality gate and branch protection: `docs/DECISIONS/0010-ci-quality-gate-and-branch-protection.md`
+- Infrastructure layout: `docs/DECISIONS/0011-infrastructure-layout.md`
+- Hosted development exposure: `docs/DECISIONS/0012-dev-hosting-exposure.md`
+- Markdown rendering and sanitization: `docs/DECISIONS/0013-markdown-rendering-and-sanitization.md`
+
+## Idea backlog
+
+Use this section as the default landing zone for ideas that are not yet active milestone work. Move items into milestone tasks, ADRs, and architecture docs once implementation starts.
 
 ### Candidate A: Separate security for public/private spaces
 
-**Status:** Not yet addressed for application-level spaces (separate from Milestone 10 service exposure).
+**Status:** Decision direction is now resolved by ADR 0005 and ADR 0007. Implementation remains Milestone 6 work.
 
-**Tollgate milestone:** Finalize by the end of Milestone 6 (Auth foundation) so later API/UI behavior does not bake in incompatible access rules.
+**Tollgate milestone:** Milestone 6.
 
-**Research notes:**
+**Implementation notes:**
 
-- Common FOSS wiki patterns use a space-level visibility flag (`public` or `private`) plus role-based membership (owner/editor/viewer).
-- The lowest-risk default is deny-by-default for private spaces, with explicit grants through membership records.
-- A practical policy boundary is read/write authorization in a service layer, not directly in route handlers.
-- Data filtering should happen at query time (list/read endpoints return only records from spaces the caller can access).
+- Default private behavior remains the safe baseline.
+- Access checks should live in a policy/service layer, not route handlers.
+- List/read behavior must filter results through the effective policy.
+- Add tests for allowed and denied read/list/write behavior by visibility and membership role.
 
-**Suggested spike scope:**
+### Candidate B: Markdown rendering stack
 
-- Add a provisional `SpaceVisibility` field and a minimal policy matrix in the domain layer.
-- Add authz-focused tests for allowed and denied read/list/write behavior by visibility and membership role.
-- Record final policy decisions in a dedicated ADR before broader multi-user work.
+**Status:** Resolved by ADR 0013.
 
-### Candidate B: Evaluate FOSS Markdown rendering stack
+**Decision:** Use `markdown-it-py` for Markdown rendering and `nh3` for sanitization behind an application-owned rendering boundary.
 
-**Status:** Partially addressed only as a roadmap requirement to "render Markdown content safely"; tool choice is still open.
+**Implementation notes:**
 
-**Tollgate milestone:** Finalize by the end of Milestone 5 (Web UI shell) to avoid reworking templates, sanitization behavior, and content tests.
-
-**Research notes:**
-
-- `markdown-it-py` has an active ecosystem, CommonMark compatibility, and plugin support for tables, task lists, and footnotes.
-- `python-markdown` is mature and widely used, with many extensions, but extension quality and behavior vary.
-- `mistune` is fast and flexible, but extension coverage can require more custom wiring.
-- For untrusted content, pair rendering with strict sanitization (`nh3` or equivalent allowlist sanitizer) and explicit URL scheme rules.
-
-**Suggested spike scope:**
-
-- Build a small renderer adapter interface and compare at least two engines (`markdown-it-py` and `python-markdown`) behind that boundary.
-- Validate output against security-focused fixtures (script tags, inline event handlers, `javascript:` links, malformed HTML).
-- Capture chosen stack and allowlist rules in `docs/SECURITY.md` and an ADR.
+- Keep renderer calls out of route handlers and templates.
+- Sanitize rendered HTML before marking it safe for templates.
+- Add security fixtures for script tags, inline event handlers, unsafe URL schemes, and malformed HTML.
 
 ### Candidate C: Plugin ecosystem for custom workflows
 
 **Status:** Not yet addressed.
 
-**Tollgate milestone:** Finalize the extension boundary by the end of Milestone 7 (Import/export), before CI/deployment hardening in Milestones 8–10.
+**Tollgate milestone:** Finalize the extension boundary by the end of Milestone 7 before CI/deployment hardening in Milestones 8–10.
 
-**Research notes:**
+**Implementation notes:**
 
-- Successful plugin ecosystems usually start with a narrow, versioned extension API and capability-based permissions.
-- In-process arbitrary code plugins are easy for local use but increase security and upgrade risk for hosted deployments.
-- A safer early path is "internal hooks first": define lifecycle events and adapter interfaces before opening external plugin loading.
-- Compatibility guidance from FOSS ecosystems suggests semantic API versioning, deprecation windows, and contract tests for extension points.
-
-**Suggested spike scope:**
-
-- Define a provisional extension surface (for example - Markdown preprocessing, post-save automation, export format adapters).
-- Add a plugin manifest schema with declared capabilities and minimum API version.
-- Start with built-in adapters that use the same API as external plugins, then decide on the loading model (local package vs. an isolated process) in a later milestone.
+- Start with internal hooks first.
+- Define lifecycle events and adapter interfaces before external plugin loading.
+- Prefer a narrow versioned extension API with capability declarations.
 
 ### Candidate D: Stable cross-space page references with per-space unique IDs
 
-**Status:** Not yet addressed.
+**Status:** Decision direction is resolved by ADR 0006. Implementation remains future work.
 
-**Tollgate milestone:** Finalize by the end of Milestone 4 (API layer) so record identity and reference contracts are stable before broader UI and auth work.
+**Tollgate milestone:** Record identity and reference contracts should be stabilized before deeper UI/auth work depends on them.
 
-**Research notes:**
+**Implementation notes:**
 
-- Wiki and docs systems usually separate immutable identity from mutable location: a stable record ID plus a changeable path/slug.
-- Keeping links resilient during page moves typically requires references to target the stable ID, with path/slug used only for display and routing.
-- Cross-space references are usually modeled as explicit link objects (`from_record_id`, `to_record_id`) so permissions and backlink queries are enforceable.
-- Human-friendly authoring is typically implemented via autocomplete/search mention syntax that resolves to IDs at save time.
-
-**Suggested spike scope:**
-
-- Add a per-space immutable `record_id` (for example, ULID-style) distinct from `slug` and `parent_id`.
-- Define a canonical reference syntax that can resolve by lookup without memorizing paths, then store normalized links by ID.
-- Add move tests that prove parent changes do not invalidate references and backlink queries still resolve.
-- Add cross-space authorization tests to ensure that references do not leak private-space metadata.
+- Add an immutable application-level `record_id` distinct from mutable slugs and storage-native IDs.
+- Resolve authored wiki links to stable IDs at save time.
+- Add tests proving moves/slug changes do not break references.
+- Add cross-space authorization tests so backlinks do not leak private-space metadata.
 
 ### Candidate E: Granular sharing policy and indexing/crawler controls
 
-**Status:** Not yet addressed.
+**Status:** Decision direction is resolved by ADR 0005 and superseded in detail by ADR 0007. Implementation remains Milestone 5 and Milestone 6 work.
 
-**Tollgate milestone:** Finalize the authorization model by the end of Milestone 6 (Auth foundation), with baseline crawler/indexing behavior defined by the end of Milestone 5 (Web UI shell).
+**Tollgate milestone:** Baseline crawler/indexing behavior belongs in Milestone 5. Authorization behavior belongs in Milestone 6.
 
-**Research notes:**
+**Implementation notes:**
 
-- Mature collaboration systems usually separate identity and policy: principals (user, org, group, public) are modeled independently of resource rules.
-- Security policy is easier to evolve when effective access is computed from additive allow rules plus explicit denies, with clear conflict resolution documented.
-- Multi-level metadata controls are common for crawler behavior: global defaults, then space-level overrides, then record-level overrides.
-- A delayed-indexing safety window is a practical mitigation for accidental exposure, but it should be paired with explicit `noindex` defaults and audit logs for visibility changes.
-
-**Suggested spike scope:**
-
-- Define principals and scopes explicitly: user, organization, org group, external group, and public.
-- Add a policy evaluation contract (`can_read`, `can_edit`, `can_share`, `can_discover`) with tests for inheritance, override precedence, and deny cases.
-- Add metadata controls for robots and automation policy at global, space, and record levels (for example: `index`, `follow`, `archive`, `ai_training`, `automated_browsing`).
-- Add a configurable indexing delay (for example: `index_after`) that defaults to a non-zero hold period when visibility changes from private to public.
-- Add event/audit records for sharing and indexing policy changes, including actor, target, previous value, new value, and timestamp.
-
-**Design suggestions to reduce future refactors:**
-
-- Keep authorization and crawler policy checks in a dedicated service layer, not in route handlers or templates.
-- Store policy as explicit structured fields, not free-text flags embedded in Markdown front matter.
-- Apply "secure by default" posture: private by default, `noindex` by default, explicit publish action required for public indexing.
-- Reserve explicit handling for outbound surfaces beyond search crawlers (export APIs, feeds, embeddings, plugin callbacks) so the same policy model governs all data egress.
-
-</details>
+- Use explicit principal types: `user`, `organization`, `org_group`, `external_group`, and `public`.
+- Evaluate `can_read`, `can_edit`, `can_share`, and `can_discover` centrally.
+- Apply global → space → record policy precedence.
+- Default new content to private and `noindex` until explicitly changed.
+- Apply a 7-day delayed-indexing window when content changes from private to public.
+- Audit policy changes with actor, target, previous value, new value, and timestamp.
 
 ---
 
@@ -422,6 +399,7 @@ Add a minimal browser-facing interface.
 - Record editor page
 - Simple navigation
 - Server-rendered Markdown display
+- Effective crawler/indexing metadata
 
 ### Out of scope
 
@@ -434,8 +412,8 @@ Add a minimal browser-facing interface.
 
 #### Human intervention or decision tasks
 
-- [ ] Finalize the robots/indexing metadata model with precedence rules (global → space → record).
-- [ ] Add delayed-indexing defaults for newly public content and document override behavior.
+- [x] Finalize the robots/indexing metadata model with precedence rules (global → space → record). See ADR 0007.
+- [x] Add delayed-indexing defaults for newly public content and document override behavior. See ADR 0007.
 
 #### AI agent implementation tasks
 
@@ -443,7 +421,7 @@ Add a minimal browser-facing interface.
 - [ ] Add a base layout shared by pages.
 - [ ] Add a record editor page.
 - [ ] Add create/edit form handling.
-- [x] Render Markdown content safely.
+- [x] Render Markdown content safely. See ADR 0013.
 - [ ] Add simple navigation between home, list, detail, and editor views.
 
 ### Verification
@@ -477,11 +455,12 @@ Separate local/dev auth from future production auth.
 - Session/user dependency
 - Protected routes
 - User identity model alignment
+- Policy-aware read/list/write behavior
 
 ### Out of scope
 
 - Final hosted identity provider
-- Multi-tenant authorization model
+- Full multi-tenant implementation
 - Password storage
 - Shared-secret production shortcut
 
@@ -489,9 +468,9 @@ Separate local/dev auth from future production auth.
 
 #### Human intervention or decision tasks
 
-- [ ] Finalize principal model for sharing (`user`, `organization`, `org_group`, `external_group`, `public`).
-- [ ] Finalize authorization policy contract (`can_read`, `can_edit`, `can_share`, `can_discover`) with documented allow/deny precedence.
-- [ ] Document production auth requirements before selecting a provider.
+- [x] Finalize principal model for sharing (`user`, `organization`, `org_group`, `external_group`, `public`). See ADR 0007.
+- [x] Finalize authorization policy contract (`can_read`, `can_edit`, `can_share`, `can_discover`) with documented allow/deny precedence. See ADR 0007.
+- [x] Document production auth requirements before selecting a provider. See ADR 0008.
 
 #### AI agent implementation tasks
 
@@ -543,7 +522,7 @@ Keep MatrixedMind portable and recoverable.
 
 #### Human intervention or decision tasks
 
-- [ ] Define an export directory format.
+- [x] Define an export directory format. See ADR 0009.
 
 #### AI agent implementation tasks
 
@@ -595,7 +574,7 @@ Make every PR automatically verifiable.
 
 #### Human intervention or decision tasks
 
-- [ ] Document required branch protection expectations.
+- [x] Document required branch protection expectations. See ADR 0010.
 
 #### AI agent implementation tasks
 
@@ -645,7 +624,7 @@ Prepare GCP infrastructure safely.
 
 #### Human intervention or decision tasks
 
-- [ ] Define Terraform roots in `infra/terraform/envs/{dev,prod}`.
+- [x] Define Terraform roots in `infra/terraform/envs/{dev,prod}`. See ADR 0011.
 
 #### AI agent implementation tasks
 
@@ -698,7 +677,7 @@ Deploy the first working MatrixedMind container to GCP.
 
 #### Human intervention or decision tasks
 
-- [ ] Document whether the dev service is public or private.
+- [x] Document whether the dev service is public or private. See ADR 0012.
 
 #### AI agent implementation tasks
 
