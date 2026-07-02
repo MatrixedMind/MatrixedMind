@@ -57,6 +57,40 @@ def index(request: Request, repo: RecordRepoDep) -> Response:
     )
 
 
+@router.get("/records/new", response_class=HTMLResponse)
+def new_record(request: Request) -> Response:
+    return templates.TemplateResponse(
+        request=request,
+        name="editor.html",
+        context={
+            "title": "New Page",
+            "heading": "New Page",
+            "record": None,
+            "form_action": "/records/new",
+            "tags_value": "",
+        },
+    )
+
+
+@router.get("/{space}/{slug}/edit", response_class=HTMLResponse)
+def edit_record(request: Request, space: str, slug: str, repo: RecordRepoDep) -> Response:
+    record = repo.get_by_slug(space, slug)
+    if not record:
+        raise HTTPException(status_code=404, detail="Record not found")
+
+    return templates.TemplateResponse(
+        request=request,
+        name="editor.html",
+        context={
+            "title": f"Edit {record.title}",
+            "heading": f"Edit {record.title}",
+            "record": record,
+            "form_action": f"/{record.space}/{record.slug}/edit",
+            "tags_value": ", ".join(record.tags),
+        },
+    )
+
+
 @router.get("/{space}/{slug}", response_class=HTMLResponse)
 def view_record(request: Request, space: str, slug: str, repo: RecordRepoDep) -> Response:
     record = repo.get_by_slug(space, slug)

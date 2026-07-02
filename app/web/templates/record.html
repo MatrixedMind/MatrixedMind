@@ -6,6 +6,7 @@
         <div class="metadata">
             Space: {{ record.space }} | Slug: {{ record.slug }}
         </div>
+        <p><a href="/{{ record.space }}/{{ record.slug }}/edit">Edit</a></p>
         <hr>
         <div class="content">
             {{ content_html | safe }}

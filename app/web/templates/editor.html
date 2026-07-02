@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <h1>{{ heading }}</h1>
+    <form method="post" action="{{ form_action }}">
+        <div>
+            <label for="space">Space</label>
+            <input id="space" name="space" type="text" value="{{ record.space if record else 'default' }}" required>
+        </div>
+        <div>
+            <label for="slug">Slug</label>
+            <input id="slug" name="slug" type="text" value="{{ record.slug if record else '' }}" required>
+        </div>
+        <div>
+            <label for="title">Title</label>
+            <input id="title" name="title" type="text" value="{{ record.title if record else '' }}" required>
+        </div>
+        <div>
+            <label for="body_markdown">Markdown</label>
+            <textarea id="body_markdown" name="body_markdown" rows="18" required>{{ record.body_markdown if record else '' }}</textarea>
+        </div>
+        <div>
+            <label for="tags">Tags</label>
+            <input id="tags" name="tags" type="text" value="{{ tags_value }}">
+        </div>
+        <button type="submit">Save</button>
+    </form>
+{% endblock %}

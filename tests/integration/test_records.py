@@ -202,6 +202,40 @@ def test_index_html_returns_200_without_records(client: TestClient) -> None:
     assert "No pages yet." in response.text
 
 
+def test_new_record_editor_html_returns_200(client: TestClient) -> None:
+    response = client.get("/records/new")
+
+    assert response.status_code == 200
+    assert "<title>New Page</title>" in response.text
+    assert '<form method="post" action="/records/new">' in response.text
+    assert 'name="space"' in response.text
+    assert 'name="slug"' in response.text
+    assert 'name="title"' in response.text
+    assert 'name="body_markdown"' in response.text
+
+
+def test_edit_record_editor_html_returns_200_with_record_values(client: TestClient) -> None:
+    client.post("/api/records/", json=record_payload())
+
+    response = client.get("/test/hello-world/edit")
+
+    assert response.status_code == 200
+    assert "<title>Edit Hello World</title>" in response.text
+    assert '<form method="post" action="/test/hello-world/edit">' in response.text
+    assert 'value="test"' in response.text
+    assert 'value="hello-world"' in response.text
+    assert 'value="Hello World"' in response.text
+    assert "# Hello" in response.text
+    assert 'value="test, integration"' in response.text
+
+
+def test_edit_record_editor_html_returns_404_for_missing_record(client: TestClient) -> None:
+    response = client.get("/test/not-found/edit")
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Record not found"
+
+
 def test_view_record_html(client: TestClient) -> None:
     client.post("/api/records/", json=record_payload())
 
@@ -210,6 +244,7 @@ def test_view_record_html(client: TestClient) -> None:
     assert response.status_code == 200
     assert "<title>Hello World</title>" in response.text
     assert '<a href="/">MatrixedMind</a>' in response.text
+    assert '<a href="/test/hello-world/edit">Edit</a>' in response.text
     assert "<h1>Hello World</h1>" in response.text
     assert "<h1>Hello</h1>" in response.text
 
