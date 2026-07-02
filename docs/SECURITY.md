@@ -18,6 +18,26 @@ Local/dev auth and production auth must be separated behind an auth dependency b
 
 Production auth must not rely on a shared secret, hard-coded token, or network obscurity.
 
+Cloud Run may allow public unauthenticated invocation at the platform layer only when MatrixedMind enforces app-level authentication and authorization for all sensitive routes. Public platform reachability is acceptable for the MVP only because ChatGPT Custom GPT Actions need an HTTPS endpoint they can call.
+
+## LLM API tokens
+
+The LLM API must use tokens that are separate from browser owner authentication and separate from the normal/internal API.
+
+LLM API tokens must be:
+
+- Scoped to allowed operations.
+- Scoped to allowed spaces.
+- Revocable.
+- Hashed at rest.
+- Attributed to a known integration and synthetic actor, such as `llm:chatgpt`.
+- Protected by rate limits.
+- Protected by body size limits.
+
+Do not store plaintext LLM tokens in GitHub, docs, Terraform variables, `.env.example`, logs, or Codex output.
+
+The LLM-facing API must be separate from the internal/general API. Do not expose full record CRUD to ChatGPT.
+
 ## Authorization
 
 Before multi-user features expand, define how users, memberships, spaces, and records relate. Route protection should be tested for both allowed and denied cases.
@@ -49,6 +69,32 @@ Policy evaluation should remain centralized in a service boundary and expose reu
 - Default new spaces and records to private.
 - Default crawler/indexing directives to restrictive values until explicitly relaxed.
 - Keep "deny" outcomes explicit and testable when allow and deny rules conflict.
+- Default LLM-created records to private, draft, and noindex.
+- Restrict initial LLM writes to an allowed space such as `llm-inbox`.
+
+## LLM threat model
+
+The first LLM integration should assume these threats:
+
+- Prompt injection: record content or user instructions may try to make ChatGPT misuse tools.
+- Overbroad tools: a schema that exposes normal CRUD or admin endpoints can turn a narrow assistant into a broad actor.
+- Leaked token: an API key can be copied from the Custom GPT configuration, logs, or an intermediate system.
+- Accidental destructive writes: the model may call an available destructive operation even when the user did not intend it.
+- Accidental high-sensitivity content capture: personal or sensitive material may be sent to the LLM API before cloud persistence, auth, backup, audit, and token revocation are ready.
+
+Required controls:
+
+- Keep LLM tools narrow and non-destructive.
+- Require scoped tokens.
+- Store token hashes only.
+- Support token revocation.
+- Enforce allowed spaces.
+- Reject delete, publish, visibility changes, indexing changes, sharing changes, auth changes, admin actions, and bulk import.
+- Create an audit trail for every LLM write.
+- Create a revision for every LLM write.
+- Default LLM writes to private, draft, and noindex.
+- Enforce rate limits.
+- Enforce body size limits.
 
 ## Crawler and indexing controls
 
@@ -73,6 +119,8 @@ The delay window does not replace proper access control; it is a defense-in-dept
 MatrixedMind stores personal knowledge content. Treat record bodies, revisions, metadata, and exports as sensitive user data.
 
 Import/export features must avoid writing outside intended directories and should document the export format clearly.
+
+Do not store high-sensitivity data until cloud persistence, app-level auth, backups, audit logging, token revocation, and Firestore Enterprise MongoDB compatibility are implemented and verified. Until then, treat hosted data as provisional and suitable only for low-sensitivity testing.
 
 ## Dependencies
 

@@ -97,7 +97,7 @@ docker compose logs api
 
 ## Backup and recovery
 
-Milestone 7 must provide import/export, so content is portable and recoverable before the app is treated as durable personal infrastructure.
+Import/export remains important for portability and recovery, but it is now deferred until after the secure Cloud MVP path unless recovery requirements pull it forward. Before MatrixedMind is treated as durable personal infrastructure, either import/export or another validated backup/restore path must exist and be tested.
 
 ## Rollback
 

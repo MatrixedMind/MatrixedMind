@@ -8,6 +8,8 @@ Each milestone must leave the repo in a working, verifiable state. Do not stack 
 
 Milestone 4 is implemented and verified for record create, read, update, list, request validation, duplicate/not-found error handling, API docs rendering, and a manual create-read-update HTTP flow. Milestone 3 is implemented and verified for MongoDB-backed record create, read, update, list, unique slug indexes, missing-record behavior, and revision creation.
 
+Milestone 5 remains the current implementation focus. The roadmap now pulls the secure Cloud MVP path forward after Milestone 5: owner auth and the LLM write API, Firestore MongoDB compatibility verification, CI, Cloud Run deployment, ChatGPT Action integration, and cloud hardening. Import/export is deferred until after that secure cloud path unless recovery needs pull it forward.
+
 The repo already contains provisional pieces of later milestones, including an auth dependency placeholder and server-rendered pages. Treat that code as material to harden, not as permission to skip milestone verification.
 
 ## Current implementation snapshot
@@ -42,6 +44,7 @@ Current ADR-backed decisions:
 - Infrastructure layout: `docs/DECISIONS/0011-infrastructure-layout.md`
 - Hosted development exposure: `docs/DECISIONS/0012-dev-hosting-exposure.md`
 - Markdown rendering and sanitization: `docs/DECISIONS/0013-markdown-rendering-and-sanitization.md`
+- Cloud MVP with Firestore MongoDB compatibility and ChatGPT Action: `docs/DECISIONS/0014-cloud-mvp-firestore-mongo-and-chatgpt-action.md`
 
 ## Idea backlog
 
@@ -76,7 +79,7 @@ Use this section as the default landing zone for ideas that are not yet active m
 
 **Status:** Not yet addressed.
 
-**Tollgate milestone:** Finalize the extension boundary by the end of Milestone 7 before CI/deployment hardening in Milestones 8–10.
+**Tollgate milestone:** Deferred until after the secure Cloud MVP path.
 
 **Implementation notes:**
 
@@ -435,24 +438,30 @@ Add a minimal browser-facing interface.
 
 ### Done when
 
-MatrixedMind is usable as a very rough local wiki.
+MatrixedMind is usable as a very rough local personal knowledge app.
 
 </details>
 
 ---
 
 <details>
-<summary><strong>Milestone 6: Auth foundation</strong></summary>
+<summary><strong>Milestone 6: MVP auth and LLM write API</strong></summary>
 
 ### Goal
 
-Separate local/dev auth from future production auth.
+Enforce owner authentication for browser/internal routes and add a narrow, scoped LLM write API for ChatGPT.
 
 ### Scope
 
 - Auth interface
+- Owner auth boundary
 - Dev auth mode
-- Session/user dependency
+- Token auth mode
+- LLM API token model
+- Narrow `/api/llm/*` endpoints
+- Synthetic LLM actor attribution
+- Private/draft/noindex LLM write defaults
+- Revisions and audit events for LLM writes
 - Protected routes
 - User identity model alignment
 - Policy-aware read/list/write behavior
@@ -463,6 +472,11 @@ Separate local/dev auth from future production auth.
 - Full multi-tenant implementation
 - Password storage
 - Shared-secret production shortcut
+- OAuth
+- MCP
+- Public publishing
+- Destructive LLM tools
+- Bulk import through the LLM API
 
 ### Implementation tasks
 
@@ -471,14 +485,39 @@ Separate local/dev auth from future production auth.
 - [x] Finalize principal model for sharing (`user`, `organization`, `org_group`, `external_group`, `public`). See ADR 0007.
 - [x] Finalize authorization policy contract (`can_read`, `can_edit`, `can_share`, `can_discover`) with documented allow/deny precedence. See ADR 0007.
 - [x] Document production auth requirements before selecting a provider. See ADR 0008.
+- [x] Decide first ChatGPT integration path. Use Custom GPT Actions with API key authentication. See ADR 0014.
+- [x] Decide LLM API capability boundary. Keep it narrow, scoped, separate, and non-destructive. See ADR 0014.
 
 #### AI agent implementation tasks
 
-- [ ] Define an auth dependency boundary.
+- [ ] Define an owner auth dependency boundary.
 - [ ] Add a dev user mode for local work.
+- [ ] Add a token auth mode for LLM API requests.
+- [ ] Add an LLM API token model.
+- [ ] Store only hashed LLM tokens.
+- [ ] Add token scopes for allowed operations.
+- [ ] Limit tokens to allowed spaces.
+- [ ] Add token revocation.
 - [ ] Protect record write routes.
 - [ ] Add user context to record creation and revisions.
 - [ ] Add policy-aware filtering so list/read queries only return discoverable resources.
+- [ ] Attribute LLM writes to a synthetic actor such as `llm:chatgpt`.
+- [ ] Add `POST /api/llm/records/upsert`.
+- [ ] Add `GET /api/llm/records/{space}/{slug}`.
+- [ ] Add `GET /api/llm/records`.
+- [ ] Default LLM-created records to private, draft, and noindex.
+- [ ] Ensure every LLM write creates a revision.
+- [ ] Ensure every LLM write creates an audit event.
+- [ ] Add LLM API rate limits.
+- [ ] Add LLM API body size limits.
+- [ ] Reject LLM attempts to delete records.
+- [ ] Reject LLM attempts to publish records.
+- [ ] Reject LLM attempts to change visibility.
+- [ ] Reject LLM attempts to change indexing policy.
+- [ ] Reject LLM attempts to change sharing policy.
+- [ ] Reject LLM attempts to change auth settings.
+- [ ] Reject LLM admin actions.
+- [ ] Reject LLM bulk import.
 
 ### Verification
 
@@ -487,61 +526,79 @@ Separate local/dev auth from future production auth.
 - [ ] Tests cover allowed and denied cases.
 - [ ] Tests cover share scenarios for each principal type and verify precedence behavior.
 - [ ] Cross-space reference and backlink queries do not leak private-space metadata.
+- [ ] Tests prove allowed LLM reads and writes work inside allowed spaces.
+- [ ] Tests prove forbidden LLM behavior is rejected.
+- [ ] Tests prove revoked LLM tokens fail.
+- [ ] Tests prove LLM writes create revisions and audit events.
 - [ ] `uv run pytest`
 
 ### Done when
 
-The app has real auth boundaries without committing to final production auth yet.
+MatrixedMind has real auth boundaries and a narrow LLM write API without committing to final browser production auth provider details.
 
 </details>
 
 ---
 
 <details>
-<summary><strong>Milestone 7: Import/export</strong></summary>
+<summary><strong>Milestone 7: Firestore Mongo compatibility spike</strong></summary>
 
 ### Goal
 
-Keep MatrixedMind portable and recoverable.
+Prove whether Firestore Enterprise MongoDB compatibility can be the cloud persistence target.
 
 ### Scope
 
-- Export records to Markdown plus JSON metadata
-- Import records from an export directory
-- CLI command or script
-- Round-trip tests
+- Firestore Enterprise database setup documentation
+- Firestore MongoDB compatibility connection settings
+- Repository contract tests against Firestore compatibility
+- Unique index verification
+- `ObjectId` verification
+- `DuplicateKeyError` behavior verification
+- `update_one` / `$set` behavior verification
+- Sorting verification
+- Readiness check verification
+- MongoDB Atlas fallback note
 
 ### Out of scope
 
-- Live sync
-- Third-party importers
-- Scheduled backups
-- Binary asset management
+- Cloud Run deployment
+- Production traffic
+- Import/export
+- Rewriting repository code before the compatibility result is known
 
 ### Implementation tasks
 
 #### Human intervention or decision tasks
 
-- [x] Define an export directory format. See ADR 0009.
+- [x] Prefer Firestore Enterprise MongoDB compatibility as the cloud database target, pending tests. See ADR 0014.
+- [x] Keep local Docker Compose MongoDB as the local development path. See ADR 0014.
+- [x] Keep MongoDB Atlas as fallback only if Firestore compatibility blocks the MVP. See ADR 0014.
 
 #### AI agent implementation tasks
 
-- [ ] Export records and revisions.
-- [ ] Import exported records idempotently.
-- [ ] Add a CLI command or script entrypoint.
-- [ ] Add fixture-based round-trip tests.
+- [ ] Document Firestore Enterprise database setup steps for the spike.
+- [ ] Document Firestore MongoDB compatibility connection settings, including `loadBalanced=true`, `SCRAM-SHA-256`, `tls=true`, and `retryWrites=false`.
+- [ ] Add a way to run repository contract tests against Firestore MongoDB compatibility without replacing local MongoDB development.
+- [ ] Verify unique compound index behavior.
+- [ ] Verify `ObjectId` behavior.
+- [ ] Verify duplicate key errors map to expected adapter behavior.
+- [ ] Verify `update_one` with `$set`.
+- [ ] Verify sorting behavior.
+- [ ] Verify readiness checks.
+- [ ] Document any adapter changes required for compatibility.
+- [ ] Record fallback criteria for MongoDB Atlas if Firestore compatibility fails.
 
 ### Verification
 
-- [ ] Export fixture data.
-- [ ] Delete the local database.
-- [ ] Import exported data.
-- [ ] Confirm records and revisions match expected values.
+- [ ] Repository contract tests pass against local MongoDB.
+- [ ] Repository contract tests pass against Firestore MongoDB compatibility, or exact blockers are documented.
+- [ ] Unique index, `ObjectId`, duplicate key, `$set`, sorting, and readiness behavior are verified.
 - [ ] `uv run pytest`
 
 ### Done when
 
-Content is not trapped inside the current database.
+Firestore MongoDB compatibility is either verified for the current repository contract or blocked with exact fallback criteria for MongoDB Atlas.
 
 </details>
 
@@ -579,9 +636,14 @@ Make every PR automatically verifiable.
 #### AI agent implementation tasks
 
 - [ ] Add a GitHub Actions workflow.
+- [ ] Run `uv sync --locked`.
 - [ ] Cache `uv` dependencies safely.
-- [ ] Run lint, format check, type check, and tests.
+- [ ] Run `uv run ruff check .`.
+- [ ] Run `uv run ruff format --check .`.
+- [ ] Run `uv run mypy app`.
+- [ ] Run `uv run pytest`.
 - [ ] Build the Docker image.
+- [ ] Add an optional integration test job for local MongoDB and Firestore compatibility when credentials are available.
 
 ### Verification
 
@@ -598,20 +660,23 @@ No code merges without automated verification.
 ---
 
 <details>
-<summary><strong>Milestone 9: Terraform bootstrap</strong></summary>
+<summary><strong>Milestone 9: Cloud deployment baseline</strong></summary>
 
 ### Goal
 
-Prepare GCP infrastructure safely.
+Deploy MatrixedMind to Cloud Run with hosted persistence and managed secrets.
 
 ### Scope
 
-- Terraform bootstrap stack
-- GCS backend bucket
+- Docker image build
 - Artifact Registry
-- Cloud Run service account
-- Secret Manager placeholder secrets
-- Workload Identity Federation resources
+- Cloud Run service
+- Secret Manager integration
+- Firestore Enterprise Mongo-compatible connection
+- Runtime service account
+- Health/readiness checks
+- Cloud Run environment and secret configuration
+- Deployment docs
 
 ### Out of scope
 
@@ -619,84 +684,186 @@ Prepare GCP infrastructure safely.
 - Custom domain
 - CDN
 - Multi-region deployment
+- ChatGPT Custom GPT setup
+- Public Cloud Run invocation before app-level auth is enforced
 
 ### Implementation tasks
 
 #### Human intervention or decision tasks
 
 - [x] Define Terraform roots in `infra/terraform/envs/{dev,prod}`. See ADR 0011.
+- [x] Use Cloud Run, Artifact Registry, Secret Manager, and Workload Identity Federation for the Cloud MVP path. See ADR 0004 and ADR 0014.
+- [x] Allow public Cloud Run invocation only after app-level auth is enforced. See ADR 0014.
 
 #### AI agent implementation tasks
 
 - [ ] Define reusable modules in `infra/terraform/modules/*`.
 - [ ] Configure GCS backend with versioning.
 - [ ] Add Artifact Registry.
-- [ ] Add Cloud Run service account.
-- [ ] Add placeholder Secret Manager secrets.
+- [ ] Build the Docker image.
+- [ ] Add Cloud Run service.
+- [ ] Add runtime service account.
+- [ ] Add Secret Manager integration for runtime secrets.
+- [ ] Configure Firestore Enterprise Mongo-compatible connection through secrets/configuration.
+- [ ] Configure Cloud Run environment variables and secret mounts.
+- [ ] Add health and readiness checks for the deployed service.
 - [ ] Add GitHub Actions Workload Identity Federation.
+- [ ] Document deployment commands and manual setup steps.
+- [ ] Confirm public Cloud Run invocation is enabled only after app-level auth protects sensitive routes.
 
 ### Verification
 
 - [ ] `terraform fmt -check`
 - [ ] `terraform validate`
 - [ ] `terraform plan`
-- [ ] State is stored in the GCS backend.
+- [ ] Docker image builds.
+- [ ] Image is pushed to Artifact Registry.
+- [ ] Cloud Run deploys.
+- [ ] Runtime secrets are read from Secret Manager.
+- [ ] Cloud Run health endpoint responds.
+- [ ] Cloud Run readiness endpoint verifies hosted persistence.
+- [ ] Service exposure is intentional and documented.
 
 ### Done when
 
-GCP infrastructure can be planned repeatably from Terraform.
+MatrixedMind has a working Cloud Run deployment baseline with managed runtime secrets and hosted persistence wiring.
 
 </details>
 
 ---
 
 <details>
-<summary><strong>Milestone 10: Dev Cloud Run deployment</strong></summary>
+<summary><strong>Milestone 10: ChatGPT Action integration</strong></summary>
 
 ### Goal
 
-Deploy the first working MatrixedMind container to GCP.
+Connect ChatGPT to MatrixedMind through a narrow Custom GPT Action.
 
 ### Scope
 
-- Docker image build
-- Push to Artifact Registry
-- Cloud Run deployment
-- Secret injection
-- Health endpoint check
-- Intentional service exposure
+- `/openapi-llm.json`
+- LLM-only OpenAPI schema
+- Custom GPT Action setup guide
+- Manual ChatGPT test checklist
+- Token rotation/revocation guide
+- Allowed and forbidden behavior tests
+- Smoke test through deployed Cloud Run URL
 
 ### Out of scope
 
-- Production launch
-- Custom domain
-- Autoscaling optimization
-- Advanced observability
+- OAuth
+- MCP
+- ChatGPT Apps SDK
+- Destructive LLM capabilities
+- Full internal API exposure
+- Public publishing
 
 ### Implementation tasks
 
 #### Human intervention or decision tasks
 
-- [x] Document whether the dev service is public or private. See ADR 0012.
+- [x] Use Custom GPT Actions with API key authentication for the first LLM integration. See ADR 0014.
+- [x] Keep the LLM API separate from the internal/general API. See ADR 0014.
 
 #### AI agent implementation tasks
 
-- [ ] Build a production Docker image in CI.
-- [ ] Push the image to Artifact Registry.
-- [ ] Deploy Cloud Run through Terraform or an intentional deployment workflow.
-- [ ] Inject secrets from Secret Manager.
-- [ ] Add post-deploy health verification.
+- [ ] Add `/openapi-llm.json`.
+- [ ] Generate an LLM-only OpenAPI schema.
+- [ ] Ensure the schema exposes only the allowed `/api/llm/*` endpoints.
+- [ ] Write the Custom GPT Action setup guide.
+- [ ] Write the manual ChatGPT test checklist.
+- [ ] Write the token rotation and revocation guide.
+- [ ] Add tests proving allowed LLM behavior.
+- [ ] Add tests proving forbidden LLM behavior.
+- [ ] Smoke test create/update through the deployed Cloud Run URL.
 
 ### Verification
 
-- [ ] GitHub Actions authenticates to GCP via OIDC.
-- [ ] Image is pushed to Artifact Registry.
-- [ ] Terraform deploys Cloud Run.
-- [ ] Cloud Run health endpoint responds.
-- [ ] Service exposure is intentional and documented.
+- [ ] `/openapi-llm.json` returns only LLM-safe operations.
+- [ ] Custom GPT Action can create or update a private draft record.
+- [ ] Custom GPT Action cannot delete, publish, change sharing, change indexing, change auth, or write outside allowed spaces.
+- [ ] LLM token revocation blocks later requests.
+- [ ] Smoke test passes through the deployed Cloud Run URL.
+- [ ] `uv run pytest`
 
 ### Done when
 
-MatrixedMind has a working dev deployment on GCP.
+ChatGPT can use a Custom GPT Action to create or update private draft records through the deployed MatrixedMind service without gaining broad or destructive access.
 
 </details>
+
+---
+
+<details>
+<summary><strong>Milestone 11: Cloud hardening</strong></summary>
+
+### Goal
+
+Harden the Cloud MVP before trusting it with higher-sensitivity personal knowledge.
+
+### Scope
+
+- Alerting
+- Log review
+- Backup/restore validation
+- Billing budget alerts
+- Secret rotation procedure
+- Rate-limit tuning
+- Firestore cost review
+- Static egress/private connectivity review if needed
+- Custom domain decision
+
+### Out of scope
+
+- Polished UI
+- Full multi-user sharing UI
+- Public publishing
+- Plugin infrastructure
+- Import/export unless pulled forward by recovery requirements
+
+### Implementation tasks
+
+#### Human intervention or decision tasks
+
+- [ ] Decide whether a custom domain is needed before broader use.
+- [ ] Decide whether static egress or private connectivity is needed.
+
+#### AI agent implementation tasks
+
+- [ ] Configure alerting for service health and error rates.
+- [ ] Document log review workflow.
+- [ ] Validate backup and restore assumptions.
+- [ ] Configure billing budget alerts.
+- [ ] Document secret rotation procedure.
+- [ ] Tune rate limits based on LLM API smoke-test behavior.
+- [ ] Review Firestore document-size and index-write costs.
+- [ ] Document static egress/private connectivity tradeoffs if needed.
+
+### Verification
+
+- [ ] Alerts fire in a controlled test or documented manual check.
+- [ ] Restore procedure is validated or exact blocker is recorded.
+- [ ] Billing budget alerts are configured.
+- [ ] Secret rotation checklist is tested with a non-production token.
+- [ ] Firestore cost review is documented.
+
+### Done when
+
+The Cloud MVP has the operational guardrails needed for cautious personal use.
+
+</details>
+
+---
+
+## Later work
+
+These items remain deferred until after the secure Cloud MVP path is working:
+
+- Import/export implementation from ADR 0009.
+- Full multi-user auth and sharing UI.
+- Public publishing.
+- OAuth integration.
+- MCP integration.
+- Plugin infrastructure.
+- Custom domain implementation unless Milestone 11 pulls the decision forward.
+- Polished UI.
