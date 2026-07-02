@@ -192,3 +192,37 @@ def test_view_record_html(client: TestClient) -> None:
     assert response.status_code == 200
     assert "<h1>Hello World</h1>" in response.text
     assert "<h1>Hello</h1>" in response.text
+
+
+def test_view_record_html_sanitizes_unsafe_link_scheme(client: TestClient) -> None:
+    client.post(
+        "/api/records/",
+        json={
+            **record_payload("unsafe-link"),
+            "body_markdown": '<a href="javascript:alert(1)">click</a>',
+        },
+    )
+
+    response = client.get("/test/unsafe-link")
+
+    assert response.status_code == 200
+    assert '<a href="javascript:alert(1)">' not in response.text
+    assert '<a rel="noopener noreferrer">click</a>' in response.text
+
+
+def test_view_record_html_sanitizes_raw_html_in_markdown(client: TestClient) -> None:
+    client.post(
+        "/api/records/",
+        json={
+            **record_payload("unsafe-html"),
+            "body_markdown": '<img src="x" onerror="alert(1)"><script>alert(1)</script>safe',
+        },
+    )
+
+    response = client.get("/test/unsafe-html")
+
+    assert response.status_code == 200
+    assert "<img" not in response.text
+    assert "<script" not in response.text
+    assert "onerror=" not in response.text
+    assert "safe" in response.text

@@ -443,7 +443,7 @@ Add a minimal browser-facing interface.
 - [ ] Add a base layout shared by pages.
 - [ ] Add a record editor page.
 - [ ] Add create/edit form handling.
-- [ ] Render Markdown content safely.
+- [x] Render Markdown content safely.
 - [ ] Add simple navigation between home, list, detail, and editor views.
 
 ### Verification
