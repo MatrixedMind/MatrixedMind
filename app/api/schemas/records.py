@@ -67,6 +67,12 @@ class RecordUpdate(BaseModel):
     def validate_has_update(self) -> "RecordUpdate":
         if not self.model_fields_set:
             raise ValueError("update payload must include at least one field")
+
+        non_nullable_fields = ("space", "slug", "title", "body_markdown")
+        for field_name in non_nullable_fields:
+            if field_name in self.model_fields_set and getattr(self, field_name) is None:
+                raise ValueError(f"{field_name} cannot be null")
+
         return self
 
     @field_validator("space", "slug")

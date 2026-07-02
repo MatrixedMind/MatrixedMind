@@ -19,7 +19,7 @@ def _raise_missing_record() -> NoReturn:
 
 
 @router.post("/", response_model=RecordResponse, status_code=status.HTTP_201_CREATED)
-async def create_record(record_in: RecordCreate, repo: RecordRepoDep) -> Record:
+def create_record(record_in: RecordCreate, repo: RecordRepoDep) -> Record:
     existing = repo.get_by_slug(record_in.space, record_in.slug)
     if existing:
         _raise_duplicate_record(record_in.space, record_in.slug)
@@ -32,7 +32,7 @@ async def create_record(record_in: RecordCreate, repo: RecordRepoDep) -> Record:
 
 
 @router.get("/{space}/{slug}", response_model=RecordResponse)
-async def get_record(space: str, slug: str, repo: RecordRepoDep) -> Record:
+def get_record(space: str, slug: str, repo: RecordRepoDep) -> Record:
     record = repo.get_by_slug(space, slug)
     if not record:
         _raise_missing_record()
@@ -40,7 +40,7 @@ async def get_record(space: str, slug: str, repo: RecordRepoDep) -> Record:
 
 
 @router.put("/{space}/{slug}", response_model=RecordResponse)
-async def update_record(
+def update_record(
     space: str,
     slug: str,
     record_in: RecordUpdate,
@@ -56,6 +56,9 @@ async def update_record(
         )
 
     update_data = record_in.model_dump(exclude_unset=True)
+    if update_data.get("tags") is None:
+        update_data.pop("tags", None)
+
     next_space = update_data.get("space", existing.space)
     next_slug = update_data.get("slug", existing.slug)
     duplicate = repo.get_by_slug(next_space, next_slug)
@@ -75,7 +78,5 @@ async def update_record(
 
 
 @router.get("/{space}", response_model=list[RecordResponse])
-async def list_records(
-    space: str, repo: RecordRepoDep, parent_id: str | None = None
-) -> list[Record]:
+def list_records(space: str, repo: RecordRepoDep, parent_id: str | None = None) -> list[Record]:
     return repo.list_children(space, parent_id)

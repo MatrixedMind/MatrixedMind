@@ -152,6 +152,38 @@ def test_update_empty_payload_returns_validation_error(client: TestClient) -> No
     assert "update payload must include at least one field" in response.text
 
 
+@pytest.mark.parametrize("field_name", ["space", "slug", "title", "body_markdown"])
+def test_update_non_nullable_field_with_null_returns_validation_error(
+    client: TestClient,
+    field_name: str,
+) -> None:
+    client.post("/api/records/", json=record_payload())
+
+    response = client.put("/api/records/test/hello-world", json={field_name: None})
+
+    assert response.status_code == 422
+    assert f"{field_name} cannot be null" in response.text
+
+
+def test_update_nullable_fields_with_null_succeeds(client: TestClient) -> None:
+    create_response = client.post(
+        "/api/records/",
+        json={**record_payload(), "parent_id": "root-id"},
+    )
+    assert create_response.status_code == 201
+
+    response = client.put(
+        "/api/records/test/hello-world",
+        json={"parent_id": None, "path": None, "tags": None},
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["parent_id"] is None
+    assert data["path"] is None
+    assert data["tags"] == ["test", "integration"]
+
+
 def test_view_record_html(client: TestClient) -> None:
     client.post("/api/records/", json=record_payload())
 
