@@ -425,7 +425,7 @@ Add a minimal browser-facing interface.
 - [x] Add a record editor page.
 - [x] Add create/edit form handling.
 - [x] Render Markdown content safely. See ADR 0013.
-- [ ] Add simple navigation between home, list, detail, and editor views.
+- [x] Add simple navigation between home, list, detail, and editor views.
 
 ### Verification
 

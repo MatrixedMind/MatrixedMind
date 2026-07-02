@@ -6,7 +6,11 @@
         <div class="metadata">
             Space: {{ record.space }} | Slug: {{ record.slug }}
         </div>
-        <p><a href="/{{ record.space }}/{{ record.slug }}/edit">Edit</a></p>
+        <nav aria-label="Page actions">
+            <a href="/">Home</a>
+            <a href="/{{ record.space }}/{{ record.slug }}/edit">Edit</a>
+            <a href="/records/new">New page</a>
+        </nav>
         <hr>
         <div class="content">
             {{ content_html | safe }}

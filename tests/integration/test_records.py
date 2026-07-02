@@ -192,6 +192,7 @@ def test_index_html_returns_200_and_lists_default_records(client: TestClient) ->
     assert response.status_code == 200
     assert "<title>MatrixedMind</title>" in response.text
     assert '<a href="/">MatrixedMind</a>' in response.text
+    assert '<a href="/records/new">New page</a>' in response.text
     assert '<a href="/default/hello-world">Hello World</a>' in response.text
 
 
@@ -212,6 +213,7 @@ def test_new_record_editor_html_returns_200(client: TestClient) -> None:
     assert 'name="slug"' in response.text
     assert 'name="title"' in response.text
     assert 'name="body_markdown"' in response.text
+    assert '<a href="/">Cancel</a>' in response.text
 
 
 def test_create_record_from_editor_redirects_to_detail(client: TestClient) -> None:
@@ -288,6 +290,7 @@ def test_edit_record_editor_html_returns_200_with_record_values(client: TestClie
     assert 'value="Hello World"' in response.text
     assert "# Hello" in response.text
     assert 'value="test, integration"' in response.text
+    assert '<a href="/test/hello-world">Cancel</a>' in response.text
 
 
 def test_update_record_from_editor_redirects_to_detail(client: TestClient) -> None:
@@ -385,7 +388,9 @@ def test_view_record_html(client: TestClient) -> None:
     assert response.status_code == 200
     assert "<title>Hello World</title>" in response.text
     assert '<a href="/">MatrixedMind</a>' in response.text
+    assert '<a href="/">Home</a>' in response.text
     assert '<a href="/test/hello-world/edit">Edit</a>' in response.text
+    assert '<a href="/records/new">New page</a>' in response.text
     assert "<h1>Hello World</h1>" in response.text
     assert "<h1>Hello</h1>" in response.text
 

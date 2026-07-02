@@ -71,6 +71,7 @@ def editor_context(
     form_action: str,
     record: Record | dict[str, Any] | None,
     tags_value: str,
+    cancel_url: str,
     error: str | None = None,
 ) -> dict[str, object]:
     return {
@@ -79,6 +80,7 @@ def editor_context(
         "record": record,
         "form_action": form_action,
         "tags_value": tags_value,
+        "cancel_url": cancel_url,
         "error": error,
     }
 
@@ -91,6 +93,7 @@ def render_editor(
     form_action: str,
     record: Record | dict[str, Any] | None,
     tags_value: str,
+    cancel_url: str,
     error: str | None = None,
     status_code: int = status.HTTP_200_OK,
 ) -> Response:
@@ -103,6 +106,7 @@ def render_editor(
             form_action=form_action,
             record=record,
             tags_value=tags_value,
+            cancel_url=cancel_url,
             error=error,
         ),
         status_code=status_code,
@@ -134,6 +138,7 @@ def new_record(request: Request) -> Response:
         record=None,
         form_action="/records/new",
         tags_value="",
+        cancel_url="/",
     )
 
 
@@ -158,6 +163,7 @@ async def create_record_from_form(request: Request, repo: RecordRepoDep) -> Resp
             record=record_values,
             form_action="/records/new",
             tags_value=form_data.get("tags", ""),
+            cancel_url="/",
             error=str(exc),
             status_code=status.HTTP_400_BAD_REQUEST,
         )
@@ -170,6 +176,7 @@ async def create_record_from_form(request: Request, repo: RecordRepoDep) -> Resp
             record=record_values,
             form_action="/records/new",
             tags_value=form_data.get("tags", ""),
+            cancel_url="/",
             error=(
                 f"Record with slug '{record_in.slug}' already exists in space '{record_in.space}'"
             ),
@@ -193,6 +200,7 @@ def edit_record(request: Request, space: str, slug: str, repo: RecordRepoDep) ->
         record=record,
         form_action=f"/{record.space}/{record.slug}/edit",
         tags_value=", ".join(record.tags),
+        cancel_url=f"/{record.space}/{record.slug}",
     )
 
 
@@ -231,6 +239,7 @@ async def update_record_from_form(
             record=update_values,
             form_action=f"/{space}/{slug}/edit",
             tags_value=form_data.get("tags", ""),
+            cancel_url=f"/{space}/{slug}",
             error=str(exc),
             status_code=status.HTTP_400_BAD_REQUEST,
         )
@@ -246,6 +255,7 @@ async def update_record_from_form(
             record=update_values,
             form_action=f"/{space}/{slug}/edit",
             tags_value=form_data.get("tags", ""),
+            cancel_url=f"/{space}/{slug}",
             error=f"Record with slug '{next_slug}' already exists in space '{next_space}'",
             status_code=status.HTTP_400_BAD_REQUEST,
         )
@@ -263,6 +273,7 @@ async def update_record_from_form(
             record=update_values,
             form_action=f"/{space}/{slug}/edit",
             tags_value=form_data.get("tags", ""),
+            cancel_url=f"/{space}/{slug}",
             error=str(exc),
             status_code=status.HTTP_400_BAD_REQUEST,
         )
