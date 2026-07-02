@@ -48,6 +48,15 @@ Terraform roots live under:
 infra/terraform/envs/{dev,prod}
 ```
 
+Initialize each environment with an explicit backend bucket value (do not hard-code bucket names in `backend.tf`):
+
+```bash
+cd infra/terraform/envs/dev
+terraform init -backend-config="bucket=<your-gcp-project-id>-tf-state"
+```
+
+Use the same pattern for `envs/prod` with the production bucket.
+
 Reusable modules should live under:
 
 ```text
