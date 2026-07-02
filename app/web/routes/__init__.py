@@ -49,7 +49,7 @@ def render_safe_markdown(markdown_text: str) -> str:
 
 
 @router.get("/", response_class=HTMLResponse)
-async def index(request: Request, repo: RecordRepoDep) -> Response:
+def index(request: Request, repo: RecordRepoDep) -> Response:
     # Just list some records from the default space for now
     records = repo.list_children("default", None)
     return templates.TemplateResponse(
@@ -58,7 +58,7 @@ async def index(request: Request, repo: RecordRepoDep) -> Response:
 
 
 @router.get("/{space}/{slug}", response_class=HTMLResponse)
-async def view_record(request: Request, space: str, slug: str, repo: RecordRepoDep) -> Response:
+def view_record(request: Request, space: str, slug: str, repo: RecordRepoDep) -> Response:
     record = repo.get_by_slug(space, slug)
     if not record:
         raise HTTPException(status_code=404, detail="Record not found")
