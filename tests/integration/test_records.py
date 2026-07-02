@@ -184,12 +184,32 @@ def test_update_nullable_fields_with_null_succeeds(client: TestClient) -> None:
     assert data["tags"] == ["test", "integration"]
 
 
+def test_index_html_returns_200_and_lists_default_records(client: TestClient) -> None:
+    client.post("/api/records/", json={**record_payload(), "space": "default"})
+
+    response = client.get("/")
+
+    assert response.status_code == 200
+    assert "<title>MatrixedMind</title>" in response.text
+    assert '<a href="/">MatrixedMind</a>' in response.text
+    assert '<a href="/default/hello-world">Hello World</a>' in response.text
+
+
+def test_index_html_returns_200_without_records(client: TestClient) -> None:
+    response = client.get("/")
+
+    assert response.status_code == 200
+    assert "No pages yet." in response.text
+
+
 def test_view_record_html(client: TestClient) -> None:
     client.post("/api/records/", json=record_payload())
 
     response = client.get("/test/hello-world")
 
     assert response.status_code == 200
+    assert "<title>Hello World</title>" in response.text
+    assert '<a href="/">MatrixedMind</a>' in response.text
     assert "<h1>Hello World</h1>" in response.text
     assert "<h1>Hello</h1>" in response.text
 

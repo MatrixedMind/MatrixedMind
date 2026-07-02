@@ -1,9 +1,6 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <title>{{ title }}</title>
-</head>
-<body>
+{% extends "base.html" %}
+
+{% block content %}
     <h1>MatrixedMind</h1>
     <p>A FastAPI-powered app for structured Markdown records.</p>
 
@@ -15,5 +12,4 @@
         <li>No pages yet.</li>
     {% endfor %}
     </ul>
-</body>
-</html>
+{% endblock %}

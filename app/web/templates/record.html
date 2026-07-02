@@ -1,12 +1,6 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <title>{{ title }}</title>
-</head>
-<body>
-    <nav>
-        <a href="/">Home</a>
-    </nav>
+{% extends "base.html" %}
+
+{% block content %}
     <article>
         <h1>{{ record.title }}</h1>
         <div class="metadata">
@@ -17,5 +11,4 @@
             {{ content_html | safe }}
         </div>
     </article>
-</body>
-</html>
+{% endblock %}

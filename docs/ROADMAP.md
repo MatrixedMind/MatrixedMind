@@ -421,7 +421,7 @@ Add a minimal browser-facing interface.
 #### AI agent implementation tasks
 
 - [x] Add initial server-rendered routes and templates.
-- [ ] Add a base layout shared by pages.
+- [x] Add a base layout shared by pages.
 - [ ] Add a record editor page.
 - [ ] Add create/edit form handling.
 - [x] Render Markdown content safely. See ADR 0013.
@@ -429,8 +429,8 @@ Add a minimal browser-facing interface.
 
 ### Verification
 
-- [ ] Page tests return 200.
-- [ ] HTML renders expected record content.
+- [x] Page tests return 200.
+- [x] HTML renders expected record content.
 - [ ] Public pages emit expected crawler/indexing metadata from effective policy.
 - [ ] Visibility flips to `public` do not become indexable before the configured delay window.
 - [ ] Manual browser test can create, edit, and view a record.
