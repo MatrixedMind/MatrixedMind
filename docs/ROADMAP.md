@@ -423,7 +423,7 @@ Add a minimal browser-facing interface.
 - [x] Add initial server-rendered routes and templates.
 - [x] Add a base layout shared by pages.
 - [x] Add a record editor page.
-- [ ] Add create/edit form handling.
+- [x] Add create/edit form handling.
 - [x] Render Markdown content safely. See ADR 0013.
 - [ ] Add simple navigation between home, list, detail, and editor views.
 

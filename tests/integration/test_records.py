@@ -214,6 +214,67 @@ def test_new_record_editor_html_returns_200(client: TestClient) -> None:
     assert 'name="body_markdown"' in response.text
 
 
+def test_create_record_from_editor_redirects_to_detail(client: TestClient) -> None:
+    response = client.post(
+        "/records/new",
+        data={
+            "space": "default",
+            "slug": "from-form",
+            "title": "From Form",
+            "body_markdown": "# From Form",
+            "tags": "form, web",
+        },
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 303
+    assert response.headers["location"] == "/default/from-form"
+
+    detail = client.get("/default/from-form")
+    assert detail.status_code == 200
+    assert "<h1>From Form</h1>" in detail.text
+    assert client.get("/api/records/default/from-form").json()["tags"] == ["form", "web"]
+
+
+def test_create_record_from_editor_returns_400_for_invalid_payload(client: TestClient) -> None:
+    response = client.post(
+        "/records/new",
+        data={
+            "space": "default",
+            "slug": "Bad Slug",
+            "title": "From Form",
+            "body_markdown": "# From Form",
+            "tags": "form",
+        },
+    )
+
+    assert response.status_code == 400
+    assert 'role="alert"' in response.text
+    assert "slug" in response.text
+    assert 'value="Bad Slug"' in response.text
+
+
+def test_create_record_from_editor_returns_400_for_duplicate_slug(client: TestClient) -> None:
+    client.post("/api/records/", json={**record_payload(), "space": "default"})
+
+    response = client.post(
+        "/records/new",
+        data={
+            "space": "default",
+            "slug": "hello-world",
+            "title": "Duplicate",
+            "body_markdown": "# Duplicate",
+            "tags": "",
+        },
+    )
+
+    assert response.status_code == 400
+    assert (
+        "Record with slug &#39;hello-world&#39; already exists in space &#39;default&#39;"
+        in response.text
+    )
+
+
 def test_edit_record_editor_html_returns_200_with_record_values(client: TestClient) -> None:
     client.post("/api/records/", json=record_payload())
 
@@ -229,8 +290,88 @@ def test_edit_record_editor_html_returns_200_with_record_values(client: TestClie
     assert 'value="test, integration"' in response.text
 
 
+def test_update_record_from_editor_redirects_to_detail(client: TestClient) -> None:
+    client.post("/api/records/", json=record_payload())
+
+    response = client.post(
+        "/test/hello-world/edit",
+        data={
+            "space": "test",
+            "slug": "renamed-from-form",
+            "title": "Renamed From Form",
+            "body_markdown": "# Renamed",
+            "tags": "updated, web",
+        },
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 303
+    assert response.headers["location"] == "/test/renamed-from-form"
+
+    detail = client.get("/test/renamed-from-form")
+    assert detail.status_code == 200
+    assert "<h1>Renamed From Form</h1>" in detail.text
+    assert "<h1>Renamed</h1>" in detail.text
+
+
+def test_update_record_from_editor_returns_400_for_duplicate_slug(client: TestClient) -> None:
+    client.post("/api/records/", json=record_payload("first"))
+    client.post("/api/records/", json=record_payload("second"))
+
+    response = client.post(
+        "/test/first/edit",
+        data={
+            "space": "test",
+            "slug": "second",
+            "title": "Duplicate",
+            "body_markdown": "# Duplicate",
+            "tags": "",
+        },
+    )
+
+    assert response.status_code == 400
+    assert (
+        "Record with slug &#39;second&#39; already exists in space &#39;test&#39;" in response.text
+    )
+
+
+def test_update_record_from_editor_returns_400_for_invalid_payload(client: TestClient) -> None:
+    client.post("/api/records/", json=record_payload())
+
+    response = client.post(
+        "/test/hello-world/edit",
+        data={
+            "space": "test",
+            "slug": "Bad Slug",
+            "title": "Hello World",
+            "body_markdown": "# Hello",
+            "tags": "test",
+        },
+    )
+
+    assert response.status_code == 400
+    assert 'role="alert"' in response.text
+    assert "slug" in response.text
+
+
 def test_edit_record_editor_html_returns_404_for_missing_record(client: TestClient) -> None:
     response = client.get("/test/not-found/edit")
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Record not found"
+
+
+def test_update_record_from_editor_returns_404_for_missing_record(client: TestClient) -> None:
+    response = client.post(
+        "/test/not-found/edit",
+        data={
+            "space": "test",
+            "slug": "not-found",
+            "title": "Missing",
+            "body_markdown": "# Missing",
+            "tags": "",
+        },
+    )
 
     assert response.status_code == 404
     assert response.json()["detail"] == "Record not found"
