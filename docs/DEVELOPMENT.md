@@ -125,6 +125,15 @@ docker build -t matrixedmind:local .
 
 For infrastructure changes, also run the checks from `docs/OPERATIONS.md`.
 
+Terraform variable files may be based on:
+
+```text
+infra/terraform/bootstrap/terraform.tfvars.example
+infra/terraform/envs/dev/terraform.tfvars.example
+```
+
+Do not commit real `.tfvars` files.
+
 ## Common commands
 
 Run a specific test file:

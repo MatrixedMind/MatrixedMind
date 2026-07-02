@@ -152,16 +152,33 @@ LLM API tokens must be:
 ## Manual Owner Setup Checklist
 
 - Create or select a GCP project.
-- Enable required GCP APIs for Cloud Run, Artifact Registry, Secret Manager, IAM, Cloud Build or GitHub Actions deployment, and Firestore Enterprise.
-- Configure Artifact Registry for MatrixedMind container images.
-- Configure Secret Manager entries for runtime secrets without committing values.
-- Configure GitHub Actions Workload Identity Federation.
-- Create the runtime service account with least-privilege access.
-- Create the Firestore Enterprise MongoDB-compatible database or document the fallback to MongoDB Atlas.
+- Link billing to the project and confirm Terraform credentials can administer the project.
+- Confirm the Service Usage API is available for the project so Terraform can enable the remaining APIs.
+- Run the Terraform bootstrap root to create the versioned GCS state bucket, or create an equivalent state bucket manually.
+- Run the Terraform dev environment root to enable required GCP APIs for Cloud Run, Artifact Registry, Secret Manager, IAM, Cloud Build or GitHub Actions deployment, Firestore Enterprise, and billing budgets.
+- Use Terraform to configure Artifact Registry for MatrixedMind container images.
+- Use Terraform to create Secret Manager entries for runtime secrets, then add secret versions manually without committing values.
+- Use Terraform to configure GitHub Actions Workload Identity Federation.
+- Use Terraform to create the runtime service account with least-privilege access.
+- Use Terraform to create the Firestore Enterprise MongoDB-compatible database, or document the fallback to MongoDB Atlas.
 - Run the Firestore compatibility spike and record blockers.
-- Configure Cloud Run service environment variables and secret mounts.
+- Use Terraform to configure Cloud Run service environment variables and secret mounts after the first image and secret versions exist.
 - Confirm app-level auth is enforced before allowing public Cloud Run invocation.
-- Configure billing budget alerts.
+- Use Terraform to configure billing budget alerts after billing is linked.
+
+The Terraform roots currently support:
+
+- `infra/terraform/bootstrap`: creates a private, versioned GCS state bucket.
+- `infra/terraform/envs/dev`: enables required APIs, creates Artifact Registry, runtime and GitHub deployer service accounts, Secret Manager placeholders, Workload Identity Federation, a Firestore Enterprise database with MongoDB-compatible data access enabled, optional Cloud Run service wiring, and an optional billing budget.
+
+The owner still must provide:
+
+- The GCP project and billing link.
+- Local or CI credentials allowed to run Terraform.
+- Secret values, added as Secret Manager versions outside Git.
+- The first pushed container image before enabling Cloud Run in Terraform.
+- The live Firestore MongoDB compatibility spike result.
+- The decision to set `allow_unauthenticated_cloud_run = true`, and only after app-level auth is enforced.
 
 ## ChatGPT Custom GPT Action Setup Checklist
 

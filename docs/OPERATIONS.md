@@ -52,11 +52,26 @@ Terraform roots live under:
 infra/terraform/envs/{dev,prod}
 ```
 
+Bootstrap resources live under:
+
+```text
+infra/terraform/bootstrap
+```
+
+The bootstrap root creates the private, versioned GCS bucket used by environment backends. The owner must create or select the GCP project, link billing, and confirm the Service Usage API is available before running it.
+
+```bash
+cd infra/terraform/bootstrap
+terraform init
+terraform apply -var-file=terraform.tfvars
+```
+
 Initialize each environment with an explicit backend bucket value (do not hard-code bucket names in `backend.tf`):
 
 ```bash
 cd infra/terraform/envs/dev
 terraform init -backend-config="bucket=<your-gcp-project-id>-tf-state"
+terraform plan -var-file=terraform.tfvars
 ```
 
 Use the same pattern for `envs/prod` with the production bucket.
@@ -74,6 +89,8 @@ terraform fmt -check
 terraform validate
 terraform plan
 ```
+
+The dev root can apply foundational infrastructure before the app is deployable. Keep `enable_cloud_run_service = false` until the container image exists in Artifact Registry and required Secret Manager entries have secret versions. Keep `allow_unauthenticated_cloud_run = false` until MatrixedMind enforces app-level auth for sensitive routes.
 
 Terraform state should use a versioned GCS backend. Do not migrate or rewrite the state without an explicit plan.
 

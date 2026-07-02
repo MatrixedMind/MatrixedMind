@@ -1,0 +1,13 @@
+project_id        = "your-gcp-project-id"
+github_repository = "your-github-owner/your-github-repo"
+
+# Enable after an image has been pushed and required Secret Manager versions exist.
+enable_cloud_run_service = false
+container_image          = ""
+
+# Keep false until MatrixedMind app-level auth protects all sensitive routes.
+allow_unauthenticated_cloud_run = false
+
+# Optional billing budget.
+billing_account_id          = ""
+billing_budget_amount_units = null
