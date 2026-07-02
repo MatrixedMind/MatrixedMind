@@ -5,6 +5,7 @@ from app import dependencies
 
 def test_get_record_repository_caches_repository_instance() -> None:
     dependencies._get_cached_record_repository.cache_clear()
+    original_build = dependencies._build_record_repository
 
     try:
         repo = Mock(name="repo")
@@ -18,4 +19,5 @@ def test_get_record_repository_caches_repository_instance() -> None:
         assert second is repo
         assert build_repository.call_count == 1
     finally:
+        dependencies._build_record_repository = original_build
         dependencies._get_cached_record_repository.cache_clear()

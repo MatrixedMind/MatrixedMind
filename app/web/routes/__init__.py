@@ -32,7 +32,7 @@ ALLOWED_HTML_TAGS: set[str] = {
 }
 
 ALLOWED_HTML_ATTRIBUTES: dict[str, set[str]] = {
-    "a": {"href", "title"},
+    "a": {"href", "title", "rel"},
 }
 
 ALLOWED_HTML_SCHEMES: set[str] = {"http", "https", "mailto"}

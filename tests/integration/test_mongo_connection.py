@@ -8,6 +8,11 @@ LOCAL_MONGO_URI = (
 
 def test_mongo_connection_can_ping_local_database() -> None:
     MongoConnection.disconnect()
+    original_uri = settings.mongo_uri
     settings.mongo_uri = LOCAL_MONGO_URI
 
-    assert MongoConnection.ping() is True
+    try:
+        assert MongoConnection.ping() is True
+    finally:
+        settings.mongo_uri = original_uri
+        MongoConnection.disconnect()
