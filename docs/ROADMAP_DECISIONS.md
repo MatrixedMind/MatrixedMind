@@ -1,21 +1,21 @@
-# Roadmap Decision Resolution
+# Roadmap Decisions
 
-This file resolves the current roadmap decision items without changing milestone implementation status. Use the ADRs as the source of truth when updating milestone checkboxes.
+This file summarizes the current roadmap decisions without changing milestone implementation status. Use the ADRs as the source of truth when updating milestone checkboxes.
 
 ## Resolved decisions
 
 | Roadmap area | Decision | ADR |
 |---|---|---|
-| Candidate B / Milestone 5 Markdown rendering | Use `markdown-it-py` for rendering and `nh3` for sanitization behind an application-owned rendering boundary. | `docs/DECISIONS/0005-markdown-rendering-and-sanitization.md` |
+| Candidate B / Milestone 5 Markdown rendering | Use `markdown-it-py` for rendering and `nh3` for sanitization behind an application-owned rendering boundary. | `docs/DECISIONS/0013-markdown-rendering-and-sanitization.md` |
 | Candidate D stable references | Add a stable application-level `record_id` separate from mutable slugs and storage-native IDs. Resolve internal links to stable IDs. | `docs/DECISIONS/0006-stable-record-identity-and-references.md` |
 | Candidate A/E / Milestone 5 crawler policy / Milestone 6 sharing policy | Use explicit principal types, centralized policy checks, global → space → record precedence, private/noindex defaults, deny-wins conflict behavior, and 7-day delayed indexing for private-to-public changes. | `docs/DECISIONS/0007-sharing-authorization-and-indexing-policy.md` |
-| Milestone 6 production auth requirements | Separate `dev`, `test`, and `production` auth modes. Production must fail closed when auth is not configured and must not use shared-secret or demo-user shortcuts. | `docs/DECISIONS/0008-auth-modes-and-production-requirements.md` |
+| Milestone 6 production auth requirements | Separate `dev`, `test`, and `production` auth modes. Production must fail closed when auth is not configured. | `docs/DECISIONS/0008-auth-modes-and-production-requirements.md` |
 | Milestone 7 export format | Export Markdown bodies plus JSON metadata in a versioned directory format rooted at `matrixedmind-export/`. Import idempotently by stable IDs. | `docs/DECISIONS/0009-export-directory-format.md` |
 | Milestone 8 branch protection | Require PR-based CI checks before merge once the workflow exists. CI must cover uv sync, Ruff, mypy, pytest, and Docker build. | `docs/DECISIONS/0010-ci-quality-gate-and-branch-protection.md` |
 | Milestone 9 Terraform roots | Use `infra/terraform/bootstrap`, `infra/terraform/modules`, and `infra/terraform/envs/{dev,prod}`. | `docs/DECISIONS/0011-infrastructure-layout.md` |
-| Milestone 10 dev exposure | Keep hosted development access restricted by default. Public production launch needs a separate later decision. | `docs/DECISIONS/0012-dev-hosting-exposure.md` |
+| Milestone 10 dev hosting | Keep hosted development access restricted by default. | `docs/DECISIONS/0012-dev-hosting-exposure.md` |
 
-## Roadmap checkbox updates to make next
+## Roadmap checkbox updates
 
 When updating `docs/ROADMAP.md`, these human decision tasks can be marked complete because they now have ADR-backed answers:
 
