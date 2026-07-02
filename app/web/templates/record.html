@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>{{ title }}</title>
+</head>
+<body>
+    <nav>
+        <a href="/">Home</a>
+    </nav>
+    <article>
+        <h1>{{ record.title }}</h1>
+        <div class="metadata">
+            Space: {{ record.space }} | Slug: {{ record.slug }}
+        </div>
+        <hr>
+        <div class="content">
+            {{ content_html | safe }}
+        </div>
+    </article>
+</body>
+</html>

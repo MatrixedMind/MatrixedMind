@@ -1,0 +1,33 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+      - id: check-merge-conflict
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.15
+    hooks:
+      - id: ruff-check
+        args: ["--fix"]
+        files: ^(app|tests)/
+      - id: ruff-format
+        files: ^(app|tests)/
+
+  - repo: local
+    hooks:
+      - id: mypy
+        name: mypy (app)
+        entry: uv run mypy app
+        language: system
+        types: [python]
+        files: ^app/
+        pass_filenames: false
+
+      - id: terraform-fmt
+        name: terraform fmt
+        entry: bash -c 'command -v terraform &>/dev/null && terraform fmt -recursive infra/ || { echo "terraform not installed — skipping fmt"; exit 0; }'
+        language: system
+        files: \.tf$
+        pass_filenames: false
