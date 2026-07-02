@@ -69,13 +69,13 @@ These hooks always run regardless of what changed:
 Run when any Python source or test file changes:
 
 ```
-uv run ruff check .
 uv run ruff format --check .
+uv run ruff check .
 uv run mypy app
 uv run pytest
 ```
 
-The pre-commit hooks for `ruff-check` and `ruff-format` are scoped to `app/` and `tests/` and will auto-fix on commit. `mypy` and `pytest` must be run manually or via CI.
+For day-to-day local verification, `uv run pre-commit run --all-files` already covers `ruff-format` and `ruff-check` in the configured hook order. Run the commands above individually only when you need targeted troubleshooting or direct CI parity checks. `mypy` and `pytest` must still be run manually (or via CI), because they are not both fully covered by pre-commit hooks here.
 
 ### Docker / container changes (`Dockerfile`, `compose.yaml`)
 

@@ -93,12 +93,14 @@ http://localhost:8000/{space}/{slug}
 Run these before considering a milestone complete:
 
 ```bash
-uv run ruff check .
 uv run ruff format --check .
+uv run ruff check .
 uv run mypy app
 uv run pytest
 docker build -t matrixedmind:local .
 ```
+
+`uv run pre-commit run --all-files` already runs `ruff-format` and `ruff-check` in configured hook order, so you usually do not need to run those two commands separately unless you are debugging locally or mirroring CI steps explicitly.
 
 For infrastructure changes, also run the checks from `docs/OPERATIONS.md`.
 
