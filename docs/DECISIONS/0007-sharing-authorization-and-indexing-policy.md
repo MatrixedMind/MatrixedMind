@@ -4,11 +4,17 @@
 
 Accepted
 
+## Relationship to earlier ADRs
+
+This ADR supersedes `docs/DECISIONS/0005-granular-sharing-and-indexing-policy.md` for detailed policy behavior.
+
+ADR 0005 established the high-level direction. This ADR keeps that direction and makes the contract more specific. When the two documents differ, this ADR is authoritative.
+
 ## Context
 
-MatrixedMind needs private personal knowledge by default, but it should eventually support public pages, shared spaces, organization/team sharing, and controlled external access.
+MatrixedMind needs private personal knowledge by default, but it should eventually support public pages, shared spaces, organization/team sharing, and limited outside collaboration.
 
-The app also needs crawler and indexing controls before public pages exist. If public visibility and indexing are bolted on later as template-only flags, authorization behavior will drift across API routes, web routes, exports, backlinks, feeds, and future automation.
+The app also needs crawler and indexing controls before public pages exist. If public visibility and indexing are bolted on later as template-only flags, behavior will drift across API routes, web routes, exports, backlinks, feeds, and future automation.
 
 ## Decision
 
@@ -21,8 +27,8 @@ Use these principal types for sharing rules:
 - `user`: one authenticated user.
 - `organization`: all members of one organization.
 - `org_group`: a group inside one organization.
-- `external_group`: a controlled outside group.
-- `public`: unauthenticated internet access.
+- `external_group`: a group outside one organization.
+- `public`: unauthenticated access.
 
 `public` must always be explicit. It must never be inferred from missing auth or missing membership.
 
@@ -91,7 +97,7 @@ Record policy changes with:
 
 ### Positive
 
-- Keeps API, web, export, and future plugin access behavior consistent.
+- Keeps API, web, export, and future plugin behavior consistent.
 - Avoids accidental public or indexable content.
 - Gives tests a concrete authorization contract.
 - Leaves room for organizations and groups without forcing full multi-tenancy immediately.
