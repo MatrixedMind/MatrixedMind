@@ -2,6 +2,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from app.domain.policy import RecordVisibility
 from app.domain.validation import (
     validate_markdown,
     validate_path,
@@ -18,6 +19,8 @@ class RecordCreate(BaseModel):
     title: str
     body_markdown: str
     tags: list[str] = Field(default_factory=list)
+    visibility: RecordVisibility = "private"
+    index_after: datetime | None = None
 
     @field_validator("space", "slug")
     @staticmethod
@@ -62,13 +65,15 @@ class RecordUpdate(BaseModel):
     title: str | None = None
     body_markdown: str | None = None
     tags: list[str] | None = None
+    visibility: RecordVisibility | None = None
+    index_after: datetime | None = None
 
     @model_validator(mode="after")
     def validate_has_update(self) -> "RecordUpdate":
         if not self.model_fields_set:
             raise ValueError("update payload must include at least one field")
 
-        non_nullable_fields = ("space", "slug", "title", "body_markdown")
+        non_nullable_fields = ("space", "slug", "title", "body_markdown", "visibility")
         for field_name in non_nullable_fields:
             if field_name in self.model_fields_set and getattr(self, field_name) is None:
                 raise ValueError(f"{field_name} cannot be null")
@@ -129,5 +134,7 @@ class RecordResponse(BaseModel):
     title: str
     body_markdown: str
     tags: list[str]
+    visibility: RecordVisibility
+    index_after: datetime | None
     created_at: datetime
     updated_at: datetime

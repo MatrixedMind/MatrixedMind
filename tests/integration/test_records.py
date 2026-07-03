@@ -1,4 +1,5 @@
 from collections.abc import Iterator
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from fastapi.testclient import TestClient
@@ -43,6 +44,8 @@ def test_create_and_get_record(client: TestClient) -> None:
     assert data["parent_id"] is None
     assert data["path"] is None
     assert data["tags"] == ["test", "integration"]
+    assert data["visibility"] == "private"
+    assert data["index_after"] is None
 
     response = client.get("/api/records/test/hello-world")
 
@@ -93,6 +96,26 @@ def test_update_record(client: TestClient) -> None:
 
     assert client.get("/api/records/test/hello-world").status_code == 404
     assert client.get("/api/records/test/renamed-record").status_code == 200
+
+
+def test_public_create_without_index_after_sets_index_delay(client: TestClient) -> None:
+    response = client.post("/api/records/", json={**record_payload(), "visibility": "public"})
+
+    assert response.status_code == 201
+    data = response.json()
+    assert data["visibility"] == "public"
+    assert datetime.fromisoformat(data["index_after"]) > datetime.now(UTC)
+
+
+def test_private_to_public_update_sets_index_delay(client: TestClient) -> None:
+    client.post("/api/records/", json=record_payload())
+
+    response = client.put("/api/records/test/hello-world", json={"visibility": "public"})
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["visibility"] == "public"
+    assert datetime.fromisoformat(data["index_after"]) > datetime.now(UTC)
 
 
 def test_create_duplicate_record_returns_400(client: TestClient) -> None:
@@ -191,6 +214,7 @@ def test_index_html_returns_200_and_lists_default_records(client: TestClient) ->
 
     assert response.status_code == 200
     assert "<title>MatrixedMind</title>" in response.text
+    assert '<meta name="robots" content="noindex,nofollow,noarchive">' in response.text
     assert '<a href="/">MatrixedMind</a>' in response.text
     assert '<a href="/records/new">New page</a>' in response.text
     assert '<a href="/default/hello-world">Hello World</a>' in response.text
@@ -208,6 +232,7 @@ def test_new_record_editor_html_returns_200(client: TestClient) -> None:
 
     assert response.status_code == 200
     assert "<title>New Page</title>" in response.text
+    assert '<meta name="robots" content="noindex,nofollow,noarchive">' in response.text
     assert '<form method="post" action="/records/new">' in response.text
     assert 'name="space"' in response.text
     assert 'name="slug"' in response.text
@@ -387,12 +412,36 @@ def test_view_record_html(client: TestClient) -> None:
 
     assert response.status_code == 200
     assert "<title>Hello World</title>" in response.text
+    assert '<meta name="robots" content="noindex,nofollow,noarchive">' in response.text
     assert '<a href="/">MatrixedMind</a>' in response.text
     assert '<a href="/">Home</a>' in response.text
     assert '<a href="/test/hello-world/edit">Edit</a>' in response.text
     assert '<a href="/records/new">New page</a>' in response.text
     assert "<h1>Hello World</h1>" in response.text
     assert "<h1>Hello</h1>" in response.text
+
+
+def test_public_record_html_remains_noindex_before_index_after(client: TestClient) -> None:
+    client.post("/api/records/", json=record_payload())
+    client.put("/api/records/test/hello-world", json={"visibility": "public"})
+
+    response = client.get("/test/hello-world")
+
+    assert response.status_code == 200
+    assert '<meta name="robots" content="noindex,follow,noarchive">' in response.text
+
+
+def test_public_record_html_is_indexable_after_index_after(client: TestClient) -> None:
+    index_after = (datetime.now(UTC) - timedelta(days=1)).isoformat()
+    client.post(
+        "/api/records/",
+        json={**record_payload(), "visibility": "public", "index_after": index_after},
+    )
+
+    response = client.get("/test/hello-world")
+
+    assert response.status_code == 200
+    assert '<meta name="robots" content="index,follow,archive">' in response.text
 
 
 def test_view_record_html_sanitizes_unsafe_link_scheme(client: TestClient) -> None:

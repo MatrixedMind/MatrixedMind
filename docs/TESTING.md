@@ -27,7 +27,7 @@ uv run pytest tests/integration
 
 MongoDB-backed tests use the local Compose service and the settings from `.env` or the safe defaults in `app/settings.py`; no seed data is required. If `tests/integration` cannot connect, first check that `docker compose ps` shows the `mongo` service as running, then verify that any local `MONGODB_URI` override points at the Compose MongoDB instance.
 
-Current integration coverage includes a MongoDB ping test, MongoDB repository contract coverage, MongoDB duplicate/missing-record/revision behavior, and FastAPI route tests that override the repository with the in-memory adapter. Route tests cover record create, read, list, update, duplicate errors, not-found errors, invalid payload validation, and the provisional server-rendered record page. Reusable repository contract assertions live under `tests/contracts/`; the unit suite applies them to the in-memory adapter, and the integration suite applies them to MongoDB.
+Current integration coverage includes a MongoDB ping test, MongoDB repository contract coverage, MongoDB duplicate/missing-record/revision behavior, and FastAPI route tests that override the repository with the in-memory adapter. Route tests cover record create, read, list, update, duplicate errors, not-found errors, invalid payload validation, server-rendered home/detail/editor pages, browser form create/update flows, and crawler metadata on record pages. Reusable repository contract assertions live under `tests/contracts/`; the unit suite applies them to the in-memory adapter, and the integration suite applies them to MongoDB.
 
 ## API tests
 
@@ -35,7 +35,7 @@ Use FastAPI `TestClient` or `httpx` tests for route behavior. Cover success resp
 
 ## Web tests
 
-Use server-rendered page tests first. Verify pages return the correct status code and render expected content. Full browser automation can wait until the UI becomes complex enough to justify it.
+Use server-rendered page tests first. Verify pages return the correct status code, render expected content, expose expected navigation, and emit expected crawler metadata. Full browser automation can wait until the UI becomes complex enough to justify it.
 
 ## Infrastructure checks
 

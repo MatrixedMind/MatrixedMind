@@ -431,8 +431,8 @@ Add a minimal browser-facing interface.
 
 - [x] Page tests return 200.
 - [x] HTML renders expected record content.
-- [ ] Public pages emit expected crawler/indexing metadata from effective policy.
-- [ ] Visibility flips to `public` do not become indexable before the configured delay window.
+- [x] Public pages emit expected crawler/indexing metadata from effective policy.
+- [x] Visibility flips to `public` do not become indexable before the configured delay window.
 - [ ] Manual browser test can create, edit, and view a record.
 - [ ] `uv run pytest`
 

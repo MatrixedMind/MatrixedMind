@@ -5,6 +5,7 @@ from fastapi import APIRouter, HTTPException, status
 from app.api.schemas.records import RecordCreate, RecordResponse, RecordUpdate
 from app.dependencies import RecordRepoDep
 from app.domain.models import Record
+from app.domain.policy import next_index_after_for_create, next_index_after_for_update
 
 router = APIRouter(prefix="/records", tags=["records"])
 
@@ -24,7 +25,12 @@ def create_record(record_in: RecordCreate, repo: RecordRepoDep) -> Record:
     if existing:
         _raise_duplicate_record(record_in.space, record_in.slug)
 
-    record = Record(**record_in.model_dump())
+    record_data = record_in.model_dump()
+    record_data["index_after"] = next_index_after_for_create(
+        record_in.visibility,
+        record_in.index_after,
+    )
+    record = Record(**record_data)
     try:
         return repo.create(record)
     except ValueError as exc:
@@ -58,12 +64,22 @@ def update_record(
     update_data = record_in.model_dump(exclude_unset=True)
     if update_data.get("tags") is None:
         update_data.pop("tags", None)
+    if update_data.get("index_after") is None and "index_after" not in record_in.model_fields_set:
+        update_data.pop("index_after", None)
 
     next_space = update_data.get("space", existing.space)
     next_slug = update_data.get("slug", existing.slug)
     duplicate = repo.get_by_slug(next_space, next_slug)
     if duplicate is not None and duplicate.id != existing.id:
         _raise_duplicate_record(next_space, next_slug)
+
+    next_visibility = update_data.get("visibility", existing.visibility)
+    update_data["index_after"] = next_index_after_for_update(
+        current_visibility=existing.visibility,
+        next_visibility=next_visibility,
+        index_after=update_data.get("index_after", existing.index_after),
+        index_after_was_provided="index_after" in record_in.model_fields_set,
+    )
 
     updated = existing.model_copy(update=update_data)
     try:

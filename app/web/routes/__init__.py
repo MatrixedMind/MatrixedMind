@@ -11,6 +11,12 @@ from pydantic import ValidationError
 from app.api.schemas.records import RecordCreate, RecordUpdate
 from app.dependencies import RecordRepoDep
 from app.domain.models import Record
+from app.domain.policy import (
+    crawler_metadata_for_record,
+    default_crawler_metadata,
+    next_index_after_for_create,
+    next_index_after_for_update,
+)
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/web/templates")
@@ -82,6 +88,7 @@ def editor_context(
         "tags_value": tags_value,
         "cancel_url": cancel_url,
         "error": error,
+        "robots_content": default_crawler_metadata().robots_content,
     }
 
 
@@ -124,8 +131,15 @@ def detail_redirect(record: Record) -> RedirectResponse:
 def index(request: Request, repo: RecordRepoDep) -> Response:
     # Just list some records from the default space for now
     records = repo.list_children("default", None)
+    crawler_metadata = default_crawler_metadata()
     return templates.TemplateResponse(
-        request=request, name="index.html", context={"title": "MatrixedMind", "records": records}
+        request=request,
+        name="index.html",
+        context={
+            "title": "MatrixedMind",
+            "records": records,
+            "robots_content": crawler_metadata.robots_content,
+        },
     )
 
 
@@ -183,7 +197,12 @@ async def create_record_from_form(request: Request, repo: RecordRepoDep) -> Resp
             status_code=status.HTTP_400_BAD_REQUEST,
         )
 
-    record = repo.create(Record(**record_in.model_dump()))
+    record_data = record_in.model_dump()
+    record_data["index_after"] = next_index_after_for_create(
+        record_in.visibility,
+        record_in.index_after,
+    )
+    record = repo.create(Record(**record_data))
     return detail_redirect(record)
 
 
@@ -260,7 +279,21 @@ async def update_record_from_form(
             status_code=status.HTTP_400_BAD_REQUEST,
         )
 
-    updated = existing.model_copy(update=record_in.model_dump(exclude_unset=True))
+    update_data = record_in.model_dump(exclude_unset=True)
+    if update_data.get("tags") is None:
+        update_data.pop("tags", None)
+    if update_data.get("index_after") is None and "index_after" not in record_in.model_fields_set:
+        update_data.pop("index_after", None)
+
+    next_visibility = update_data.get("visibility", existing.visibility)
+    update_data["index_after"] = next_index_after_for_update(
+        current_visibility=existing.visibility,
+        next_visibility=next_visibility,
+        index_after=update_data.get("index_after", existing.index_after),
+        index_after_was_provided="index_after" in record_in.model_fields_set,
+    )
+
+    updated = existing.model_copy(update=update_data)
     try:
         record = repo.update(existing.id, updated)
     except KeyError as exc:
@@ -288,9 +321,18 @@ def view_record(request: Request, space: str, slug: str, repo: RecordRepoDep) ->
         raise HTTPException(status_code=404, detail="Record not found")
 
     content_html = render_safe_markdown(record.body_markdown)
+    crawler_metadata = crawler_metadata_for_record(
+        visibility=record.visibility,
+        index_after=record.index_after,
+    )
 
     return templates.TemplateResponse(
         request=request,
         name="record.html",
-        context={"title": record.title, "record": record, "content_html": content_html},
+        context={
+            "title": record.title,
+            "record": record,
+            "content_html": content_html,
+            "robots_content": crawler_metadata.robots_content,
+        },
     )
