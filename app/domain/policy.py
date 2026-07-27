@@ -68,7 +68,13 @@ def crawler_metadata_for_record(
         return default_crawler_metadata()
 
     current_time = now or datetime.now(UTC)
-    if index_after is not None and current_time < index_after:
-        return CrawlerMetadata(index=False, follow=True, archive=False)
+    if current_time.tzinfo is None:
+        current_time = current_time.replace(tzinfo=UTC)
+
+    if index_after is not None:
+        if index_after.tzinfo is None:
+            index_after = index_after.replace(tzinfo=UTC)
+        if current_time < index_after:
+            return CrawlerMetadata(index=False, follow=True, archive=False)
 
     return CrawlerMetadata(index=True, follow=True, archive=True)
