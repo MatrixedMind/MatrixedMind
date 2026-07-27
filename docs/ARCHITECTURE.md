@@ -10,6 +10,7 @@ MatrixedMind is a single FastAPI service serving HTML and JSON. It is a Python-f
 - API routes: JSON endpoints for records and future automation in `app/api/routes/`. The future LLM-facing API must live behind a separate `/api/llm/*` boundary rather than exposing the normal app API to ChatGPT.
 - Domain models: Python/Pydantic models in `app/domain/models.py`. The current implemented models are `Record`, `RecordRevision`, `Space`, `Tag`, `User`, and `Membership`.
 - Domain validation: reusable slug, path, title, and Markdown rules in `app/domain/validation.py`.
+- Domain policy: provisional crawler/indexing policy helpers in `app/domain/policy.py`. Records are private and noindex by default. Public records receive a 7-day `index_after` delay unless an explicit override is provided.
 - Repository interfaces: protocols in `app/domain/ports.py` used by application code.
 - Storage adapters: memory and MongoDB adapters under `app/adapters/`, with future storage choices kept behind repository interfaces.
 - Auth layer: local/dev auth placeholder in `app/auth/dependencies.py`; production auth is intentionally not implemented yet.
@@ -68,13 +69,17 @@ Cloud Run filesystems are not persistent, so hosted persistence is required for 
 - `GET /ready`: MongoDB readiness check.
 - `GET /`: server-rendered home page listing records from the default space.
 - `GET /{space}/{slug}`: server-rendered record detail page.
+- `GET /records/new`: server-rendered new record form.
+- `POST /records/new`: create a record from the browser form and redirect to the detail page.
+- `GET /{space}/{slug}/edit`: server-rendered edit form.
+- `POST /{space}/{slug}/edit`: update a record from the browser form and redirect to the detail page.
 - `GET /api/status`: API status check.
-- `POST /api/records/`: create a record with request validation aligned to the domain slug, path, title, Markdown, and tag rules.
+- `POST /api/records/`: create a record with request validation aligned to the domain slug, path, title, Markdown, tag, visibility, and indexing-delay rules.
 - `GET /api/records/{space}`: list records for a space, optionally by `parent_id`.
 - `GET /api/records/{space}/{slug}`: read a record by space and slug.
-- `PUT /api/records/{space}/{slug}`: partially update a record identified by space and slug. Supplied fields are validated with the same domain rules as create requests, then merged into the existing record before repository update.
+- `PUT /api/records/{space}/{slug}`: partially update a record identified by space and slug. Supplied fields are validated with the same domain rules as create requests, then merged into the existing record before repository update. Private-to-public visibility changes set `index_after` to 7 days in the future unless an explicit override is supplied.
 
-No record editor page, production auth flow, import/export command, or Terraform-managed deployment is implemented yet.
+No production auth flow, import/export command, or Terraform-managed deployment is implemented yet.
 
 ## Deployment strategy
 

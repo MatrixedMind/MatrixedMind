@@ -8,7 +8,9 @@ Each milestone must leave the repo in a working, verifiable state. Do not stack 
 
 Milestone 4 is implemented and verified for record create, read, update, list, request validation, duplicate/not-found error handling, API docs rendering, and a manual create-read-update HTTP flow. Milestone 3 is implemented and verified for MongoDB-backed record create, read, update, list, unique slug indexes, missing-record behavior, and revision creation.
 
-Milestone 5 remains the current implementation focus. The roadmap now pulls the secure Cloud MVP path forward after Milestone 5: owner auth and the LLM write API, Firestore MongoDB compatibility verification, CI, Cloud Run deployment, ChatGPT Action integration, and cloud hardening. Import/export is deferred until after that secure cloud path unless recovery needs pull it forward.
+Milestone 5 is implemented and verified for a minimal server-rendered browser shell, shared layout, home/detail/editor pages, create/edit form handling, simple navigation, safe Markdown rendering, private/noindex defaults, and delayed indexing for public records.
+
+Milestone 6 is now the current implementation focus: owner auth and the LLM write API. The roadmap then continues through Firestore MongoDB compatibility verification, CI, Cloud Run deployment, ChatGPT Action integration, and cloud hardening. Import/export is deferred until after that secure cloud path unless recovery needs pull it forward.
 
 The repo already contains provisional pieces of later milestones, including an auth dependency placeholder and server-rendered pages. Treat that code as material to harden, not as permission to skip milestone verification.
 
@@ -18,11 +20,12 @@ The repo already contains provisional pieces of later milestones, including an a
 - `app/settings.py` loads local settings from `.env` with safe local defaults matching `.env.example`.
 - `app/domain/models.py` contains `Record`, `RecordRevision`, `Space`, `Tag`, `User`, and `Membership` models.
 - `app/domain/validation.py` contains slug, path, title, and Markdown validation rules.
+- `app/domain/policy.py` contains provisional crawler/indexing metadata helpers with private/noindex defaults and a 7-day public indexing delay.
 - `app/domain/ports.py` contains the initial `RecordRepository` protocol.
 - `app/adapters/memory/repository.py` contains an in-memory repository covered by the reusable repository contract.
 - `app/adapters/mongo/repository.py` contains a MongoDB repository hardened against the repository contract with unique slug indexes and update revisions.
 - `app/api/routes/records.py` exposes create, read, update, and list record routes with domain-aligned request schemas and consistent duplicate/not-found error handling.
-- `app/web/routes/__init__.py` and `app/web/templates/` expose a minimal server-rendered home page and record detail page.
+- `app/web/routes/__init__.py` and `app/web/templates/` expose a minimal server-rendered home page, record detail page, record editor pages, and browser form handling.
 - `app/auth/dependencies.py` contains a local dev-user placeholder and a production-not-implemented branch.
 
 ## Roadmap decisions
@@ -421,20 +424,20 @@ Add a minimal browser-facing interface.
 #### AI agent implementation tasks
 
 - [x] Add initial server-rendered routes and templates.
-- [ ] Add a base layout shared by pages.
-- [ ] Add a record editor page.
-- [ ] Add create/edit form handling.
+- [x] Add a base layout shared by pages.
+- [x] Add a record editor page.
+- [x] Add create/edit form handling.
 - [x] Render Markdown content safely. See ADR 0013.
-- [ ] Add simple navigation between home, list, detail, and editor views.
+- [x] Add simple navigation between home, list, detail, and editor views.
 
 ### Verification
 
-- [ ] Page tests return 200.
-- [ ] HTML renders expected record content.
-- [ ] Public pages emit expected crawler/indexing metadata from effective policy.
-- [ ] Visibility flips to `public` do not become indexable before the configured delay window.
-- [ ] Manual browser test can create, edit, and view a record.
-- [ ] `uv run pytest`
+- [x] Page tests return 200.
+- [x] HTML renders expected record content.
+- [x] Public pages emit expected crawler/indexing metadata from effective policy.
+- [x] Visibility flips to `public` do not become indexable before the configured delay window.
+- [x] Manual browser test can create, edit, and view a record.
+- [x] `uv run pytest`
 
 ### Done when
 

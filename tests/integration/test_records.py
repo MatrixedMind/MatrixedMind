@@ -1,4 +1,5 @@
 from collections.abc import Iterator
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from fastapi.testclient import TestClient
@@ -43,6 +44,8 @@ def test_create_and_get_record(client: TestClient) -> None:
     assert data["parent_id"] is None
     assert data["path"] is None
     assert data["tags"] == ["test", "integration"]
+    assert data["visibility"] == "private"
+    assert data["index_after"] is None
 
     response = client.get("/api/records/test/hello-world")
 
@@ -93,6 +96,26 @@ def test_update_record(client: TestClient) -> None:
 
     assert client.get("/api/records/test/hello-world").status_code == 404
     assert client.get("/api/records/test/renamed-record").status_code == 200
+
+
+def test_public_create_without_index_after_sets_index_delay(client: TestClient) -> None:
+    response = client.post("/api/records/", json={**record_payload(), "visibility": "public"})
+
+    assert response.status_code == 201
+    data = response.json()
+    assert data["visibility"] == "public"
+    assert datetime.fromisoformat(data["index_after"]) > datetime.now(UTC)
+
+
+def test_private_to_public_update_sets_index_delay(client: TestClient) -> None:
+    client.post("/api/records/", json=record_payload())
+
+    response = client.put("/api/records/test/hello-world", json={"visibility": "public"})
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["visibility"] == "public"
+    assert datetime.fromisoformat(data["index_after"]) > datetime.now(UTC)
 
 
 def test_create_duplicate_record_returns_400(client: TestClient) -> None:
@@ -184,14 +207,241 @@ def test_update_nullable_fields_with_null_succeeds(client: TestClient) -> None:
     assert data["tags"] == ["test", "integration"]
 
 
+def test_index_html_returns_200_and_lists_default_records(client: TestClient) -> None:
+    client.post("/api/records/", json={**record_payload(), "space": "default"})
+
+    response = client.get("/")
+
+    assert response.status_code == 200
+    assert "<title>MatrixedMind</title>" in response.text
+    assert '<meta name="robots" content="noindex,nofollow,noarchive">' in response.text
+    assert '<a href="/">MatrixedMind</a>' in response.text
+    assert '<a href="/records/new">New page</a>' in response.text
+    assert '<a href="/default/hello-world">Hello World</a>' in response.text
+
+
+def test_index_html_returns_200_without_records(client: TestClient) -> None:
+    response = client.get("/")
+
+    assert response.status_code == 200
+    assert "No pages yet." in response.text
+
+
+def test_new_record_editor_html_returns_200(client: TestClient) -> None:
+    response = client.get("/records/new")
+
+    assert response.status_code == 200
+    assert "<title>New Page</title>" in response.text
+    assert '<meta name="robots" content="noindex,nofollow,noarchive">' in response.text
+    assert '<form method="post" action="/records/new">' in response.text
+    assert 'name="space"' in response.text
+    assert 'name="slug"' in response.text
+    assert 'name="title"' in response.text
+    assert 'name="body_markdown"' in response.text
+    assert '<a href="/">Cancel</a>' in response.text
+
+
+def test_create_record_from_editor_redirects_to_detail(client: TestClient) -> None:
+    response = client.post(
+        "/records/new",
+        data={
+            "space": "default",
+            "slug": "from-form",
+            "title": "From Form",
+            "body_markdown": "# From Form",
+            "tags": "form, web",
+        },
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 303
+    assert response.headers["location"] == "/default/from-form"
+
+    detail = client.get("/default/from-form")
+    assert detail.status_code == 200
+    assert "<h1>From Form</h1>" in detail.text
+    assert client.get("/api/records/default/from-form").json()["tags"] == ["form", "web"]
+
+
+def test_create_record_from_editor_returns_400_for_invalid_payload(client: TestClient) -> None:
+    response = client.post(
+        "/records/new",
+        data={
+            "space": "default",
+            "slug": "Bad Slug",
+            "title": "From Form",
+            "body_markdown": "# From Form",
+            "tags": "form",
+        },
+    )
+
+    assert response.status_code == 400
+    assert 'role="alert"' in response.text
+    assert "slug" in response.text
+    assert 'value="Bad Slug"' in response.text
+
+
+def test_create_record_from_editor_returns_400_for_duplicate_slug(client: TestClient) -> None:
+    client.post("/api/records/", json={**record_payload(), "space": "default"})
+
+    response = client.post(
+        "/records/new",
+        data={
+            "space": "default",
+            "slug": "hello-world",
+            "title": "Duplicate",
+            "body_markdown": "# Duplicate",
+            "tags": "",
+        },
+    )
+
+    assert response.status_code == 400
+    assert (
+        "Record with slug &#39;hello-world&#39; already exists in space &#39;default&#39;"
+        in response.text
+    )
+
+
+def test_edit_record_editor_html_returns_200_with_record_values(client: TestClient) -> None:
+    client.post("/api/records/", json=record_payload())
+
+    response = client.get("/test/hello-world/edit")
+
+    assert response.status_code == 200
+    assert "<title>Edit Hello World</title>" in response.text
+    assert '<form method="post" action="/test/hello-world/edit">' in response.text
+    assert 'value="test"' in response.text
+    assert 'value="hello-world"' in response.text
+    assert 'value="Hello World"' in response.text
+    assert "# Hello" in response.text
+    assert 'value="test, integration"' in response.text
+    assert '<a href="/test/hello-world">Cancel</a>' in response.text
+
+
+def test_update_record_from_editor_redirects_to_detail(client: TestClient) -> None:
+    client.post("/api/records/", json=record_payload())
+
+    response = client.post(
+        "/test/hello-world/edit",
+        data={
+            "space": "test",
+            "slug": "renamed-from-form",
+            "title": "Renamed From Form",
+            "body_markdown": "# Renamed",
+            "tags": "updated, web",
+        },
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 303
+    assert response.headers["location"] == "/test/renamed-from-form"
+
+    detail = client.get("/test/renamed-from-form")
+    assert detail.status_code == 200
+    assert "<h1>Renamed From Form</h1>" in detail.text
+    assert "<h1>Renamed</h1>" in detail.text
+
+
+def test_update_record_from_editor_returns_400_for_duplicate_slug(client: TestClient) -> None:
+    client.post("/api/records/", json=record_payload("first"))
+    client.post("/api/records/", json=record_payload("second"))
+
+    response = client.post(
+        "/test/first/edit",
+        data={
+            "space": "test",
+            "slug": "second",
+            "title": "Duplicate",
+            "body_markdown": "# Duplicate",
+            "tags": "",
+        },
+    )
+
+    assert response.status_code == 400
+    assert (
+        "Record with slug &#39;second&#39; already exists in space &#39;test&#39;" in response.text
+    )
+
+
+def test_update_record_from_editor_returns_400_for_invalid_payload(client: TestClient) -> None:
+    client.post("/api/records/", json=record_payload())
+
+    response = client.post(
+        "/test/hello-world/edit",
+        data={
+            "space": "test",
+            "slug": "Bad Slug",
+            "title": "Hello World",
+            "body_markdown": "# Hello",
+            "tags": "test",
+        },
+    )
+
+    assert response.status_code == 400
+    assert 'role="alert"' in response.text
+    assert "slug" in response.text
+
+
+def test_edit_record_editor_html_returns_404_for_missing_record(client: TestClient) -> None:
+    response = client.get("/test/not-found/edit")
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Record not found"
+
+
+def test_update_record_from_editor_returns_404_for_missing_record(client: TestClient) -> None:
+    response = client.post(
+        "/test/not-found/edit",
+        data={
+            "space": "test",
+            "slug": "not-found",
+            "title": "Missing",
+            "body_markdown": "# Missing",
+            "tags": "",
+        },
+    )
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Record not found"
+
+
 def test_view_record_html(client: TestClient) -> None:
     client.post("/api/records/", json=record_payload())
 
     response = client.get("/test/hello-world")
 
     assert response.status_code == 200
+    assert "<title>Hello World</title>" in response.text
+    assert '<meta name="robots" content="noindex,nofollow,noarchive">' in response.text
+    assert '<a href="/">MatrixedMind</a>' in response.text
+    assert '<a href="/">Home</a>' in response.text
+    assert '<a href="/test/hello-world/edit">Edit</a>' in response.text
+    assert '<a href="/records/new">New page</a>' in response.text
     assert "<h1>Hello World</h1>" in response.text
     assert "<h1>Hello</h1>" in response.text
+
+
+def test_public_record_html_remains_noindex_before_index_after(client: TestClient) -> None:
+    client.post("/api/records/", json=record_payload())
+    client.put("/api/records/test/hello-world", json={"visibility": "public"})
+
+    response = client.get("/test/hello-world")
+
+    assert response.status_code == 200
+    assert '<meta name="robots" content="noindex,follow,noarchive">' in response.text
+
+
+def test_public_record_html_is_indexable_after_index_after(client: TestClient) -> None:
+    index_after = (datetime.now(UTC) - timedelta(days=1)).isoformat()
+    client.post(
+        "/api/records/",
+        json={**record_payload(), "visibility": "public", "index_after": index_after},
+    )
+
+    response = client.get("/test/hello-world")
+
+    assert response.status_code == 200
+    assert '<meta name="robots" content="index,follow,archive">' in response.text
 
 
 def test_view_record_html_sanitizes_unsafe_link_scheme(client: TestClient) -> None:

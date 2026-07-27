@@ -1,21 +1,19 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <title>{{ title }}</title>
-</head>
-<body>
-    <nav>
-        <a href="/">Home</a>
-    </nav>
+{% extends "base.html" %}
+
+{% block content %}
     <article>
         <h1>{{ record.title }}</h1>
         <div class="metadata">
             Space: {{ record.space }} | Slug: {{ record.slug }}
         </div>
+        <nav aria-label="Page actions">
+            <a href="/">Home</a>
+            <a href="/{{ record.space }}/{{ record.slug }}/edit">Edit</a>
+            <a href="/records/new">New page</a>
+        </nav>
         <hr>
         <div class="content">
             {{ content_html | safe }}
         </div>
     </article>
-</body>
-</html>
+{% endblock %}

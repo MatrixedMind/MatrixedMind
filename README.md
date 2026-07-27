@@ -11,9 +11,10 @@ Pre-MVP / active rebuild. The current codebase contains:
 - Local MongoDB wiring through Docker Compose.
 - Core domain models for records, revisions, spaces, tags, users, and memberships.
 - Domain validation rules for slugs, paths, titles, Markdown bodies, and tag values.
+- Provisional crawler/indexing policy helpers with private/noindex defaults and delayed indexing for public records.
 - Initial record repository protocol plus memory and MongoDB adapters, with MongoDB covered by the repository contract.
 - JSON record routes for `create`, `read`, `update`, and `list`.
-- Initial server-rendered home and record detail pages.
+- Server-rendered home, record detail, and record editor pages with basic form handling.
 
 The canonical working plan remains [docs/ROADMAP.md](docs/ROADMAP.md). Some code reaches ahead of the current milestone; treat it as provisional until the roadmap verification for that milestone is complete.
 

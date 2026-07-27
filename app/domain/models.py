@@ -3,6 +3,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from app.domain.policy import RecordVisibility
 from app.domain.validation import validate_markdown, validate_path, validate_slug, validate_title
 
 
@@ -36,6 +37,8 @@ class Record(BaseModel):
     title: str
     body_markdown: str
     tags: list[str] = Field(default_factory=list)
+    visibility: RecordVisibility = "private"
+    index_after: datetime | None = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     revisions: list[RecordRevision] = Field(default_factory=list)

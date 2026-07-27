@@ -77,6 +77,8 @@ def test_record_optional_fields_default_to_empty_relationships() -> None:
     assert record.path is None
     assert record.tags == []
     assert record.revisions == []
+    assert record.visibility == "private"
+    assert record.index_after is None
 
 
 def test_membership_rejects_unknown_role() -> None:
