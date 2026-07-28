@@ -14,7 +14,7 @@ from app.dependencies import (
     get_llm_token_repository,
     get_record_repository,
 )
-from app.domain.models import LlmApiToken
+from app.domain.models import LlmApiToken, Record
 from app.main import app
 from app.settings import settings
 
@@ -125,6 +125,41 @@ def test_llm_read_list_and_space_scope(client: TestClient) -> None:
     )
 
 
+def test_llm_cannot_access_or_overwrite_another_owners_record(
+    client: TestClient,
+    repos: tuple[
+        InMemoryRecordRepository,
+        InMemoryLlmTokenRepository,
+        InMemoryAuditEventRepository,
+    ],
+) -> None:
+    repos[0].create(
+        Record(
+            space="personal",
+            slug="other-owner",
+            title="Other Owner",
+            body_markdown="# Private",
+            owner_id="other-user",
+        )
+    )
+
+    assert (
+        client.get("/api/llm/records/personal/other-owner", headers=auth_headers()).status_code
+        == 404
+    )
+    assert client.get("/api/llm/records?space=personal", headers=auth_headers()).json() == []
+
+    overwrite = client.post(
+        "/api/llm/records/upsert",
+        json={**payload(), "slug": "other-owner"},
+        headers=auth_headers(),
+    )
+    assert overwrite.status_code == 404
+    record = repos[0].get_by_slug("personal", "other-owner")
+    assert record is not None
+    assert record.title == "Other Owner"
+
+
 def test_llm_rejects_missing_invalid_and_revoked_tokens(
     client: TestClient,
     repos: tuple[
@@ -164,6 +199,14 @@ def test_llm_enforces_body_size_and_rate_limits(
     monkeypatch.setattr(settings, "llm_request_body_limit_bytes", 20)
     assert (
         client.post("/api/llm/records/upsert", json=payload(), headers=auth_headers()).status_code
+        == 413
+    )
+    assert (
+        client.post(
+            "/api/llm/records/upsert",
+            content=b"{}",
+            headers={**auth_headers(), "Content-Length": "21"},
+        ).status_code
         == 413
     )
 

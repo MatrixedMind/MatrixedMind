@@ -17,6 +17,11 @@ def require_space(token_spaces: frozenset[str], space: str) -> None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Space access denied")
 
 
+def require_record_owner(record: Record, owner_id: str) -> None:
+    if record.owner_id != owner_id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Record not found")
+
+
 @router.post("/records/upsert", response_model=RecordResponse)
 def upsert_record(
     request: Request,
@@ -49,6 +54,7 @@ def upsert_record(
         saved = repo.create(record)
         action = "record.created"
     else:
+        require_record_owner(existing, token.owner_id)
         if existing.id is None:
             raise HTTPException(status_code=409, detail="Record has no stable identifier")
         updated = existing.model_copy(
@@ -88,6 +94,7 @@ def get_record(
     record = repo.get_by_slug(space, slug)
     if record is None:
         raise HTTPException(status_code=404, detail="Record not found")
+    require_record_owner(record, token.owner_id)
     return record
 
 
@@ -101,4 +108,8 @@ def list_records(
 ) -> list[Record]:
     token = authenticate_llm_token(request, token_repo, "records:read")
     require_space(token.allowed_spaces, space)
-    return repo.list_children(space, parent_id)
+    return [
+        record
+        for record in repo.list_children(space, parent_id)
+        if record.owner_id == token.owner_id
+    ]

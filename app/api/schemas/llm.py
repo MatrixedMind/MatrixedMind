@@ -38,7 +38,3 @@ class LlmRecordUpsert(BaseModel):
     @staticmethod
     def validate_tags(value: list[str]) -> list[str]:
         return [validate_slug(tag) for tag in value]
-
-
-class LlmRecordListResponse(BaseModel):
-    records: list[dict[str, object]]

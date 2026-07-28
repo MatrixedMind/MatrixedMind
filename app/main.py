@@ -28,6 +28,20 @@ async def enforce_llm_body_limit(
     call_next: RequestResponseEndpoint,
 ) -> Response:
     if request.url.path.startswith("/api/llm/"):
+        content_length = request.headers.get("content-length")
+        if content_length is not None:
+            try:
+                declared_size = int(content_length)
+            except ValueError:
+                return JSONResponse(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    content={"detail": "Invalid Content-Length"},
+                )
+            if declared_size > settings.llm_request_body_limit_bytes:
+                return JSONResponse(
+                    status_code=status.HTTP_413_CONTENT_TOO_LARGE,
+                    content={"detail": "Request body too large"},
+                )
         body = await request.body()
         if len(body) > settings.llm_request_body_limit_bytes:
             return JSONResponse(
