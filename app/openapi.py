@@ -8,7 +8,7 @@ LLM_API_PREFIX = "/api/llm/"
 HTTP_METHODS = frozenset({"get", "put", "post", "delete", "options", "head", "patch", "trace"})
 
 
-def build_llm_openapi_schema(app: FastAPI, server_url: str) -> dict[str, Any]:
+def build_llm_openapi_schema(app: FastAPI) -> dict[str, Any]:
     """Build the deliberately narrow schema imported by the ChatGPT Action."""
     llm_routes = [
         route
@@ -23,7 +23,6 @@ def build_llm_openapi_schema(app: FastAPI, server_url: str) -> dict[str, Any]:
             "MatrixedMind records in token-authorized spaces."
         ),
         routes=llm_routes,
-        servers=[{"url": server_url.rstrip("/")}],
     )
     components = schema.setdefault("components", {})
     components["securitySchemes"] = {
