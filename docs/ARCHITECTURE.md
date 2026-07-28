@@ -15,7 +15,7 @@ MatrixedMind is a single FastAPI service serving HTML and JSON. It is a Python-f
 - Storage adapters: memory and MongoDB adapters under `app/adapters/`, with future storage choices kept behind repository interfaces.
 - Auth layer: `app/auth/dependencies.py` exposes a stable owner dependency, deterministic dev/test identities, fail-closed production behavior, and SHA-256 lookup of scoped, revocable LLM bearer tokens. Raw LLM tokens are never persisted.
 - Import/export commands: planned portable Markdown and metadata round trips.
-- GCP infrastructure: planned Terraform-managed Cloud Run, Artifact Registry, Secret Manager, Firestore Enterprise MongoDB compatibility, and supporting IAM.
+- GCP infrastructure: Terraform-managed Cloud Run, Artifact Registry, Secret Manager, Firestore Enterprise MongoDB compatibility, and supporting IAM. Reusable modules live under `infra/terraform/modules/`; development and production roots remain separate.
 
 ## Storage strategy
 
@@ -92,11 +92,11 @@ Cloud Run filesystems are not persistent, so hosted persistence is required for 
 - `GET /api/llm/records/{space}/{slug}`: scoped LLM record read.
 - `GET /api/llm/records?space={space}`: scoped LLM record list.
 
-Production browser identity-provider integration, import/export, and Terraform-managed deployment are not implemented yet.
+Production browser identity-provider integration and import/export are not implemented yet. The Terraform-managed deployment baseline is implemented, but the first Cloud Run application deployment still requires owner-run infrastructure and deployment verification.
 
 ## Deployment strategy
 
-Deploy the app as a container to Cloud Run. Images are stored in Artifact Registry. Secrets are stored in Secret Manager. Infrastructure is managed with Terraform and remote state in a versioned GCS backend. GitHub Actions authenticates to GCP with Workload Identity Federation, not service-account keys.
+Deploy the app as a container to Cloud Run. Images are stored in Artifact Registry. Secrets are stored in Secret Manager and injected at explicit versions. Infrastructure is managed with Terraform and remote state in a versioned GCS backend. GitHub Actions authenticates to GCP with Workload Identity Federation, builds immutable commit-tagged images, deploys verified `main` revisions, and checks process health plus hosted-persistence readiness.
 
 Cloud Run may allow public unauthenticated invocation at the platform layer only after MatrixedMind enforces app-level auth for sensitive browser, internal API, and LLM API routes.
 

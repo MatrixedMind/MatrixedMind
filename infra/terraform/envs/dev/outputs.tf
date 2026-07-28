@@ -1,11 +1,11 @@
 output "artifact_registry_repository" {
   description = "Artifact Registry Docker repository resource name."
-  value       = google_artifact_registry_repository.containers.name
+  value       = module.artifact_registry.name
 }
 
 output "container_image_prefix" {
   description = "Prefix for MatrixedMind container image tags."
-  value       = "${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.containers.repository_id}/matrixedmind"
+  value       = "${var.region}-docker.pkg.dev/${var.project_id}/${module.artifact_registry.repository_id}/matrixedmind"
 }
 
 output "runtime_service_account_email" {
@@ -30,7 +30,7 @@ output "workload_identity_provider" {
 
 output "runtime_secret_ids" {
   description = "Secret Manager entries that require owner-provided versions."
-  value       = sort([for secret in google_secret_manager_secret.runtime : secret.secret_id])
+  value       = sort(values(module.runtime_secrets.secret_ids))
 }
 
 output "firestore_database" {
@@ -40,7 +40,7 @@ output "firestore_database" {
 
 output "cloud_run_service_uri" {
   description = "Cloud Run service URI when enable_cloud_run_service is true."
-  value       = var.enable_cloud_run_service ? google_cloud_run_v2_service.app[0].uri : null
+  value       = var.enable_cloud_run_service ? module.cloud_run_service[0].uri : null
 }
 
 output "firestore_spike_job_name" {

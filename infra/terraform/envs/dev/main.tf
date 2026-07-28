@@ -23,10 +23,16 @@ locals {
     "sts.googleapis.com",
   ])
 
-  runtime_secret_ids = toset([
-    "matrixedmind-dev-app-secret-key",
-    "matrixedmind-dev-llm-token-pepper",
-  ])
+  runtime_secrets = {
+    APP_SECRET_KEY = {
+      secret_id = "matrixedmind-dev-app-secret-key"
+      version   = var.app_secret_key_version
+    }
+    LLM_TOKEN_PEPPER = {
+      secret_id = "matrixedmind-dev-llm-token-pepper"
+      version   = var.llm_token_pepper_version
+    }
+  }
 
   firestore_oidc_uri = "mongodb://${google_firestore_database.mongo_compatible.uid}.${google_firestore_database.mongo_compatible.location_id}.firestore.goog:443/${google_firestore_database.mongo_compatible.name}?loadBalanced=true&tls=true&retryWrites=false&authMechanism=MONGODB-OIDC&authMechanismProperties=ENVIRONMENT:gcp,TOKEN_RESOURCE:FIRESTORE"
 }
@@ -40,12 +46,12 @@ resource "google_project_service" "required" {
   disable_on_destroy = false
 }
 
-resource "google_artifact_registry_repository" "containers" {
-  project       = var.project_id
+module "artifact_registry" {
+  source = "../../modules/artifact_registry"
+
+  project_id    = var.project_id
   location      = var.region
   repository_id = var.artifact_registry_repository_id
-  description   = "MatrixedMind container images"
-  format        = "DOCKER"
 
   depends_on = [google_project_service.required]
 }
@@ -74,26 +80,14 @@ resource "google_service_account" "firestore_spike" {
   depends_on = [google_project_service.required]
 }
 
-resource "google_secret_manager_secret" "runtime" {
-  for_each = local.runtime_secret_ids
+module "runtime_secrets" {
+  source = "../../modules/runtime_secrets"
 
-  project   = var.project_id
-  secret_id = each.value
-
-  replication {
-    auto {}
-  }
+  project_id      = var.project_id
+  accessor_member = google_service_account.runtime.member
+  secrets         = local.runtime_secrets
 
   depends_on = [google_project_service.required]
-}
-
-resource "google_secret_manager_secret_iam_member" "runtime_secret_accessor" {
-  for_each = local.runtime_secret_ids
-
-  project   = var.project_id
-  secret_id = google_secret_manager_secret.runtime[each.key].secret_id
-  role      = "roles/secretmanager.secretAccessor"
-  member    = google_service_account.runtime.member
 }
 
 resource "google_project_iam_member" "runtime_firestore_user" {
@@ -123,6 +117,12 @@ resource "google_project_iam_member" "github_run_admin" {
 resource "google_service_account_iam_member" "github_can_act_as_runtime" {
   service_account_id = google_service_account.runtime.name
   role               = "roles/iam.serviceAccountUser"
+  member             = google_service_account.github_deployer.member
+}
+
+resource "google_service_account_iam_member" "github_can_mint_identity_token" {
+  service_account_id = google_service_account.github_deployer.name
+  role               = "roles/iam.serviceAccountTokenCreator"
   member             = google_service_account.github_deployer.member
 }
 
@@ -266,62 +266,34 @@ resource "google_service_account_iam_member" "github_workload_identity_user" {
   member             = "principalSet://iam.googleapis.com/${google_iam_workload_identity_pool.github.name}/attribute.repository/${var.github_repository}"
 }
 
-resource "google_cloud_run_v2_service" "app" {
+module "cloud_run_service" {
   count = var.enable_cloud_run_service ? 1 : 0
 
-  project             = var.project_id
-  name                = var.cloud_run_service_name
-  location            = var.region
-  ingress             = "INGRESS_TRAFFIC_ALL"
-  deletion_protection = true
+  source = "../../modules/cloud_run_service"
 
-  template {
-    service_account = google_service_account.runtime.email
-
-    containers {
-      image = var.container_image
-
-      ports {
-        container_port = 8080
-      }
-
-      env {
-        name  = "APP_ENV"
-        value = "production"
-      }
-
-      env {
-        name  = "AUTH_MODE"
-        value = "production"
-      }
-
-      env {
-        name  = "MONGO_URI"
-        value = local.firestore_oidc_uri
-      }
-
-      env {
-        name  = "MONGO_ENSURE_INDEXES"
-        value = "false"
-      }
-    }
+  project_id            = var.project_id
+  name                  = var.cloud_run_service_name
+  location              = var.region
+  container_image       = var.container_image
+  service_account_email = google_service_account.runtime.email
+  allow_unauthenticated = var.allow_unauthenticated_cloud_run
+  invoker_members       = [google_service_account.github_deployer.member]
+  environment_variables = {
+    APP_ENV              = "production"
+    AUTH_MODE            = "production"
+    MONGO_URI            = local.firestore_oidc_uri
+    MONGO_ENSURE_INDEXES = "false"
   }
-
-  lifecycle {
-    precondition {
-      condition     = var.container_image != ""
-      error_message = "container_image must be set when enable_cloud_run_service is true."
-    }
-  }
+  secret_environment_variables = module.runtime_secrets.secret_env
 
   depends_on = [
-    google_artifact_registry_repository.containers,
+    module.artifact_registry,
     google_firestore_index.audit_target,
     google_firestore_index.audit_timestamp,
     google_firestore_index.llm_token_hash_unique,
     google_firestore_index.records_space_parent,
     google_firestore_index.records_space_slug_unique,
-    google_secret_manager_secret_iam_member.runtime_secret_accessor,
+    module.runtime_secrets,
     google_project_iam_member.runtime_firestore_user,
   ]
 }
@@ -360,21 +332,11 @@ resource "google_cloud_run_v2_job" "firestore_spike" {
   }
 
   depends_on = [
-    google_artifact_registry_repository.containers,
+    module.artifact_registry,
     google_firestore_index.records_space_slug_unique,
     google_firestore_index.records_space_parent,
     google_project_iam_member.firestore_spike_user,
   ]
-}
-
-resource "google_cloud_run_v2_service_iam_member" "public_invoker" {
-  count = var.enable_cloud_run_service && var.allow_unauthenticated_cloud_run ? 1 : 0
-
-  project  = var.project_id
-  location = var.region
-  name     = google_cloud_run_v2_service.app[0].name
-  role     = "roles/run.invoker"
-  member   = "allUsers"
 }
 
 resource "google_billing_budget" "dev" {

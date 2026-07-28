@@ -206,6 +206,7 @@ cython_debug/
 *.tfstate.*
 *.tfvars
 !*.tfvars.example
+*.tfplan
 crash.log
 crash.*.log
 override.tf

@@ -703,32 +703,32 @@ Deploy MatrixedMind to Cloud Run with hosted persistence and managed secrets.
 
 #### AI agent implementation tasks
 
-- [ ] Define reusable modules in `infra/terraform/modules/*`.
-- [ ] Configure GCS backend with versioning.
-- [ ] Add Artifact Registry.
-- [ ] Build the Docker image.
-- [ ] Add Cloud Run service.
-- [ ] Add runtime service account.
-- [ ] Add Secret Manager integration for runtime secrets.
-- [ ] Configure Firestore Enterprise Mongo-compatible connection through secrets/configuration.
-- [ ] Configure Cloud Run environment variables and secret mounts.
-- [ ] Add health and readiness checks for the deployed service.
-- [ ] Add GitHub Actions Workload Identity Federation.
-- [ ] Document deployment commands and manual setup steps.
-- [ ] Confirm public Cloud Run invocation is enabled only after app-level auth protects sensitive routes.
+- [x] Define reusable modules in `infra/terraform/modules/*`.
+- [x] Configure GCS backend with versioning.
+- [x] Add Artifact Registry.
+- [x] Build the Docker image.
+- [x] Add Cloud Run service.
+- [x] Add runtime service account.
+- [x] Add Secret Manager integration for runtime secrets.
+- [x] Configure Firestore Enterprise Mongo-compatible connection through secrets/configuration.
+- [x] Configure Cloud Run environment variables and secret mounts.
+- [x] Add health and readiness checks for the deployed service.
+- [x] Add GitHub Actions Workload Identity Federation.
+- [x] Document deployment commands and manual setup steps.
+- [x] Confirm public Cloud Run invocation is enabled only after app-level auth protects sensitive routes.
 
 ### Verification
 
-- [ ] `terraform fmt -check`
-- [ ] `terraform validate`
-- [ ] `terraform plan`
-- [ ] Docker image builds.
+- [x] `terraform fmt -check`
+- [x] `terraform validate`
+- [x] `terraform plan`
+- [x] Docker image builds.
 - [ ] Image is pushed to Artifact Registry.
 - [ ] Cloud Run deploys.
 - [ ] Runtime secrets are read from Secret Manager.
 - [ ] Cloud Run health endpoint responds.
 - [ ] Cloud Run readiness endpoint verifies hosted persistence.
-- [ ] Service exposure is intentional and documented.
+- [x] Service exposure is intentional and documented.
 
 ### Done when
 
