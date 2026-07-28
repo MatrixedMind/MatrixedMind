@@ -89,17 +89,34 @@ jobs:
           --image="$IMAGE_URI"
           --quiet
 
-      - name: Verify health and hosted persistence readiness
+      - name: Resolve Cloud Run service URL
         run: |
           service_url="$(gcloud run services describe "$GCP_CLOUD_RUN_SERVICE" \
             --project="$GCP_PROJECT_ID" \
             --region="$GCP_REGION" \
             --format='value(status.url)')"
-          identity_token="$(gcloud auth print-identity-token \
-            --impersonate-service-account="$GCP_DEPLOYER_SERVICE_ACCOUNT" \
-            --audiences="$service_url" \
-            --include-email)"
+          if [[ -z "$service_url" ]]; then
+            echo "::error::Cloud Run did not return a service URL."
+            exit 1
+          fi
+          echo "SERVICE_URL=$service_url" >> "$GITHUB_ENV"
+
+      - id: cloud-run-auth
+        name: Mint Cloud Run identity token
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
+        with:
+          project_id: ${{ vars.GCP_PROJECT_ID }}
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOYER_SERVICE_ACCOUNT }}
+          token_format: id_token
+          id_token_audience: ${{ env.SERVICE_URL }}
+          id_token_include_email: true
+
+      - name: Verify health and hosted persistence readiness
+        env:
+          CLOUD_RUN_ID_TOKEN: ${{ steps.cloud-run-auth.outputs.id_token }}
+        run: |
           curl --fail --show-error --silent --retry 6 --retry-all-errors \
-            --header "Authorization: Bearer $identity_token" "$service_url/health"
+            --header "Authorization: Bearer $CLOUD_RUN_ID_TOKEN" "$SERVICE_URL/health"
           curl --fail --show-error --silent --retry 6 --retry-all-errors \
-            --header "Authorization: Bearer $identity_token" "$service_url/ready"
+            --header "Authorization: Bearer $CLOUD_RUN_ID_TOKEN" "$SERVICE_URL/ready"

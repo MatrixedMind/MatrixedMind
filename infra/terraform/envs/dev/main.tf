@@ -120,12 +120,6 @@ resource "google_service_account_iam_member" "github_can_act_as_runtime" {
   member             = google_service_account.github_deployer.member
 }
 
-resource "google_service_account_iam_member" "github_can_mint_identity_token" {
-  service_account_id = google_service_account.github_deployer.name
-  role               = "roles/iam.serviceAccountTokenCreator"
-  member             = google_service_account.github_deployer.member
-}
-
 resource "google_firestore_database" "mongo_compatible" {
   project     = var.project_id
   name        = var.firestore_database_id

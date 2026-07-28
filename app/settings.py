@@ -25,8 +25,9 @@ class Settings(BaseSettings):
             raise ValueError("production APP_ENV requires AUTH_MODE=production")
         if self.app_env != "production" and self.auth_mode == "production":
             raise ValueError("production auth may only be enabled in production APP_ENV")
-        if self.app_env == "production" and (
-            self.app_secret_key is None or self.llm_token_pepper is None
+        managed_secrets = (self.app_secret_key, self.llm_token_pepper)
+        if self.app_env == "production" and any(
+            secret is None or not secret.get_secret_value().strip() for secret in managed_secrets
         ):
             raise ValueError("production APP_ENV requires managed runtime secrets")
         return self

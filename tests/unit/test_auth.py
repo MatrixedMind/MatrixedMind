@@ -30,6 +30,28 @@ def test_production_settings_require_managed_runtime_secrets() -> None:
         Settings(app_env="production", auth_mode="production")
 
 
+@pytest.mark.parametrize(
+    ("app_secret_key", "llm_token_pepper"),
+    [
+        ("", "llm-pepper"),
+        ("   ", "llm-pepper"),
+        ("app-secret", ""),
+        ("app-secret", "\t"),
+    ],
+)
+def test_production_settings_reject_blank_managed_runtime_secrets(
+    app_secret_key: str,
+    llm_token_pepper: str,
+) -> None:
+    with pytest.raises(ValueError, match="requires managed runtime secrets"):
+        Settings(
+            app_env="production",
+            auth_mode="production",
+            app_secret_key=app_secret_key,
+            llm_token_pepper=llm_token_pepper,
+        )
+
+
 def test_production_settings_accept_managed_runtime_secrets() -> None:
     production = Settings(
         app_env="production",
