@@ -10,7 +10,9 @@ Milestone 4 is implemented and verified for record create, read, update, list, r
 
 Milestone 5 is implemented and verified for a minimal server-rendered browser shell, shared layout, home/detail/editor pages, create/edit form handling, simple navigation, safe Markdown rendering, private/noindex defaults, and delayed indexing for public records.
 
-Milestone 6 is now the current implementation focus: owner auth and the LLM write API. The roadmap then continues through Firestore MongoDB compatibility verification, CI, Cloud Run deployment, ChatGPT Action integration, and cloud hardening. Import/export is deferred until after that secure cloud path unless recovery needs pull it forward.
+Milestone 6 is implemented and verified for owner auth boundaries, deterministic dev/test identities, centralized authorization policy, hashed/scoped/revocable LLM tokens, narrow private-by-default LLM record operations, revision and audit attribution, request limits, and forbidden capability handling.
+
+Milestone 7 is now the current implementation focus: the Firestore MongoDB compatibility spike. The roadmap then continues through CI, Cloud Run deployment, ChatGPT Action integration, and cloud hardening. Import/export is deferred until after that secure cloud path unless recovery needs pull it forward.
 
 The repo already contains provisional pieces of later milestones, including an auth dependency placeholder and server-rendered pages. Treat that code as material to harden, not as permission to skip milestone verification.
 
@@ -26,7 +28,8 @@ The repo already contains provisional pieces of later milestones, including an a
 - `app/adapters/mongo/repository.py` contains a MongoDB repository hardened against the repository contract with unique slug indexes and update revisions.
 - `app/api/routes/records.py` exposes create, read, update, and list record routes with domain-aligned request schemas and consistent duplicate/not-found error handling.
 - `app/web/routes/__init__.py` and `app/web/templates/` expose a minimal server-rendered home page, record detail page, record editor pages, and browser form handling.
-- `app/auth/dependencies.py` contains a local dev-user placeholder and a production-not-implemented branch.
+- `app/auth/dependencies.py` contains the stable owner auth boundary, deterministic dev/test identities, fail-closed production behavior, hashed LLM bearer-token authentication, and process-local rate limiting.
+- `app/api/routes/llm.py` exposes narrow scoped LLM record upsert, read, and list operations with private/draft/noindex defaults, revision attribution, and append-only audit events.
 
 ## Roadmap decisions
 
@@ -493,47 +496,47 @@ Enforce owner authentication for browser/internal routes and add a narrow, scope
 
 #### AI agent implementation tasks
 
-- [ ] Define an owner auth dependency boundary.
-- [ ] Add a dev user mode for local work.
-- [ ] Add a token auth mode for LLM API requests.
-- [ ] Add an LLM API token model.
-- [ ] Store only hashed LLM tokens.
-- [ ] Add token scopes for allowed operations.
-- [ ] Limit tokens to allowed spaces.
-- [ ] Add token revocation.
-- [ ] Protect record write routes.
-- [ ] Add user context to record creation and revisions.
-- [ ] Add policy-aware filtering so list/read queries only return discoverable resources.
-- [ ] Attribute LLM writes to a synthetic actor such as `llm:chatgpt`.
-- [ ] Add `POST /api/llm/records/upsert`.
-- [ ] Add `GET /api/llm/records/{space}/{slug}`.
-- [ ] Add `GET /api/llm/records`.
-- [ ] Default LLM-created records to private, draft, and noindex.
-- [ ] Ensure every LLM write creates a revision.
-- [ ] Ensure every LLM write creates an audit event.
-- [ ] Add LLM API rate limits.
-- [ ] Add LLM API body size limits.
-- [ ] Reject LLM attempts to delete records.
-- [ ] Reject LLM attempts to publish records.
-- [ ] Reject LLM attempts to change visibility.
-- [ ] Reject LLM attempts to change indexing policy.
-- [ ] Reject LLM attempts to change sharing policy.
-- [ ] Reject LLM attempts to change auth settings.
-- [ ] Reject LLM admin actions.
-- [ ] Reject LLM bulk import.
+- [x] Define an owner auth dependency boundary.
+- [x] Add a dev user mode for local work.
+- [x] Add a token auth mode for LLM API requests.
+- [x] Add an LLM API token model.
+- [x] Store only hashed LLM tokens.
+- [x] Add token scopes for allowed operations.
+- [x] Limit tokens to allowed spaces.
+- [x] Add token revocation.
+- [x] Protect record write routes.
+- [x] Add user context to record creation and revisions.
+- [x] Add policy-aware filtering so list/read queries only return discoverable resources.
+- [x] Attribute LLM writes to a synthetic actor such as `llm:chatgpt`.
+- [x] Add `POST /api/llm/records/upsert`.
+- [x] Add `GET /api/llm/records/{space}/{slug}`.
+- [x] Add `GET /api/llm/records`.
+- [x] Default LLM-created records to private, draft, and noindex.
+- [x] Ensure every LLM write creates a revision.
+- [x] Ensure every LLM write creates an audit event.
+- [x] Add LLM API rate limits.
+- [x] Add LLM API body size limits.
+- [x] Reject LLM attempts to delete records.
+- [x] Reject LLM attempts to publish records.
+- [x] Reject LLM attempts to change visibility.
+- [x] Reject LLM attempts to change indexing policy.
+- [x] Reject LLM attempts to change sharing policy.
+- [x] Reject LLM attempts to change auth settings.
+- [x] Reject LLM admin actions.
+- [x] Reject LLM bulk import.
 
 ### Verification
 
-- [ ] Unauthenticated requests are rejected or redirected.
-- [ ] Dev user can access protected routes.
-- [ ] Tests cover allowed and denied cases.
-- [ ] Tests cover share scenarios for each principal type and verify precedence behavior.
-- [ ] Cross-space reference and backlink queries do not leak private-space metadata.
-- [ ] Tests prove allowed LLM reads and writes work inside allowed spaces.
-- [ ] Tests prove forbidden LLM behavior is rejected.
-- [ ] Tests prove revoked LLM tokens fail.
-- [ ] Tests prove LLM writes create revisions and audit events.
-- [ ] `uv run pytest`
+- [x] Unauthenticated requests are rejected or redirected.
+- [x] Dev user can access protected routes.
+- [x] Tests cover allowed and denied cases.
+- [x] Tests cover share scenarios for each principal type and verify precedence behavior.
+- [x] Cross-space reads do not leak private-space metadata; backlink queries are not implemented.
+- [x] Tests prove allowed LLM reads and writes work inside allowed spaces.
+- [x] Tests prove forbidden LLM behavior is rejected.
+- [x] Tests prove revoked LLM tokens fail.
+- [x] Tests prove LLM writes create revisions and audit events.
+- [x] `uv run pytest`
 
 ### Done when
 

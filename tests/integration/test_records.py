@@ -6,7 +6,9 @@ from fastapi.testclient import TestClient
 
 from app.adapters.memory.repository import InMemoryRecordRepository
 from app.dependencies import get_record_repository
+from app.domain.models import Record
 from app.main import app
+from app.settings import settings
 
 
 @pytest.fixture
@@ -31,6 +33,39 @@ def record_payload(slug: str = "hello-world") -> dict[str, object]:
         "body_markdown": "# Hello\nThis is a test.",
         "tags": ["test", "integration"],
     }
+
+
+def test_protected_routes_require_identity_outside_dev_mode(
+    client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(settings, "auth_mode", "test")
+    assert client.get("/").status_code == 401
+    assert client.post("/api/records/", json=record_payload()).status_code == 401
+    assert client.get("/", headers={"X-Test-User-Id": "owner"}).status_code == 200
+
+
+def test_read_and_list_filter_private_records_owned_by_another_user(
+    client: TestClient,
+    repo: InMemoryRecordRepository,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    repo.create(
+        Record(
+            space="test",
+            slug="someone-elses-private-record",
+            title="Private",
+            body_markdown="# Private",
+            owner_id="another-user",
+        )
+    )
+    monkeypatch.setattr(settings, "auth_mode", "test")
+    headers = {"X-Test-User-Id": "owner"}
+    assert (
+        client.get("/api/records/test/someone-elses-private-record", headers=headers).status_code
+        == 404
+    )
+    assert client.get("/api/records/test", headers=headers).json() == []
 
 
 def test_create_and_get_record(client: TestClient) -> None:

@@ -1,8 +1,10 @@
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, HTTPException, status
+from fastapi import FastAPI, HTTPException, Request, Response, status
+from fastapi.responses import JSONResponse
 from pymongo.errors import PyMongoError
+from starlette.middleware.base import RequestResponseEndpoint
 
 from app.adapters.mongo.connection import MongoConnection
 from app.api.routes import router as api_router
@@ -18,6 +20,47 @@ async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
 
 
 app = FastAPI(title="MatrixedMind", lifespan=lifespan)
+
+
+async def buffer_limited_request_body(request: Request, limit: int) -> bool:
+    chunks: list[bytes] = []
+    total_size = 0
+    async for chunk in request.stream():
+        total_size += len(chunk)
+        if total_size > limit:
+            return False
+        chunks.append(chunk)
+    request._body = b"".join(chunks)
+    return True
+
+
+@app.middleware("http")
+async def enforce_llm_body_limit(
+    request: Request,
+    call_next: RequestResponseEndpoint,
+) -> Response:
+    if request.url.path.startswith("/api/llm/"):
+        content_length = request.headers.get("content-length")
+        if content_length is not None:
+            try:
+                declared_size = int(content_length)
+            except ValueError:
+                return JSONResponse(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    content={"detail": "Invalid Content-Length"},
+                )
+            if declared_size > settings.llm_request_body_limit_bytes:
+                return JSONResponse(
+                    status_code=status.HTTP_413_CONTENT_TOO_LARGE,
+                    content={"detail": "Request body too large"},
+                )
+        if not await buffer_limited_request_body(request, settings.llm_request_body_limit_bytes):
+            return JSONResponse(
+                status_code=status.HTTP_413_CONTENT_TOO_LARGE,
+                content={"detail": "Request body too large"},
+            )
+    return await call_next(request)
+
 
 app.include_router(api_router, prefix="/api")
 app.include_router(web_router)

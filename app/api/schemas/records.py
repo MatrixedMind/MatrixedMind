@@ -135,6 +135,10 @@ class RecordResponse(BaseModel):
     body_markdown: str
     tags: list[str]
     visibility: RecordVisibility
+    draft: bool
     index_after: datetime | None
+    owner_id: str
+    created_by: str
+    updated_by: str
     created_at: datetime
     updated_at: datetime

@@ -38,6 +38,7 @@ def test_mongo_repository_rejects_duplicate_slugs(repo: MongoRecordRepository) -
             slug="daily-note",
             title="Daily Note",
             body_markdown="# Daily Note",
+            owner_id="owner",
         )
     )
 
@@ -48,6 +49,7 @@ def test_mongo_repository_rejects_duplicate_slugs(repo: MongoRecordRepository) -
                 slug="daily-note",
                 title="Duplicate Daily Note",
                 body_markdown="# Duplicate",
+                owner_id="owner",
             )
         )
 
@@ -57,6 +59,7 @@ def test_mongo_repository_rejects_duplicate_slugs(repo: MongoRecordRepository) -
             slug="daily-note",
             title="Work Daily Note",
             body_markdown="# Work Daily Note",
+            owner_id="owner",
         )
     )
 
@@ -70,6 +73,8 @@ def test_mongo_repository_update_creates_revision(repo: MongoRecordRepository) -
             slug="revision-test",
             title="Revision Test",
             body_markdown="# Original",
+            owner_id="owner",
+            updated_by="original-author",
         )
     )
     assert created.id is not None
@@ -81,6 +86,7 @@ def test_mongo_repository_update_creates_revision(repo: MongoRecordRepository) -
             slug="revision-test",
             title="Revision Test",
             body_markdown="# Updated",
+            owner_id="owner",
         ),
     )
     fetched = repo.get_by_slug("personal", "revision-test")
@@ -90,7 +96,7 @@ def test_mongo_repository_update_creates_revision(repo: MongoRecordRepository) -
     assert fetched.body_markdown == "# Updated"
     assert len(fetched.revisions) == 1
     assert fetched.revisions[0].body_markdown == "# Original"
-    assert fetched.revisions[0].author_id == "system"
+    assert fetched.revisions[0].author_id == "original-author"
 
 
 def test_mongo_repository_lists_by_space_and_parent(repo: MongoRecordRepository) -> None:
@@ -100,6 +106,7 @@ def test_mongo_repository_lists_by_space_and_parent(repo: MongoRecordRepository)
             slug="root",
             title="Root",
             body_markdown="# Root",
+            owner_id="owner",
         )
     )
     assert root.id is not None
@@ -110,6 +117,7 @@ def test_mongo_repository_lists_by_space_and_parent(repo: MongoRecordRepository)
             slug="child",
             title="Child",
             body_markdown="# Child",
+            owner_id="owner",
         )
     )
     repo.create(
@@ -118,6 +126,7 @@ def test_mongo_repository_lists_by_space_and_parent(repo: MongoRecordRepository)
             slug="root",
             title="Work Root",
             body_markdown="# Work Root",
+            owner_id="owner",
         )
     )
 
@@ -136,5 +145,6 @@ def test_mongo_repository_update_missing_record_raises_key_error(
                 slug="missing",
                 title="Missing",
                 body_markdown="# Missing",
+                owner_id="owner",
             ),
         )

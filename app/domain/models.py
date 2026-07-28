@@ -38,7 +38,11 @@ class Record(BaseModel):
     body_markdown: str
     tags: list[str] = Field(default_factory=list)
     visibility: RecordVisibility = "private"
+    draft: bool = True
     index_after: datetime | None = None
+    owner_id: str
+    created_by: str = "system"
+    updated_by: str = "system"
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     revisions: list[RecordRevision] = Field(default_factory=list)
@@ -48,6 +52,13 @@ class Record(BaseModel):
     def validate_optional_identifier(value: str | None) -> str | None:
         if value is not None and not value.strip():
             raise ValueError("identifier must not be empty")
+        return value
+
+    @field_validator("owner_id", "created_by", "updated_by")
+    @staticmethod
+    def validate_actor_identifier(value: str) -> str:
+        if not value.strip():
+            raise ValueError("actor identifier must not be empty")
         return value
 
     @field_validator("space", "slug")
@@ -122,6 +133,7 @@ class Tag(BaseModel):
 class User(BaseModel):
     id: str
     display_name: str
+    principal_type: Literal["user"] = "user"
 
     @field_validator("id")
     @staticmethod
@@ -152,3 +164,46 @@ class Membership(BaseModel):
     @staticmethod
     def validate_member_space(value: str) -> str:
         return validate_slug(value)
+
+
+LlmTokenScope = Literal["records:read", "records:write"]
+
+
+class LlmApiToken(BaseModel):
+    id: str
+    name: str
+    token_hash: str
+    scopes: frozenset[LlmTokenScope]
+    allowed_spaces: frozenset[str]
+    owner_id: str
+    actor_id: str = "llm:chatgpt"
+    revoked_at: datetime | None = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+    @field_validator("id", "name", "token_hash", "actor_id", "owner_id")
+    @staticmethod
+    def validate_token_text(value: str) -> str:
+        if not value.strip():
+            raise ValueError("token value must not be empty")
+        return value
+
+    @field_validator("allowed_spaces")
+    @classmethod
+    def validate_allowed_spaces(cls, value: frozenset[str]) -> frozenset[str]:
+        if not value:
+            raise ValueError("at least one allowed space is required")
+        return frozenset(validate_slug(space) for space in value)
+
+    @property
+    def is_revoked(self) -> bool:
+        return self.revoked_at is not None
+
+
+class AuditEvent(BaseModel):
+    id: str
+    actor_id: str
+    action: str
+    target_type: str
+    target_id: str
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    details: dict[str, str] = Field(default_factory=dict)

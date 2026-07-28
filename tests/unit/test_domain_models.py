@@ -3,7 +3,7 @@ from datetime import UTC, datetime
 import pytest
 from pydantic import ValidationError
 
-from app.domain.models import Membership, Record, RecordRevision, Space, Tag, User
+from app.domain.models import LlmApiToken, Membership, Record, RecordRevision, Space, Tag, User
 
 
 def test_record_validates_and_normalizes_core_fields() -> None:
@@ -14,6 +14,7 @@ def test_record_validates_and_normalizes_core_fields() -> None:
         title="  Hello World  ",
         body_markdown="# Hello",
         tags=["daily-notes"],
+        owner_id="user-1",
     )
 
     assert record.title == "Hello World"
@@ -22,15 +23,52 @@ def test_record_validates_and_normalizes_core_fields() -> None:
 
 def test_record_rejects_invalid_slug_and_markdown() -> None:
     with pytest.raises(ValidationError):
-        Record(space="personal", slug="Hello World", title="Hello", body_markdown="# Hello")
-
+        Record(
+            space="personal",
+            slug="Hello World",
+            title="Hello",
+            body_markdown="# Hello",
+            owner_id="user-1",
+        )
     with pytest.raises(ValidationError):
-        Record(space="personal", slug="hello", title="Hello", body_markdown="   ")
+        Record(
+            space="personal",
+            slug="hello",
+            title="Hello",
+            body_markdown="   ",
+            owner_id="user-1",
+        )
+
+
+def test_record_and_llm_token_require_explicit_owners() -> None:
+    with pytest.raises(ValidationError, match="owner_id"):
+        Record(space="personal", slug="note", title="Note", body_markdown="# Note")
+
+    with pytest.raises(ValidationError, match="owner_id"):
+        LlmApiToken(
+            id="token-1",
+            name="ChatGPT",
+            token_hash="hash",
+            scopes=frozenset({"records:read"}),
+            allowed_spaces=frozenset({"personal"}),
+        )
 
 
 def test_record_list_defaults_are_not_shared() -> None:
-    first = Record(space="personal", slug="first", title="First", body_markdown="# First")
-    second = Record(space="personal", slug="second", title="Second", body_markdown="# Second")
+    first = Record(
+        space="personal",
+        slug="first",
+        title="First",
+        body_markdown="# First",
+        owner_id="user-1",
+    )
+    second = Record(
+        space="personal",
+        slug="second",
+        title="Second",
+        body_markdown="# Second",
+        owner_id="user-1",
+    )
 
     first.tags.append("one")
     first.revisions.append(
@@ -70,7 +108,13 @@ def test_domain_models_reject_blank_identifiers_and_invalid_labels() -> None:
 
 
 def test_record_optional_fields_default_to_empty_relationships() -> None:
-    record = Record(space="personal", slug="standalone", title="Standalone", body_markdown="# Note")
+    record = Record(
+        space="personal",
+        slug="standalone",
+        title="Standalone",
+        body_markdown="# Note",
+        owner_id="user-1",
+    )
 
     assert record.id is None
     assert record.parent_id is None

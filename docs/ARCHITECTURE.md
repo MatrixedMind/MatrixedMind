@@ -8,12 +8,12 @@ MatrixedMind is a single FastAPI service serving HTML and JSON. It is a Python-f
 
 - Web routes: server-rendered pages for the local personal knowledge experience in `app/web/routes/`.
 - API routes: JSON endpoints for records and future automation in `app/api/routes/`. The future LLM-facing API must live behind a separate `/api/llm/*` boundary rather than exposing the normal app API to ChatGPT.
-- Domain models: Python/Pydantic models in `app/domain/models.py`. The current implemented models are `Record`, `RecordRevision`, `Space`, `Tag`, `User`, and `Membership`.
+- Domain models: Python/Pydantic models in `app/domain/models.py`. The implemented models include records, revisions, users, memberships, scoped LLM tokens, and append-only audit events.
 - Domain validation: reusable slug, path, title, and Markdown rules in `app/domain/validation.py`.
-- Domain policy: provisional crawler/indexing policy helpers in `app/domain/policy.py`. Records are private and noindex by default. Public records receive a 7-day `index_after` delay unless an explicit override is provided.
+- Domain policy: centralized authorization and crawler/indexing helpers in `app/domain/policy.py`. Explicit rules support all five ADR 0007 principal types, deny overrides allow, and record/space/global inheritance is deterministic. Records are private and noindex by default.
 - Repository interfaces: protocols in `app/domain/ports.py` used by application code.
 - Storage adapters: memory and MongoDB adapters under `app/adapters/`, with future storage choices kept behind repository interfaces.
-- Auth layer: local/dev auth placeholder in `app/auth/dependencies.py`; production auth is intentionally not implemented yet.
+- Auth layer: `app/auth/dependencies.py` exposes a stable owner dependency, deterministic dev/test identities, fail-closed production behavior, and SHA-256 lookup of scoped, revocable LLM bearer tokens. Raw LLM tokens are never persisted.
 - Import/export commands: planned portable Markdown and metadata round trips.
 - GCP infrastructure: planned Terraform-managed Cloud Run, Artifact Registry, Secret Manager, Firestore Enterprise MongoDB compatibility, and supporting IAM.
 
@@ -27,7 +27,7 @@ Repository behavior is defined by reusable contract assertions under `tests/cont
 
 For the Cloud MVP, Firestore Enterprise edition with MongoDB compatibility is the preferred cloud persistence target. This must be verified by running repository contract tests against Firestore compatibility before cloud deployment is considered unblocked. Local Docker Compose MongoDB remains the local development path. MongoDB Atlas is fallback only if Firestore compatibility blocks the MVP.
 
-The current embedded revision array is acceptable for the local pre-MVP adapter, but it should not grow unbounded in the cloud shape. Revisions should move toward append-only `record_revisions` documents, with LLM and other writes also creating append-only `audit_events`.
+The current embedded revision array is acceptable for the MVP adapter, but it should not grow unbounded long term. LLM creates and updates produce attributed revisions, while audit events are stored append-only in a separate collection.
 
 ## Cloud MVP architecture
 
@@ -59,7 +59,7 @@ GET  /api/llm/records/{space}/{slug}
 GET  /api/llm/records
 ```
 
-The LLM boundary must remain scoped, non-destructive, and private-by-default. LLM-created records should default to private, draft, and noindex, and each LLM write should be attributed to a synthetic actor such as `llm:chatgpt`.
+The LLM boundary is scoped, non-destructive, private/draft/noindex by default, bounded-stream body-size limited, and process-rate-limited. Tokens require an explicit owner and restrict operations and spaces. Every LLM write is attributed to `llm:chatgpt`, creates a revision, and appends an audit event. Distributed rate limiting remains a deployment-hardening concern if MatrixedMind scales beyond one Cloud Run instance.
 
 Cloud Run filesystems are not persistent, so hosted persistence is required for deployed records, revisions, audit events, and LLM token metadata.
 
@@ -78,8 +78,11 @@ Cloud Run filesystems are not persistent, so hosted persistence is required for 
 - `GET /api/records/{space}`: list records for a space, optionally by `parent_id`.
 - `GET /api/records/{space}/{slug}`: read a record by space and slug.
 - `PUT /api/records/{space}/{slug}`: partially update a record identified by space and slug. Supplied fields are validated with the same domain rules as create requests, then merged into the existing record before repository update. Private-to-public visibility changes set `index_after` to 7 days in the future unless an explicit override is supplied.
+- `POST /api/llm/records/upsert`: scoped create/update with a deliberately fixed private, draft, and noindex policy.
+- `GET /api/llm/records/{space}/{slug}`: scoped LLM record read.
+- `GET /api/llm/records?space={space}`: scoped LLM record list.
 
-No production auth flow, import/export command, or Terraform-managed deployment is implemented yet.
+Production browser identity-provider integration, import/export, and Terraform-managed deployment are not implemented yet.
 
 ## Deployment strategy
 

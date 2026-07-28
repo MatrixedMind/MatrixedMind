@@ -3,9 +3,14 @@ from typing import NoReturn
 from fastapi import APIRouter, HTTPException, status
 
 from app.api.schemas.records import RecordCreate, RecordResponse, RecordUpdate
+from app.auth.dependencies import CurrentUserDep
 from app.dependencies import RecordRepoDep
 from app.domain.models import Record
-from app.domain.policy import next_index_after_for_create, next_index_after_for_update
+from app.domain.policy import (
+    next_index_after_for_create,
+    next_index_after_for_update,
+    owner_can_discover_record,
+)
 
 router = APIRouter(prefix="/records", tags=["records"])
 
@@ -20,7 +25,7 @@ def _raise_missing_record() -> NoReturn:
 
 
 @router.post("/", response_model=RecordResponse, status_code=status.HTTP_201_CREATED)
-def create_record(record_in: RecordCreate, repo: RecordRepoDep) -> Record:
+def create_record(record_in: RecordCreate, repo: RecordRepoDep, user: CurrentUserDep) -> Record:
     existing = repo.get_by_slug(record_in.space, record_in.slug)
     if existing:
         _raise_duplicate_record(record_in.space, record_in.slug)
@@ -30,7 +35,7 @@ def create_record(record_in: RecordCreate, repo: RecordRepoDep) -> Record:
         record_in.visibility,
         record_in.index_after,
     )
-    record = Record(**record_data)
+    record = Record(**record_data, owner_id=user.id, created_by=user.id, updated_by=user.id)
     try:
         return repo.create(record)
     except ValueError as exc:
@@ -38,9 +43,11 @@ def create_record(record_in: RecordCreate, repo: RecordRepoDep) -> Record:
 
 
 @router.get("/{space}/{slug}", response_model=RecordResponse)
-def get_record(space: str, slug: str, repo: RecordRepoDep) -> Record:
+def get_record(space: str, slug: str, repo: RecordRepoDep, user: CurrentUserDep) -> Record:
     record = repo.get_by_slug(space, slug)
-    if not record:
+    if not record or not owner_can_discover_record(
+        owner_id=record.owner_id, visibility=record.visibility, user_id=user.id
+    ):
         _raise_missing_record()
     return record
 
@@ -51,9 +58,10 @@ def update_record(
     slug: str,
     record_in: RecordUpdate,
     repo: RecordRepoDep,
+    user: CurrentUserDep,
 ) -> Record:
     existing = repo.get_by_slug(space, slug)
-    if existing is None:
+    if existing is None or existing.owner_id != user.id:
         _raise_missing_record()
     if existing.id is None:
         raise HTTPException(
@@ -83,7 +91,7 @@ def update_record(
 
     updated = existing.model_copy(update=update_data)
     try:
-        return repo.update(existing.id, updated)
+        return repo.update(existing.id, updated, actor_id=user.id)
     except KeyError as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -94,5 +102,16 @@ def update_record(
 
 
 @router.get("/{space}", response_model=list[RecordResponse])
-def list_records(space: str, repo: RecordRepoDep, parent_id: str | None = None) -> list[Record]:
-    return repo.list_children(space, parent_id)
+def list_records(
+    space: str,
+    repo: RecordRepoDep,
+    user: CurrentUserDep,
+    parent_id: str | None = None,
+) -> list[Record]:
+    return [
+        record
+        for record in repo.list_children(space, parent_id)
+        if owner_can_discover_record(
+            owner_id=record.owner_id, visibility=record.visibility, user_id=user.id
+        )
+    ]

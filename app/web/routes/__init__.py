@@ -9,6 +9,7 @@ from markdown_it import MarkdownIt
 from pydantic import ValidationError
 
 from app.api.schemas.records import RecordCreate, RecordUpdate
+from app.auth.dependencies import CurrentUserDep
 from app.dependencies import RecordRepoDep
 from app.domain.models import Record
 from app.domain.policy import (
@@ -16,6 +17,7 @@ from app.domain.policy import (
     default_crawler_metadata,
     next_index_after_for_create,
     next_index_after_for_update,
+    owner_can_discover_record,
 )
 
 router = APIRouter()
@@ -128,9 +130,15 @@ def detail_redirect(record: Record) -> RedirectResponse:
 
 
 @router.get("/", response_class=HTMLResponse)
-def index(request: Request, repo: RecordRepoDep) -> Response:
+def index(request: Request, repo: RecordRepoDep, user: CurrentUserDep) -> Response:
     # Just list some records from the default space for now
-    records = repo.list_children("default", None)
+    records = [
+        record
+        for record in repo.list_children("default", None)
+        if owner_can_discover_record(
+            owner_id=record.owner_id, visibility=record.visibility, user_id=user.id
+        )
+    ]
     crawler_metadata = default_crawler_metadata()
     return templates.TemplateResponse(
         request=request,
@@ -144,7 +152,7 @@ def index(request: Request, repo: RecordRepoDep) -> Response:
 
 
 @router.get("/records/new", response_class=HTMLResponse)
-def new_record(request: Request) -> Response:
+def new_record(request: Request, _user: CurrentUserDep) -> Response:
     return render_editor(
         request=request,
         title="New Page",
@@ -157,7 +165,11 @@ def new_record(request: Request) -> Response:
 
 
 @router.post("/records/new", response_class=HTMLResponse)
-async def create_record_from_form(request: Request, repo: RecordRepoDep) -> Response:
+async def create_record_from_form(
+    request: Request,
+    repo: RecordRepoDep,
+    user: CurrentUserDep,
+) -> Response:
     form_data = await parse_urlencoded_form(request)
     record_values: dict[str, object] = {
         "space": form_data.get("space", ""),
@@ -202,14 +214,24 @@ async def create_record_from_form(request: Request, repo: RecordRepoDep) -> Resp
         record_in.visibility,
         record_in.index_after,
     )
-    record = repo.create(Record(**record_data))
+    record = repo.create(
+        Record(**record_data, owner_id=user.id, created_by=user.id, updated_by=user.id)
+    )
     return detail_redirect(record)
 
 
 @router.get("/{space}/{slug}/edit", response_class=HTMLResponse)
-def edit_record(request: Request, space: str, slug: str, repo: RecordRepoDep) -> Response:
+def edit_record(
+    request: Request,
+    space: str,
+    slug: str,
+    repo: RecordRepoDep,
+    user: CurrentUserDep,
+) -> Response:
     record = repo.get_by_slug(space, slug)
-    if not record:
+    if not record or not owner_can_discover_record(
+        owner_id=record.owner_id, visibility=record.visibility, user_id=user.id
+    ):
         raise HTTPException(status_code=404, detail="Record not found")
 
     return render_editor(
@@ -229,9 +251,10 @@ async def update_record_from_form(
     space: str,
     slug: str,
     repo: RecordRepoDep,
+    user: CurrentUserDep,
 ) -> Response:
     existing = repo.get_by_slug(space, slug)
-    if not existing:
+    if not existing or existing.owner_id != user.id:
         raise HTTPException(status_code=404, detail="Record not found")
     if existing.id is None:
         raise HTTPException(
@@ -295,7 +318,7 @@ async def update_record_from_form(
 
     updated = existing.model_copy(update=update_data)
     try:
-        record = repo.update(existing.id, updated)
+        record = repo.update(existing.id, updated, actor_id=user.id)
     except KeyError as exc:
         raise HTTPException(status_code=404, detail="Record not found") from exc
     except ValueError as exc:
@@ -315,9 +338,17 @@ async def update_record_from_form(
 
 
 @router.get("/{space}/{slug}", response_class=HTMLResponse)
-def view_record(request: Request, space: str, slug: str, repo: RecordRepoDep) -> Response:
+def view_record(
+    request: Request,
+    space: str,
+    slug: str,
+    repo: RecordRepoDep,
+    user: CurrentUserDep,
+) -> Response:
     record = repo.get_by_slug(space, slug)
-    if not record:
+    if not record or not owner_can_discover_record(
+        owner_id=record.owner_id, visibility=record.visibility, user_id=user.id
+    ):
         raise HTTPException(status_code=404, detail="Record not found")
 
     content_html = render_safe_markdown(record.body_markdown)
