@@ -723,11 +723,11 @@ Deploy MatrixedMind to Cloud Run with hosted persistence and managed secrets.
 - [x] `terraform validate`
 - [x] `terraform plan`
 - [x] Docker image builds.
-- [ ] Image is pushed to Artifact Registry.
-- [ ] Cloud Run deploys.
-- [ ] Runtime secrets are read from Secret Manager.
-- [ ] Cloud Run health endpoint responds.
-- [ ] Cloud Run readiness endpoint verifies hosted persistence.
+- [x] Image is pushed to Artifact Registry.
+- [x] Cloud Run deploys.
+- [x] Runtime secrets are read from Secret Manager.
+- [x] Cloud Run health endpoint responds.
+- [x] Cloud Run readiness endpoint verifies hosted persistence.
 - [x] Service exposure is intentional and documented.
 
 ### Done when

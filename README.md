@@ -20,7 +20,7 @@ Pre-MVP / active rebuild. The current codebase contains:
 
 The canonical working plan remains [docs/ROADMAP.md](docs/ROADMAP.md). Some code reaches ahead of the current milestone; treat it as provisional until the roadmap verification for that milestone is complete.
 
-The near-term cloud MVP direction is documented in [docs/CLOUD_MVP.md](docs/CLOUD_MVP.md). It targets Cloud Run, the GCP-verified Firestore Enterprise MongoDB-compatible repository path, and a narrow ChatGPT Custom GPT Action API. The Terraform foundation and compatibility-test job were applied and verified in the development GCP project during milestone 7. The milestone 9 application-service configuration and deployment workflow are implemented but still require an owner-provided image, secret versions, Terraform plan/apply, and first deployment verification.
+The near-term cloud MVP direction is documented in [docs/CLOUD_MVP.md](docs/CLOUD_MVP.md). It targets Cloud Run, the GCP-verified Firestore Enterprise MongoDB-compatible repository path, and a narrow ChatGPT Custom GPT Action API. The Terraform foundation and compatibility-test job were applied and verified in the development GCP project during milestone 7. The private milestone 9 Cloud Run application service, managed secret versions, hosted persistence readiness, and deployment workflow were deployed and verified on 2026-07-28.
 
 ## Developer quickstart
 

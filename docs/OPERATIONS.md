@@ -145,9 +145,12 @@ Build and push the first immutable image:
 ```bash
 export MATRIXEDMIND_IMAGE="<region>-docker.pkg.dev/<project>/matrixedmind/matrixedmind:$(git rev-parse HEAD)"
 gcloud auth configure-docker "<region>-docker.pkg.dev"
-docker build --tag "$MATRIXEDMIND_IMAGE" .
+docker build --platform linux/amd64 --tag "$MATRIXEDMIND_IMAGE" .
 docker push "$MATRIXEDMIND_IMAGE"
 ```
+
+The explicit platform is required when building from Apple Silicon because Cloud Run requires an
+image manifest with Linux AMD64 support. GitHub's Ubuntu deployment runner already builds AMD64.
 
 Set `container_image` to that URI, set the two secret-version variables to the numbered versions
 that were created, and set `enable_cloud_run_service = true`. Keep
@@ -188,18 +191,26 @@ and exposure. Run and apply a reviewed Terraform plan for those changes.
 
 ### Manual verification
 
-For a private service, mint an audience-bound identity token and check both endpoints:
+For a private service, start Google Cloud's authenticated local proxy:
 
 ```bash
-export MATRIXEDMIND_URL="$(gcloud run services describe matrixedmind-dev \
-  --region=<region> --format='value(status.url)')"
-export MATRIXEDMIND_ID_TOKEN="$(gcloud auth print-identity-token --audiences="$MATRIXEDMIND_URL")"
-curl --fail --header "Authorization: Bearer $MATRIXEDMIND_ID_TOKEN" "$MATRIXEDMIND_URL/health"
-curl --fail --header "Authorization: Bearer $MATRIXEDMIND_ID_TOKEN" "$MATRIXEDMIND_URL/ready"
+gcloud run services proxy matrixedmind-dev --project=<project> --region=<region> --port=18085
+```
+
+In another terminal, check both endpoints through the proxy:
+
+```bash
+curl --fail http://127.0.0.1:18085/health
+curl --fail http://127.0.0.1:18085/ready
 ```
 
 `/health` proves the revision is serving. `/ready` proves the runtime identity can reach the hosted
 Firestore MongoDB-compatible database.
+
+The first development deployment was verified on 2026-07-28 with revision
+`matrixedmind-dev-00002-fz4`. `/health` returned `{"status":"ok","env":"production"}`, `/ready`
+returned `{"status":"ok","mongo":"ok"}`, direct unauthenticated platform access returned `403`,
+and an authenticated request to `/` returned MatrixedMind's expected production-auth `401`.
 
 ## Secrets
 

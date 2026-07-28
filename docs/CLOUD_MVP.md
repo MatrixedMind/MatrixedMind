@@ -191,6 +191,11 @@ commit-tagged image, updates only the service image, and verifies `/health` and 
 authenticated identity token. Exact setup and recovery commands are in
 [`OPERATIONS.md`](OPERATIONS.md).
 
+The private development service was deployed and verified on 2026-07-28. Process health returned
+the production environment, readiness successfully pinged Firestore MongoDB compatibility,
+unauthenticated Cloud Run invocation returned `403`, and an authenticated request to a sensitive
+browser route reached MatrixedMind's fail-closed production auth and returned `401`.
+
 ## ChatGPT Custom GPT Action Setup Checklist
 
 - Expose the LLM-only OpenAPI schema at `/openapi-llm.json` if needed by ChatGPT.
