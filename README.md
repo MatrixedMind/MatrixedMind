@@ -1,39 +1,71 @@
 # MatrixedMind
 
-MatrixedMind is a personal knowledge application built with FastAPI, Markdown-first content, local-first development, and GCP deployment via Terraform.
+MatrixedMind is a private home for the things you want to remember: notes, ideas, research,
+projects, plans, and the connections between them.
 
-## Current status
+Think of it as a personal wiki that you own. You can write in plain Markdown, organize information
+into spaces and pages, and revise it over time. The goal is to make your knowledge easy to browse
+and build on without locking it inside a proprietary notes service—or handing an AI unrestricted
+access to your life.
 
-Pre-MVP / active rebuild. The current codebase contains:
+## What would I use it for?
 
-- A single FastAPI app in `app/main.py`.
-- `/health` and `/ready` endpoints.
-- Local MongoDB wiring through Docker Compose.
-- Core domain models for records, revisions, spaces, tags, users, and memberships.
-- Domain validation rules for slugs, paths, titles, Markdown bodies, and tag values.
-- Provisional crawler/indexing policy helpers with private/noindex defaults and delayed indexing for public records.
-- Initial record repository protocol plus memory and MongoDB adapters, with MongoDB covered by the repository contract.
-- JSON record routes for `create`, `read`, `update`, and `list`.
-- Server-rendered home, record detail, and record editor pages with basic form handling.
-- A Terraform Cloud Run baseline with reusable modules, passwordless Firestore OIDC wiring, managed runtime-secret references, health probes, and an opt-in GCP compatibility-test job.
-- GitHub Actions CI and development-deploy workflows using Workload Identity Federation and immutable Artifact Registry image tags.
+You might use MatrixedMind to:
 
-The canonical working plan remains [docs/ROADMAP.md](docs/ROADMAP.md). Some code reaches ahead of the current milestone; treat it as provisional until the roadmap verification for that milestone is complete.
+- Keep notes for a long-running project in one connected place.
+- Build a personal reference library for topics you care about.
+- Capture ideas and rough drafts now, then organize them later.
+- Preserve the history of a page as your thinking changes.
+- Eventually let ChatGPT file or retrieve specific notes without giving it permission to delete,
+  publish, or browse everything.
 
-The near-term cloud MVP direction is documented in [docs/CLOUD_MVP.md](docs/CLOUD_MVP.md). It targets Cloud Run, the GCP-verified Firestore Enterprise MongoDB-compatible repository path, and a narrow ChatGPT Custom GPT Action API. The Terraform foundation and compatibility-test job were applied and verified in the development GCP project during milestone 7. The private milestone 9 Cloud Run application service, managed secret versions, hosted persistence readiness, and deployment workflow were deployed and verified on 2026-07-28.
+The guiding idea is that your notes should remain useful to you first. AI can help at carefully
+controlled boundaries, but it should not own the data or decide what becomes public.
 
-## Developer quickstart
+## What works today?
 
-See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
+MatrixedMind is still an early, pre-MVP project, but its core is taking shape. Today it can:
 
-## Roadmap
+- Create, view, edit, and list Markdown-based records through a basic web interface or JSON API.
+- Organize records into spaces, paths, and tags.
+- Keep revisions when records change, with additional audit records for AI-assisted writes.
+- Keep new content private and hidden from search-engine indexing by default.
+- Separate one owner's records from another owner's records.
+- Accept narrowly scoped, authenticated AI-assisted reads and writes through a dedicated API.
+- Run locally with MongoDB.
+- Run as a private Cloud Run service backed by Google Cloud's hosted Firestore database using
+  MongoDB compatibility, managed secrets, and automated deployment checks.
 
-See [docs/ROADMAP.md](docs/ROADMAP.md).
+The interface is currently functional rather than polished, and production sign-in is not finished.
+This is not yet a service intended for general use or sensitive personal data.
 
-## Architecture
+## Where is it going?
 
-See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+The roadmap is working toward a secure personal cloud version of MatrixedMind that is genuinely
+useful day to day. Planned capabilities include:
 
-## Cloud MVP
+- A limited ChatGPT Action that can create, update, and retrieve private draft notes only within
+  explicitly allowed spaces.
+- Stable links between pages, so reorganizing or renaming a page does not break its connections.
+- Backlinks and safer connections across different spaces.
+- Granular sharing controls, with public publishing remaining an explicit choice rather than a
+  default.
+- Portable export as readable Markdown plus JSON metadata, so your knowledge is recoverable and
+  not trapped in MatrixedMind.
+- Better operational safeguards, backups, monitoring, and eventually a more polished interface.
 
-See [docs/CLOUD_MVP.md](docs/CLOUD_MVP.md).
+MatrixedMind is deliberately growing in small, verified steps. Security, ownership, and portability
+come before broad AI access or public publishing.
+
+## For developers
+
+MatrixedMind is a Python/FastAPI application with server-rendered pages, a MongoDB-style repository
+boundary, Docker-based local development, and Terraform infrastructure for Google Cloud.
+
+- [Developer setup](docs/DEVELOPMENT.md)
+- [Roadmap](docs/ROADMAP.md)
+- [Architecture](docs/ARCHITECTURE.md)
+- [Cloud MVP](docs/CLOUD_MVP.md)
+- [Testing](docs/TESTING.md)
+
+The roadmap is the source of truth for what is implemented, provisional, or still planned.
