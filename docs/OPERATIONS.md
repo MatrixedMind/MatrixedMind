@@ -90,7 +90,16 @@ terraform validate
 terraform plan
 ```
 
-The dev root can apply foundational infrastructure before the app is deployable. Keep `enable_cloud_run_service = false` until the container image exists in Artifact Registry and required Secret Manager entries have secret versions. Keep `allow_unauthenticated_cloud_run = false` until MatrixedMind enforces app-level auth for sensitive routes.
+The dev root can apply foundational infrastructure before the app is deployable. Keep
+`enable_cloud_run_service = false` until the application image exists in Artifact Registry. Keep
+`enable_firestore_spike_job = false` until the dedicated test image exists. Keep
+`allow_unauthenticated_cloud_run = false` until MatrixedMind enforces app-level auth for sensitive
+routes.
+
+Firestore uses passwordless GCP OIDC. Terraform derives the non-secret URI, grants the Cloud Run
+service accounts `roles/datastore.user`, and creates the MongoDB-compatible indexes. The application
+uses `MONGO_ENSURE_INDEXES=false` in GCP so index administration remains an infrastructure concern.
+See [`FIRESTORE_MONGO_SPIKE.md`](FIRESTORE_MONGO_SPIKE.md) for the image, job, and execution commands.
 
 Terraform state should use a versioned GCS backend. Do not migrate or rewrite the state without an explicit plan.
 

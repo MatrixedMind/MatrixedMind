@@ -45,7 +45,7 @@ Public unauthenticated routes should stay limited to health/readiness and the LL
 
 Container images should be stored in Artifact Registry.
 
-Runtime secrets must come from Secret Manager. Do not store real tokens, keys, passwords, database URIs, or credentials in GitHub, docs, Terraform variables, `.env.example`, logs, or Codex output.
+Runtime secrets must come from Secret Manager. Do not store real tokens, keys, passwords, or credentials in GitHub, docs, Terraform variables, `.env.example`, logs, or Codex output. The Firestore OIDC URI contains routing and authentication-mode configuration but no credential, so Terraform may inject it as a normal environment variable.
 
 GitHub Actions should authenticate to GCP with Workload Identity Federation rather than long-lived service-account JSON keys.
 
@@ -78,16 +78,20 @@ The spike must verify at least:
 - Readiness checks.
 - Any required differences from local Docker Compose MongoDB.
 
-The documented Firestore MongoDB-compatible connection string uses options such as:
+Cloud Run uses its attached service account and PyMongo's GCP OIDC support. The documented
+Firestore MongoDB-compatible connection string uses:
 
 ```text
 loadBalanced=true
-authMechanism=SCRAM-SHA-256
 tls=true
 retryWrites=false
+authMechanism=MONGODB-OIDC
+authMechanismProperties=ENVIRONMENT:gcp,TOKEN_RESOURCE:FIRESTORE
 ```
 
-Exact hostnames, credentials, database names, and secret names belong in Secret Manager and deployment configuration, not in this repository.
+Terraform derives the non-secret URI from the database UID, location, and ID. No Firestore password
+or user credential is created or stored. SCRAM remains a diagnostic option outside the Cloud Run
+runtime path.
 
 ## Cost Shape
 
@@ -157,11 +161,12 @@ LLM API tokens must be:
 - Run the Terraform bootstrap root to create the versioned GCS state bucket, or create an equivalent state bucket manually.
 - Run the Terraform dev environment root to enable required GCP APIs for Cloud Run, Artifact Registry, Secret Manager, IAM, Cloud Build or GitHub Actions deployment, Firestore Enterprise, and billing budgets.
 - Use Terraform to configure Artifact Registry for MatrixedMind container images.
-- Use Terraform to create Secret Manager entries for runtime secrets, then add secret versions manually without committing values.
+- Use Terraform to create Secret Manager entries for application secrets, then add secret versions manually without committing values. Firestore access does not use a stored secret.
 - Use Terraform to configure GitHub Actions Workload Identity Federation.
-- Use Terraform to create the runtime service account with least-privilege access.
+- Use Terraform to create runtime and compatibility-test service accounts with Firestore data access.
 - Use Terraform to create the Firestore Enterprise MongoDB-compatible database, or document the fallback to MongoDB Atlas.
-- Run the Firestore compatibility spike and record blockers.
+- Use Terraform to create MongoDB-compatible indexes and the GCP compatibility-test job.
+- Run the Firestore compatibility job in GCP and record blockers.
 - Use Terraform to configure Cloud Run service environment variables and secret mounts after the first image and secret versions exist.
 - Confirm app-level auth is enforced before allowing public Cloud Run invocation.
 - Use Terraform to configure billing budget alerts after billing is linked.
@@ -169,15 +174,15 @@ LLM API tokens must be:
 The Terraform roots currently support:
 
 - `infra/terraform/bootstrap`: creates a private, versioned GCS state bucket.
-- `infra/terraform/envs/dev`: enables required APIs, creates Artifact Registry, runtime and GitHub deployer service accounts, Secret Manager placeholders, Workload Identity Federation, a Firestore Enterprise database with MongoDB-compatible data access enabled, optional Cloud Run service wiring, and an optional billing budget.
+- `infra/terraform/envs/dev`: enables required APIs; creates Artifact Registry, service accounts, Secret Manager placeholders, Workload Identity Federation, a Firestore Enterprise database, and MongoDB-compatible indexes; derives a passwordless GCP OIDC URI; and optionally creates the application service, compatibility-test job, and billing budget.
 
 The owner still must provide:
 
 - The GCP project and billing link.
 - Local or CI credentials allowed to run Terraform.
-- Secret values, added as Secret Manager versions outside Git.
+- Application secret values, added as Secret Manager versions outside Git. No Firestore password is required.
 - The first pushed container image before enabling Cloud Run in Terraform.
-- The live Firestore MongoDB compatibility spike result.
+- The dedicated test image and live Firestore MongoDB compatibility job result.
 - The decision to set `allow_unauthenticated_cloud_run = true`, and only after app-level auth is enforced.
 
 ## ChatGPT Custom GPT Action Setup Checklist

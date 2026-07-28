@@ -19,7 +19,6 @@ def _validated_firestore_uri() -> str:
     query = {key.lower(): values for key, values in parse_qs(parsed.query).items()}
     required_options = {
         "loadbalanced": "true",
-        "authmechanism": "SCRAM-SHA-256",
         "tls": "true",
         "retrywrites": "false",
     }
@@ -28,6 +27,15 @@ def _validated_firestore_uri() -> str:
         for key, expected in required_options.items()
         if query.get(key, [None])[-1] != expected
     ]
+    auth_mechanism = query.get("authmechanism", [None])[-1]
+    if auth_mechanism == "MONGODB-OIDC":
+        properties = query.get("authmechanismproperties", [""])[-1].split(",")
+        if "ENVIRONMENT:gcp" not in properties:
+            invalid_options.append("authMechanismProperties=ENVIRONMENT:gcp,...")
+        if "TOKEN_RESOURCE:FIRESTORE" not in properties:
+            invalid_options.append("authMechanismProperties=...,TOKEN_RESOURCE:FIRESTORE")
+    elif auth_mechanism != "SCRAM-SHA-256":
+        invalid_options.append("authMechanism=MONGODB-OIDC or SCRAM-SHA-256")
     if parsed.hostname is None or not parsed.hostname.endswith(".firestore.goog"):
         invalid_options.append("a *.firestore.goog host")
     if invalid_options:
@@ -69,6 +77,6 @@ def firestore_repo(
     db = firestore_client[database_name]
     db.records.delete_many({})
     try:
-        yield MongoRecordRepository(db)
+        yield MongoRecordRepository(db, ensure_indexes=False)
     finally:
         db.records.delete_many({})

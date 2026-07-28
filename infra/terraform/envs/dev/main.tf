@@ -22,10 +22,11 @@ locals {
   ])
 
   runtime_secret_ids = toset([
-    "matrixedmind-dev-mongo-uri",
     "matrixedmind-dev-app-secret-key",
     "matrixedmind-dev-llm-token-pepper",
   ])
+
+  firestore_oidc_uri = "mongodb://${google_firestore_database.mongo_compatible.uid}.${google_firestore_database.mongo_compatible.location_id}.firestore.goog:443/${google_firestore_database.mongo_compatible.name}?loadBalanced=true&tls=true&retryWrites=false&authMechanism=MONGODB-OIDC&authMechanismProperties=ENVIRONMENT:gcp,TOKEN_RESOURCE:FIRESTORE"
 }
 
 resource "google_project_service" "required" {
@@ -63,6 +64,14 @@ resource "google_service_account" "github_deployer" {
   depends_on = [google_project_service.required]
 }
 
+resource "google_service_account" "firestore_spike" {
+  project      = var.project_id
+  account_id   = var.firestore_spike_service_account_id
+  display_name = "MatrixedMind Firestore compatibility runner"
+
+  depends_on = [google_project_service.required]
+}
+
 resource "google_secret_manager_secret" "runtime" {
   for_each = local.runtime_secret_ids
 
@@ -76,10 +85,25 @@ resource "google_secret_manager_secret" "runtime" {
   depends_on = [google_project_service.required]
 }
 
-resource "google_project_iam_member" "runtime_secret_accessor" {
+resource "google_secret_manager_secret_iam_member" "runtime_secret_accessor" {
+  for_each = google_secret_manager_secret.runtime
+
+  project   = var.project_id
+  secret_id = each.value.secret_id
+  role      = "roles/secretmanager.secretAccessor"
+  member    = google_service_account.runtime.member
+}
+
+resource "google_project_iam_member" "runtime_firestore_user" {
   project = var.project_id
-  role    = "roles/secretmanager.secretAccessor"
+  role    = "roles/datastore.user"
   member  = google_service_account.runtime.member
+}
+
+resource "google_project_iam_member" "firestore_spike_user" {
+  project = var.project_id
+  role    = "roles/datastore.user"
+  member  = google_service_account.firestore_spike.member
 }
 
 resource "google_project_iam_member" "github_artifact_registry_writer" {
@@ -115,6 +139,93 @@ resource "google_firestore_database" "mongo_compatible" {
   deletion_policy                     = "ABANDON"
 
   depends_on = [google_project_service.required]
+}
+
+resource "google_firestore_index" "records_space_slug_unique" {
+  project     = var.project_id
+  database    = google_firestore_database.mongo_compatible.name
+  collection  = "records"
+  api_scope   = "MONGODB_COMPATIBLE_API"
+  query_scope = "COLLECTION_GROUP"
+  density     = "DENSE"
+  unique      = true
+
+  fields {
+    field_path = "space"
+    order      = "ASCENDING"
+  }
+
+  fields {
+    field_path = "slug"
+    order      = "ASCENDING"
+  }
+}
+
+resource "google_firestore_index" "records_space_parent" {
+  project     = var.project_id
+  database    = google_firestore_database.mongo_compatible.name
+  collection  = "records"
+  api_scope   = "MONGODB_COMPATIBLE_API"
+  query_scope = "COLLECTION_GROUP"
+  density     = "DENSE"
+
+  fields {
+    field_path = "space"
+    order      = "ASCENDING"
+  }
+
+  fields {
+    field_path = "parent_id"
+    order      = "ASCENDING"
+  }
+}
+
+resource "google_firestore_index" "llm_token_hash_unique" {
+  project     = var.project_id
+  database    = google_firestore_database.mongo_compatible.name
+  collection  = "llm_api_tokens"
+  api_scope   = "MONGODB_COMPATIBLE_API"
+  query_scope = "COLLECTION_GROUP"
+  density     = "DENSE"
+  unique      = true
+
+  fields {
+    field_path = "token_hash"
+    order      = "ASCENDING"
+  }
+}
+
+resource "google_firestore_index" "audit_timestamp" {
+  project     = var.project_id
+  database    = google_firestore_database.mongo_compatible.name
+  collection  = "audit_events"
+  api_scope   = "MONGODB_COMPATIBLE_API"
+  query_scope = "COLLECTION_GROUP"
+  density     = "DENSE"
+
+  fields {
+    field_path = "timestamp"
+    order      = "ASCENDING"
+  }
+}
+
+resource "google_firestore_index" "audit_target" {
+  project     = var.project_id
+  database    = google_firestore_database.mongo_compatible.name
+  collection  = "audit_events"
+  api_scope   = "MONGODB_COMPATIBLE_API"
+  query_scope = "COLLECTION_GROUP"
+  density     = "DENSE"
+
+  fields {
+    field_path = "target_type"
+    order      = "ASCENDING"
+  }
+
+  fields {
+    field_path = "target_id"
+    order      = "ASCENDING"
+  }
 }
 
 resource "google_iam_workload_identity_pool" "github" {
@@ -174,25 +285,83 @@ resource "google_cloud_run_v2_service" "app" {
 
       env {
         name  = "APP_ENV"
-        value = "cloud-dev"
+        value = "production"
       }
 
       env {
-        name = "MONGO_URI"
-        value_source {
-          secret_key_ref {
-            secret  = google_secret_manager_secret.runtime["matrixedmind-dev-mongo-uri"].secret_id
-            version = "latest"
-          }
-        }
+        name  = "AUTH_MODE"
+        value = "production"
       }
+
+      env {
+        name  = "MONGO_URI"
+        value = local.firestore_oidc_uri
+      }
+
+      env {
+        name  = "MONGO_ENSURE_INDEXES"
+        value = "false"
+      }
+    }
+  }
+
+  lifecycle {
+    precondition {
+      condition     = var.container_image != ""
+      error_message = "container_image must be set when enable_cloud_run_service is true."
     }
   }
 
   depends_on = [
     google_artifact_registry_repository.containers,
-    google_firestore_database.mongo_compatible,
-    google_project_iam_member.runtime_secret_accessor,
+    google_firestore_index.audit_target,
+    google_firestore_index.audit_timestamp,
+    google_firestore_index.llm_token_hash_unique,
+    google_firestore_index.records_space_parent,
+    google_firestore_index.records_space_slug_unique,
+    google_secret_manager_secret_iam_member.runtime_secret_accessor,
+    google_project_iam_member.runtime_firestore_user,
+  ]
+}
+
+resource "google_cloud_run_v2_job" "firestore_spike" {
+  count = var.enable_firestore_spike_job ? 1 : 0
+
+  project  = var.project_id
+  name     = var.firestore_spike_job_name
+  location = var.region
+
+  template {
+    template {
+      service_account = google_service_account.firestore_spike.email
+      max_retries     = 0
+      timeout         = "900s"
+
+      containers {
+        image   = var.firestore_spike_image
+        command = ["uv"]
+        args    = ["run", "pytest", "tests/firestore", "-rs"]
+
+        env {
+          name  = "FIRESTORE_MONGO_URI"
+          value = local.firestore_oidc_uri
+        }
+      }
+    }
+  }
+
+  lifecycle {
+    precondition {
+      condition     = var.firestore_spike_image != ""
+      error_message = "firestore_spike_image must be set when enable_firestore_spike_job is true."
+    }
+  }
+
+  depends_on = [
+    google_artifact_registry_repository.containers,
+    google_firestore_index.records_space_slug_unique,
+    google_firestore_index.records_space_parent,
+    google_project_iam_member.firestore_spike_user,
   ]
 }
 

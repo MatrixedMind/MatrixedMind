@@ -33,11 +33,16 @@ Current integration coverage includes a MongoDB ping test, MongoDB repository co
 
 Tests under `tests/firestore/` are opt-in and skip when `FIRESTORE_MONGO_URI` is absent. They run the
 repository contract and explicit compatibility checks against a dedicated Firestore Enterprise
-database. They must not be included in the credential-free default test path.
+database. The canonical execution path is the Terraform-managed Cloud Run Job, which authenticates
+with its service account and a passwordless OIDC URI. The tests remain outside the credential-free
+default path.
 
 ```bash
-FIRESTORE_MONGO_URI='<secret-uri>' uv run pytest tests/firestore -rs
+gcloud run jobs execute matrixedmind-firestore-spike --region=REGION --wait
 ```
+
+The harness also accepts a correctly formed SCRAM URI for external diagnostics, but MatrixedMind
+does not use stored Firestore passwords for its Cloud Run runtime or GCP test job.
 
 The suite deletes every document in the target `records` collection before and after each test. Use
 only a dedicated non-production spike database. See

@@ -584,7 +584,7 @@ Prove whether Firestore Enterprise MongoDB compatibility can be the cloud persis
 #### AI agent implementation tasks
 
 - [x] Document Firestore Enterprise database setup steps for the spike.
-- [x] Document Firestore MongoDB compatibility connection settings, including `loadBalanced=true`, `SCRAM-SHA-256`, `tls=true`, and `retryWrites=false`.
+- [x] Document Firestore MongoDB compatibility connection settings, including passwordless GCP OIDC, `loadBalanced=true`, `tls=true`, and `retryWrites=false`; retain SCRAM only for external diagnostics.
 - [x] Add a way to run repository contract tests against Firestore MongoDB compatibility without replacing local MongoDB development.
 - [ ] Verify unique compound index behavior.
 - [ ] Verify `ObjectId` behavior.

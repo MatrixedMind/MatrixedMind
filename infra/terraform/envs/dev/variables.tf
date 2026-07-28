@@ -27,6 +27,12 @@ variable "github_deployer_service_account_id" {
   default     = "matrixedmind-dev-github-deployer"
 }
 
+variable "firestore_spike_service_account_id" {
+  description = "Service account ID for the GCP-hosted Firestore compatibility test job."
+  type        = string
+  default     = "matrixedmind-dev-firestore-spike"
+}
+
 variable "github_repository" {
   description = "GitHub repository allowed to use Workload Identity Federation, in owner/repo form."
   type        = string
@@ -45,7 +51,7 @@ variable "firestore_location_id" {
 }
 
 variable "enable_cloud_run_service" {
-  description = "Create the Cloud Run service. Enable after the container image and secret values exist."
+  description = "Create the Cloud Run service. Enable after the application image exists."
   type        = bool
   default     = false
 }
@@ -58,6 +64,24 @@ variable "cloud_run_service_name" {
 
 variable "container_image" {
   description = "Container image URI for Cloud Run, required when enable_cloud_run_service is true."
+  type        = string
+  default     = ""
+}
+
+variable "enable_firestore_spike_job" {
+  description = "Create the Cloud Run Job that runs the Firestore compatibility suite in GCP."
+  type        = bool
+  default     = false
+}
+
+variable "firestore_spike_job_name" {
+  description = "Cloud Run Job name for Firestore MongoDB compatibility verification."
+  type        = string
+  default     = "matrixedmind-firestore-spike"
+}
+
+variable "firestore_spike_image" {
+  description = "Test image URI containing the Firestore compatibility suite."
   type        = string
   default     = ""
 }

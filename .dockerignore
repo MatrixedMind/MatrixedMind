@@ -1,0 +1,16 @@
+.git
+.github
+.idea
+.venv
+**/.terraform
+**/__pycache__
+*.py[codz]
+*.tfstate
+*.tfstate.*
+*.tfvars
+.env
+.env.*
+.mypy_cache
+.pytest_cache
+.ruff_cache
+htmlcov

@@ -2,104 +2,140 @@
 
 ## Status
 
-The opt-in compatibility suite is implemented. Local MongoDB verification can run without GCP
-credentials. Firestore verification remains pending until a dedicated Firestore Enterprise database
-and SCRAM credential are supplied through `FIRESTORE_MONGO_URI`.
+The compatibility suite and its GCP execution path are implemented. Local MongoDB remains the
+credential-free development baseline. The live Firestore result remains pending until the Terraform
+dev environment is applied and the dedicated Cloud Run Job is executed.
 
-The suite is intentionally destructive to the `records` collection in the database named by that
-URI. Use a dedicated non-production spike database only.
+The suite deletes every document in the target `records` collection. Run it only against the
+dedicated non-production database created by the dev Terraform root.
 
-## Provision the spike database
+## Authentication decision
 
-Prerequisites:
+MatrixedMind uses passwordless service-account OIDC inside Google Cloud. Terraform creates the
+Firestore Enterprise database and service accounts, grants `roles/datastore.user`, derives the
+connection URI from the database UID, location, and ID, and injects that URI into Cloud Run. PyMongo
+retrieves short-lived credentials from the Google Cloud metadata service.
 
-- A GCP project with billing enabled.
-- `Owner` or `Datastore Owner` access to create the database.
-- `User Creds Admin` access to create a SCRAM credential.
-- A dedicated database ID and location selected for this spike.
-
-Create an Enterprise database with MongoDB-compatible data access:
-
-```bash
-gcloud firestore databases create \
-  --database=matrixedmind-spike \
-  --location=LOCATION \
-  --edition=enterprise \
-  --enable-mongodb-compatible-data-access \
-  --delete-protection
-```
-
-Retrieve the database UID and location:
-
-```bash
-gcloud firestore databases describe \
-  --database=matrixedmind-spike \
-  --format='yaml(locationId,uid)'
-```
-
-Create a dedicated SCRAM user. The generated password is displayed once; store it in a secure
-password manager and never commit or paste it into project files, logs, or issue comments.
-
-```bash
-gcloud firestore user-creds create matrixedmind-spike \
-  --database=matrixedmind-spike
-```
-
-Grant that database user read/write access to the dedicated database. The repository constructor
-also creates two indexes, so the spike identity needs `roles/datastore.indexAdmin` in addition to
-`roles/datastore.user`, or an administrator must create both indexes before the run. Prefer a
-database-scoped IAM condition for both grants.
-
-The required indexes are:
+The URI contains no username or password:
 
 ```text
-records: space ASC, slug ASC, unique
-records: space ASC, parent_id ASC
+mongodb://UID.LOCATION.firestore.goog:443/DATABASE_ID?loadBalanced=true&tls=true&retryWrites=false&authMechanism=MONGODB-OIDC&authMechanismProperties=ENVIRONMENT:gcp,TOKEN_RESOURCE:FIRESTORE
 ```
 
-Google's current index API accepts one index per create request. MatrixedMind already calls
-`create_index` once for each index, so no batching change is expected.
+This avoids generated SCRAM passwords, password rotation, manually assembled secret values, and
+database credentials in Terraform state. SCRAM remains accepted by the test harness for external
+diagnostics, but it is not the MatrixedMind Cloud Run runtime design.
 
-## Connection settings
+The required connection options are:
 
-Construct the SCRAM URI using the database UID, location, database ID, and URL-encoded username and
-password:
+- `loadBalanced=true` to disable topology discovery against the compatibility endpoint.
+- `tls=true` to encrypt the connection.
+- `retryWrites=false` because Firestore compatibility does not support retryable writes.
+- `authMechanism=MONGODB-OIDC` with `ENVIRONMENT:gcp` and `TOKEN_RESOURCE:FIRESTORE` for Google
+  Cloud service-account authentication.
+
+## Terraform-managed resources
+
+The dev root at `infra/terraform/envs/dev` manages:
+
+- The Firestore Enterprise database with MongoDB-compatible data access.
+- A Cloud Run runtime service account with `roles/datastore.user`.
+- A separate compatibility-test service account with `roles/datastore.user`.
+- MongoDB-compatible indexes for records, LLM tokens, and audit events.
+- An optional Cloud Run service using the passwordless OIDC URI.
+- An optional Cloud Run Job that executes the compatibility suite in GCP.
+
+Indexes are an infrastructure concern in GCP. Terraform creates them before the job runs, while the
+application uses `MONGO_ENSURE_INDEXES=false`. Local development retains the default value `true`,
+so Docker MongoDB remains self-initializing.
+
+## Owner prerequisites
+
+Provide only non-secret configuration:
+
+- GCP project ID.
+- Preferred Cloud Run/Artifact Registry region; default `us-central1`.
+- Preferred Firestore location; default `nam5`.
+- Optional billing account ID and monthly budget amount if Terraform should create budget alerts.
+
+Do not send service-account keys, access tokens, passwords, `.env` files, or credential JSON. Install
+the Google Cloud CLI locally and authenticate Terraform through Application Default Credentials:
+
+```bash
+gcloud auth login
+gcloud auth application-default login
+gcloud config set project PROJECT_ID
+```
+
+The Terraform operator needs permission to enable APIs and manage the resources in the dev root.
+For an owner-managed personal project, using a project Owner identity for the initial apply is the
+simplest bootstrap. Tighten ongoing deployment permissions to the dedicated service accounts after
+the foundation exists.
+
+## Provision and run in GCP
+
+Create local variable files from the committed examples. These files are ignored by Git:
+
+```bash
+cp infra/terraform/bootstrap/terraform.tfvars.example infra/terraform/bootstrap/terraform.tfvars
+cp infra/terraform/envs/dev/terraform.tfvars.example infra/terraform/envs/dev/terraform.tfvars
+```
+
+Set `project_id` in both files and `github_repository = "MatrixedMind/MatrixedMind"` in the dev file.
+Adjust region, Firestore location, and optional budget values if desired.
+
+Create the remote-state bucket:
+
+```bash
+terraform -chdir=infra/terraform/bootstrap init
+terraform -chdir=infra/terraform/bootstrap apply -var-file=terraform.tfvars
+```
+
+Initialize and apply the dev foundation with the Cloud Run resources disabled:
+
+```bash
+terraform -chdir=infra/terraform/envs/dev init \
+  -backend-config="bucket=PROJECT_ID-tf-state"
+terraform -chdir=infra/terraform/envs/dev plan -var-file=terraform.tfvars
+terraform -chdir=infra/terraform/envs/dev apply -var-file=terraform.tfvars
+```
+
+Build and push the dedicated test image after Artifact Registry exists:
+
+```bash
+gcloud auth configure-docker REGION-docker.pkg.dev
+docker buildx build \
+  --platform linux/amd64 \
+  --file Dockerfile.firestore-test \
+  --tag REGION-docker.pkg.dev/PROJECT_ID/matrixedmind/firestore-spike:COMMIT_SHA \
+  --push \
+  .
+```
+
+Set the following values in the ignored dev `terraform.tfvars`, then apply again:
 
 ```text
-mongodb://USERNAME:PASSWORD@UID.LOCATION.firestore.goog:443/matrixedmind-spike?loadBalanced=true&authMechanism=SCRAM-SHA-256&tls=true&retryWrites=false
+enable_firestore_spike_job = true
+firestore_spike_image      = "REGION-docker.pkg.dev/PROJECT_ID/matrixedmind/firestore-spike:COMMIT_SHA"
 ```
 
-All four query options are required:
-
-- `loadBalanced=true` prevents topology discovery against the compatibility endpoint.
-- `authMechanism=SCRAM-SHA-256` selects the provisioned database credential.
-- `tls=true` encrypts the connection.
-- `retryWrites=false` disables retryable writes, which Firestore compatibility does not support.
-
-Keep local development on `MONGO_URI`. Use `FIRESTORE_MONGO_URI` only for the opt-in spike command so
-the normal test suite never needs cloud credentials and local Docker MongoDB is never replaced.
-
-## Run the spike
-
-Start local MongoDB and establish the local baseline first:
+Execute the job and wait for its result:
 
 ```bash
-docker compose up -d mongo
-uv run pytest tests/integration/test_mongo_connection.py tests/integration/test_mongo_repository.py
+gcloud run jobs execute matrixedmind-firestore-spike \
+  --region=REGION \
+  --wait
 ```
 
-Then inject the Firestore URI through the shell or a secret-aware runner and run only the opt-in
-suite:
+Inspect sanitized logs if the job fails:
 
 ```bash
-FIRESTORE_MONGO_URI='<secret-uri>' uv run pytest tests/firestore -rs
+gcloud run jobs executions list \
+  --job=matrixedmind-firestore-spike \
+  --region=REGION
 ```
 
-Do not add `FIRESTORE_MONGO_URI` to `.env`, `.env.example`, CI variables, or command transcripts.
-The test harness rejects non-Firestore hosts and URIs missing the required connection options before
-it deletes test data.
-
-The suite verifies:
+## What the suite verifies
 
 - The reusable repository contract.
 - Compound uniqueness for `(space, slug)` and adapter-level duplicate error mapping.
@@ -108,39 +144,21 @@ The suite verifies:
 - Stable `created_at`, then `_id`, sorting for child lists.
 - A direct database ping and the application `MongoConnection.ping` readiness path.
 
-## Adapter findings
+## Current result record
 
-No MatrixedMind adapter change is currently required by the documented Firestore feature set:
-compound and unique indexes, `ObjectId`, `$set`, sorting, `createIndex`, and ping are documented as
-supported. This is a documentation-derived expectation, not a successful runtime result. Record the
-exact PyMongo exception and operation here if the opt-in suite proves otherwise.
+As of 2026-07-28:
 
-The existing `MongoRecordRepository` creates one index per request, which matches Firestore's
-current index-management limitation. Firestore does not create an `_id` index automatically, but it
-does enforce `_id` uniqueness; the repository only depends on identity lookup and uniqueness.
+- Local MongoDB and credential-free quality checks: passed; `123 passed, 6 expected Firestore
+  skips`, with Ruff, mypy, pre-commit, and both Terraform roots valid.
+- Application and Firestore test images: built successfully; the test image runs the expected suite
+  command and skips cleanly without its GCP-provided URI.
+- Firestore MongoDB compatibility: pending the first Terraform apply and Cloud Run Job execution.
+- Exact local blocker: the Google Cloud CLI is not installed in this workspace, and the GCP project
+  ID and region/location choices have not yet been supplied.
 
-## Result record
-
-As of 2026-07-27:
-
-- Local MongoDB: repository connection and contract coverage passed as part of the full test suite;
-  `119 passed, 6 skipped`.
-- Firestore MongoDB compatibility: blocked pending a dedicated database and SCRAM URI.
-- Exact external blocker: `FIRESTORE_MONGO_URI` and its backing Firestore Enterprise spike database
-  have not been provisioned in this workspace.
-
-Credential-free quality results on this branch:
-
-```text
-uv run ruff format --check .    passed
-uv run ruff check .             passed
-uv run mypy app                 passed
-uv run pytest -rs               119 passed, 6 skipped
-uv run pre-commit run --all-files passed
-```
-
-After an external run, replace this section with the date, database region, PyMongo version, exact
-commands, pass/fail totals, and any sanitized error output. Never record the host UID or credential.
+After the GCP run, record the date, region, PyMongo version, image tag, Terraform plan/apply result,
+Cloud Run Job execution result, pass/fail totals, and sanitized errors. Do not record database UIDs,
+tokens, or credentials.
 
 ## MongoDB Atlas fallback criteria
 
@@ -157,13 +175,13 @@ fresh dedicated Firestore spike database:
 - Measured latency, availability, or cost for the MatrixedMind access pattern fails an explicitly
   recorded MVP acceptance threshold.
 
-Do not fall back for a transient credential, IAM, DNS, or local tooling error. Record and fix those
-as setup blockers, then rerun the same suite.
+Do not fall back for a transient IAM, DNS, image, or tooling error. Record and fix setup blockers,
+then rerun the same Cloud Run Job.
 
 ## References
 
 - [Create and manage Firestore MongoDB-compatible databases](https://docs.cloud.google.com/firestore/mongodb-compatibility/docs/create-databases)
-- [Authenticate and connect](https://docs.cloud.google.com/firestore/mongodb-compatibility/docs/connect)
-- [Manage indexes](https://docs.cloud.google.com/firestore/mongodb-compatibility/docs/indexing)
+- [Authenticate and connect from Cloud Run](https://docs.cloud.google.com/firestore/mongodb-compatibility/docs/connect)
+- [Manage MongoDB-compatible indexes](https://docs.cloud.google.com/firestore/mongodb-compatibility/docs/indexing)
 - [Supported MongoDB 6.0 features](https://docs.cloud.google.com/firestore/mongodb-compatibility/docs/supported-features-60)
 - [Behavior differences](https://docs.cloud.google.com/firestore/mongodb-compatibility/docs/behavior-differences)

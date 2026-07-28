@@ -21,7 +21,7 @@ MatrixedMind is a single FastAPI service serving HTML and JSON. It is a Python-f
 
 Start with a local MongoDB adapter. Keep repository interfaces stable so Firestore Enterprise MongoDB compatibility, MongoDB Atlas, or another backend can be evaluated without rewriting route and domain code.
 
-The application should depend on repository interfaces. Adapters own database-specific details such as clients, indexes, serialization, and duplicate-key handling. The MongoDB repository implements create/read/list/update behavior, creates a unique compound index for `space` and `slug`, indexes `space` and `parent_id` for child listings, converts duplicate-key failures into adapter-level `ValueError`s, and appends an embedded `RecordRevision` containing the previous Markdown body on each update.
+The application should depend on repository interfaces. Adapters own database-specific details such as clients, serialization, and duplicate-key handling. Local MongoDB adapters create indexes by default. In GCP, Terraform owns index creation and the adapters run with `MONGO_ENSURE_INDEXES=false`, keeping index-administration permissions away from the application runtime. The MongoDB repository implements create/read/list/update behavior, converts duplicate-key failures into adapter-level `ValueError`s, and appends an embedded `RecordRevision` containing the previous Markdown body on each update.
 
 Repository behavior is defined by reusable contract assertions under `tests/contracts/`. The unit suite applies the contract to the in-memory adapter, and the integration suite applies the same contract to MongoDB.
 
@@ -31,6 +31,11 @@ uses a separate `FIRESTORE_MONGO_URI`; the default application and test configur
 MongoDB.
 
 For the Cloud MVP, Firestore Enterprise edition with MongoDB compatibility is the preferred cloud persistence target. This must be verified by running repository contract tests against Firestore compatibility before cloud deployment is considered unblocked. Local Docker Compose MongoDB remains the local development path. MongoDB Atlas is fallback only if Firestore compatibility blocks the MVP.
+
+Cloud Run and the GCP compatibility-test job authenticate to Firestore with their attached service
+accounts through `MONGODB-OIDC`. Terraform derives the passwordless URI from the Firestore database
+resource and grants only `roles/datastore.user`; no database password is stored in Secret Manager or
+Terraform state.
 
 The current embedded revision array is acceptable for the MVP adapter, but it should not grow unbounded long term. LLM creates and updates produce attributed revisions, while audit events are stored append-only in a separate collection.
 

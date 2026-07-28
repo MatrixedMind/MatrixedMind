@@ -8,9 +8,10 @@ from app.domain.models import AuditEvent, LlmApiToken
 
 
 class MongoLlmTokenRepository:
-    def __init__(self, db: Database[dict[str, Any]]):
+    def __init__(self, db: Database[dict[str, Any]], *, ensure_indexes: bool = True):
         self.collection = db.llm_api_tokens
-        self.collection.create_index([("token_hash", ASCENDING)], unique=True)
+        if ensure_indexes:
+            self.collection.create_index([("token_hash", ASCENDING)], unique=True)
 
     def get_by_hash(self, token_hash: str) -> LlmApiToken | None:
         document = self.collection.find_one({"token_hash": token_hash})
@@ -36,10 +37,11 @@ class MongoLlmTokenRepository:
 
 
 class MongoAuditEventRepository:
-    def __init__(self, db: Database[dict[str, Any]]):
+    def __init__(self, db: Database[dict[str, Any]], *, ensure_indexes: bool = True):
         self.collection = db.audit_events
-        self.collection.create_index([("timestamp", ASCENDING)])
-        self.collection.create_index([("target_type", ASCENDING), ("target_id", ASCENDING)])
+        if ensure_indexes:
+            self.collection.create_index([("timestamp", ASCENDING)])
+            self.collection.create_index([("target_type", ASCENDING), ("target_id", ASCENDING)])
 
     def append(self, event: AuditEvent) -> AuditEvent:
         self.collection.insert_one(event.model_dump())

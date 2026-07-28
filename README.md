@@ -15,10 +15,11 @@ Pre-MVP / active rebuild. The current codebase contains:
 - Initial record repository protocol plus memory and MongoDB adapters, with MongoDB covered by the repository contract.
 - JSON record routes for `create`, `read`, `update`, and `list`.
 - Server-rendered home, record detail, and record editor pages with basic form handling.
+- A Terraform Cloud MVP foundation with passwordless Firestore OIDC wiring, managed indexes, and an opt-in GCP compatibility-test job.
 
 The canonical working plan remains [docs/ROADMAP.md](docs/ROADMAP.md). Some code reaches ahead of the current milestone; treat it as provisional until the roadmap verification for that milestone is complete.
 
-The near-term cloud MVP direction is documented in [docs/CLOUD_MVP.md](docs/CLOUD_MVP.md). It targets Cloud Run, Firestore Enterprise MongoDB compatibility pending repository contract verification, and a narrow ChatGPT Custom GPT Action API. No cloud MVP implementation is complete yet.
+The near-term cloud MVP direction is documented in [docs/CLOUD_MVP.md](docs/CLOUD_MVP.md). It targets Cloud Run, Firestore Enterprise MongoDB compatibility pending repository contract verification, and a narrow ChatGPT Custom GPT Action API. The Terraform foundation is implemented but has not yet been applied or verified in GCP.
 
 ## Developer quickstart
 

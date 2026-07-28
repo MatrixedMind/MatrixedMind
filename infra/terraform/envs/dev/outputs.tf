@@ -13,6 +13,11 @@ output "runtime_service_account_email" {
   value       = google_service_account.runtime.email
 }
 
+output "firestore_spike_service_account_email" {
+  description = "Cloud Run Job service account for Firestore compatibility verification."
+  value       = google_service_account.firestore_spike.email
+}
+
 output "github_deployer_service_account_email" {
   description = "GitHub Actions deployer service account email."
   value       = google_service_account.github_deployer.email
@@ -36,4 +41,9 @@ output "firestore_database" {
 output "cloud_run_service_uri" {
   description = "Cloud Run service URI when enable_cloud_run_service is true."
   value       = var.enable_cloud_run_service ? google_cloud_run_v2_service.app[0].uri : null
+}
+
+output "firestore_spike_job_name" {
+  description = "Firestore compatibility Cloud Run Job name when enabled."
+  value       = var.enable_firestore_spike_job ? google_cloud_run_v2_job.firestore_spike[0].name : null
 }
