@@ -6,7 +6,7 @@ variable "project_id" {
 variable "region" {
   description = "Primary GCP region for Cloud Run and Artifact Registry."
   type        = string
-  default     = "us-central1"
+  default     = "us-west1"
 }
 
 variable "artifact_registry_repository_id" {
@@ -24,13 +24,13 @@ variable "runtime_service_account_id" {
 variable "github_deployer_service_account_id" {
   description = "GitHub Actions deployer service account ID."
   type        = string
-  default     = "matrixedmind-dev-github-deployer"
+  default     = "matrixedmind-dev-deployer"
 }
 
 variable "firestore_spike_service_account_id" {
   description = "Service account ID for the GCP-hosted Firestore compatibility test job."
   type        = string
-  default     = "matrixedmind-dev-firestore-spike"
+  default     = "matrixedmind-dev-fs-spike"
 }
 
 variable "github_repository" {
@@ -41,13 +41,13 @@ variable "github_repository" {
 variable "firestore_database_id" {
   description = "Firestore Enterprise MongoDB-compatible database ID."
   type        = string
-  default     = "matrixedmind-dev"
+  default     = "matrixedmind-spike"
 }
 
 variable "firestore_location_id" {
   description = "Firestore database location. Choose a supported Firestore location for the project."
   type        = string
-  default     = "nam5"
+  default     = "us-west1"
 }
 
 variable "enable_cloud_run_service" {
@@ -93,7 +93,7 @@ variable "allow_unauthenticated_cloud_run" {
 }
 
 variable "billing_account_id" {
-  description = "Billing account resource ID, for example billingAccounts/000000-000000-000000. Leave empty to skip budget creation."
+  description = "Bare billing account ID, for example 000000-000000-000000. Leave empty to skip budget creation."
   type        = string
   default     = ""
 }

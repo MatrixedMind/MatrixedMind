@@ -1,6 +1,8 @@
 provider "google" {
-  project = var.project_id
-  region  = var.region
+  project               = var.project_id
+  region                = var.region
+  billing_project       = var.project_id
+  user_project_override = true
 }
 
 data "google_project" "current" {
@@ -86,10 +88,10 @@ resource "google_secret_manager_secret" "runtime" {
 }
 
 resource "google_secret_manager_secret_iam_member" "runtime_secret_accessor" {
-  for_each = google_secret_manager_secret.runtime
+  for_each = local.runtime_secret_ids
 
   project   = var.project_id
-  secret_id = each.value.secret_id
+  secret_id = google_secret_manager_secret.runtime[each.key].secret_id
   role      = "roles/secretmanager.secretAccessor"
   member    = google_service_account.runtime.member
 }

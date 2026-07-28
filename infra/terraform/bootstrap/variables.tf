@@ -6,7 +6,7 @@ variable "project_id" {
 variable "region" {
   description = "Default provider region for bootstrap resources."
   type        = string
-  default     = "us-central1"
+  default     = "us-west1"
 }
 
 variable "tf_state_bucket_name" {

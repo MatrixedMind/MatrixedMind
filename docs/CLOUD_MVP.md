@@ -51,9 +51,7 @@ GitHub Actions should authenticate to GCP with Workload Identity Federation rath
 
 ## Persistence
 
-Firestore Enterprise edition with MongoDB compatibility is the preferred cloud persistence target because MatrixedMind already has a MongoDB-style repository adapter.
-
-This is a preference, not a proven implementation fact. Firestore MongoDB compatibility must be verified by repository contract tests before cloud deployment is considered unblocked.
+Firestore Enterprise edition with MongoDB compatibility is the cloud persistence target because MatrixedMind already has a MongoDB-style repository adapter. The milestone 7 GCP job verified the repository contract and explicit compatibility checks against the dedicated development database.
 
 Local development continues to use Docker Compose MongoDB. The local path should remain usable without GCP credentials for core work.
 
@@ -166,7 +164,7 @@ LLM API tokens must be:
 - Use Terraform to create runtime and compatibility-test service accounts with Firestore data access.
 - Use Terraform to create the Firestore Enterprise MongoDB-compatible database, or document the fallback to MongoDB Atlas.
 - Use Terraform to create MongoDB-compatible indexes and the GCP compatibility-test job.
-- Run the Firestore compatibility job in GCP and record blockers.
+- Run the Firestore compatibility job in GCP and record its result.
 - Use Terraform to configure Cloud Run service environment variables and secret mounts after the first image and secret versions exist.
 - Confirm app-level auth is enforced before allowing public Cloud Run invocation.
 - Use Terraform to configure billing budget alerts after billing is linked.
@@ -182,7 +180,7 @@ The owner still must provide:
 - Local or CI credentials allowed to run Terraform.
 - Application secret values, added as Secret Manager versions outside Git. No Firestore password is required.
 - The first pushed container image before enabling Cloud Run in Terraform.
-- The dedicated test image and live Firestore MongoDB compatibility job result.
+- Application image and runtime secret values before enabling the Cloud Run application service.
 - The decision to set `allow_unauthenticated_cloud_run = true`, and only after app-level auth is enforced.
 
 ## ChatGPT Custom GPT Action Setup Checklist

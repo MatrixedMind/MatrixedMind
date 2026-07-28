@@ -49,6 +49,9 @@ only a dedicated non-production spike database. See
 [`FIRESTORE_MONGO_SPIKE.md`](FIRESTORE_MONGO_SPIKE.md) for provisioning, required URI options, and
 result-recording requirements.
 
+The milestone 7 GCP execution passed all six Firestore compatibility tests on 2026-07-28 using the
+Terraform-managed Cloud Run Job in `us-west1`.
+
 ## API tests
 
 Use FastAPI `TestClient` or `httpx` tests for route behavior. Cover success responses, validation errors, duplicate/conflict errors, not-found responses, and repository dependency overrides.

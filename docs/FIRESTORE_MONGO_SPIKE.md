@@ -2,9 +2,8 @@
 
 ## Status
 
-The compatibility suite and its GCP execution path are implemented. Local MongoDB remains the
-credential-free development baseline. The live Firestore result remains pending until the Terraform
-dev environment is applied and the dedicated Cloud Run Job is executed.
+The compatibility suite and its GCP execution path are implemented and verified. Local MongoDB
+remains the credential-free development baseline.
 
 The suite deletes every document in the target `records` collection. Run it only against the
 dedicated non-production database created by the dev Terraform root.
@@ -54,8 +53,8 @@ so Docker MongoDB remains self-initializing.
 Provide only non-secret configuration:
 
 - GCP project ID.
-- Preferred Cloud Run/Artifact Registry region; default `us-central1`.
-- Preferred Firestore location; default `nam5`.
+- Preferred Cloud Run/Artifact Registry region; default `us-west1` for the development project.
+- Preferred Firestore location; default `us-west1` so application compute and database traffic remain regional.
 - Optional billing account ID and monthly budget amount if Terraform should create budget alerts.
 
 Do not send service-account keys, access tokens, passwords, `.env` files, or credential JSON. Install
@@ -64,6 +63,7 @@ the Google Cloud CLI locally and authenticate Terraform through Application Defa
 ```bash
 gcloud auth login
 gcloud auth application-default login
+gcloud auth application-default set-quota-project PROJECT_ID
 gcloud config set project PROJECT_ID
 ```
 
@@ -98,6 +98,15 @@ terraform -chdir=infra/terraform/envs/dev init \
   -backend-config="bucket=PROJECT_ID-tf-state"
 terraform -chdir=infra/terraform/envs/dev plan -var-file=terraform.tfvars
 terraform -chdir=infra/terraform/envs/dev apply -var-file=terraform.tfvars
+```
+
+If the dedicated database already exists, import it after initialization and before the first plan:
+
+```bash
+terraform -chdir=infra/terraform/envs/dev import \
+  -var-file=terraform.tfvars \
+  google_firestore_database.mongo_compatible \
+  projects/PROJECT_ID/databases/DATABASE_ID
 ```
 
 Build and push the dedicated test image after Artifact Registry exists:
@@ -150,11 +159,16 @@ As of 2026-07-28:
 
 - Local MongoDB and credential-free quality checks: passed; `123 passed, 6 expected Firestore
   skips`, with Ruff, mypy, pre-commit, and both Terraform roots valid.
-- Application and Firestore test images: built successfully; the test image runs the expected suite
-  command and skips cleanly without its GCP-provided URI.
-- Firestore MongoDB compatibility: pending the first Terraform apply and Cloud Run Job execution.
-- Exact local blocker: the Google Cloud CLI is not installed in this workspace, and the GCP project
-  ID and region/location choices have not yet been supplied.
+- Terraform bootstrap and dev foundation: applied successfully in `us-west1`; the pre-existing
+  protected Enterprise MongoDB-compatible database was imported without replacement, PITR was
+  enabled, and the final foundation plan contained no destroys.
+- Firestore test image: `firestore-spike:8e8a9731c796`, built for `linux/amd64` and pushed to the
+  `us-west1` Artifact Registry repository.
+- Cloud Run Job execution `matrixedmind-firestore-spike-9vqrr`: passed all six tests in 2.67 seconds.
+- Verified behavior: reusable repository contract, compound uniqueness and duplicate mapping,
+  `ObjectId` round trips, `update_one` with `$set`, deterministic sorting, and readiness ping.
+- Authentication: passwordless service-account OIDC succeeded; no database password, access token,
+  or service-account key was stored.
 
 After the GCP run, record the date, region, PyMongo version, image tag, Terraform plan/apply result,
 Cloud Run Job execution result, pass/fail totals, and sanitized errors. Do not record database UIDs,
