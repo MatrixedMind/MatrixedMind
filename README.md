@@ -66,6 +66,7 @@ boundary, Docker-based local development, and Terraform infrastructure for Googl
 - [Roadmap](docs/ROADMAP.md)
 - [Architecture](docs/ARCHITECTURE.md)
 - [Cloud MVP](docs/CLOUD_MVP.md)
+- [ChatGPT Action setup](docs/CHATGPT_ACTION.md)
 - [Testing](docs/TESTING.md)
 
 The roadmap is the source of truth for what is implemented, provisional, or still planned.

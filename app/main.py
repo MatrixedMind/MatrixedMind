@@ -8,6 +8,7 @@ from starlette.middleware.base import RequestResponseEndpoint
 
 from app.adapters.mongo.connection import MongoConnection
 from app.api.routes import router as api_router
+from app.openapi import build_llm_openapi_schema
 from app.settings import settings
 from app.web.routes import router as web_router
 
@@ -64,6 +65,11 @@ async def enforce_llm_body_limit(
 
 app.include_router(api_router, prefix="/api")
 app.include_router(web_router)
+
+
+@app.get("/openapi-llm.json", include_in_schema=False)
+async def llm_openapi() -> dict[str, object]:
+    return build_llm_openapi_schema(app)
 
 
 @app.get("/health")

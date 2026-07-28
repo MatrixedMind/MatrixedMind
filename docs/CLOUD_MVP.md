@@ -198,7 +198,7 @@ browser route reached MatrixedMind's fail-closed production auth and returned `4
 
 ## ChatGPT Custom GPT Action Setup Checklist
 
-- Expose the LLM-only OpenAPI schema at `/openapi-llm.json` if needed by ChatGPT.
+- Expose the LLM-only OpenAPI schema at `/openapi-llm.json`.
 - Create a scoped LLM token for ChatGPT and store only its hash in MatrixedMind.
 - Configure the Custom GPT Action to use API key authentication.
 - Restrict the action schema to the LLM endpoints only.
@@ -206,6 +206,9 @@ browser route reached MatrixedMind's fail-closed production auth and returned `4
 - Verify ChatGPT can read only allowed records.
 - Verify forbidden actions are not present in the schema and are rejected if attempted directly.
 - Document token rotation and revocation steps.
+
+The executable setup, test, rotation, and revocation procedure is in
+[`CHATGPT_ACTION.md`](CHATGPT_ACTION.md).
 
 ## MVP Acceptance Criteria
 

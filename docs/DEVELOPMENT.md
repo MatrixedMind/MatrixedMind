@@ -104,12 +104,18 @@ Browser and internal record routes use the owner auth dependency. `AUTH_MODE=dev
 The separate ChatGPT Action boundary is:
 
 ```text
+GET /openapi-llm.json
 POST /api/llm/records/upsert
 GET /api/llm/records/{space}/{slug}
 GET /api/llm/records?space={space}
 ```
 
-These routes require `Authorization: Bearer <token>`. Provision tokens through application code using `issue_llm_token()`, bind every `LlmApiToken` to an explicit `owner_id`, and persist only `hash_llm_token(raw_token)`; there is intentionally no public token-administration endpoint.
+The schema route is public and contains only the three LLM record operations. The record routes
+require `Authorization: Bearer <token>`. Provision tokens through application code using
+`issue_llm_token()`, bind every `LlmApiToken` to an explicit `owner_id`, and persist only
+`hash_llm_token(raw_token)`; there is intentionally no public token-administration endpoint. See
+[`CHATGPT_ACTION.md`](CHATGPT_ACTION.md) for Action configuration, manual verification, and token
+rotation or revocation.
 
 The initial server-rendered pages are:
 

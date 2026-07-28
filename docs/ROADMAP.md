@@ -12,7 +12,12 @@ Milestone 5 is implemented and verified for a minimal server-rendered browser sh
 
 Milestone 6 is implemented and verified for owner auth boundaries, deterministic dev/test identities, centralized authorization policy, hashed/scoped/revocable LLM tokens, narrow private-by-default LLM record operations, revision and audit attribution, request limits, and forbidden capability handling.
 
-Milestone 7 is implemented and verified against Firestore Enterprise MongoDB compatibility in GCP. Milestone 8's CI quality gate is implemented and verified on a pull request; branch protection remains before the milestone is complete. The roadmap then continues through Cloud Run deployment, ChatGPT Action integration, and cloud hardening. Import/export is deferred until after that secure cloud path unless recovery needs pull it forward.
+Milestones 0 through 7 and Milestone 9 are implemented and verified, including Firestore Enterprise
+MongoDB compatibility and the Cloud Run deployment baseline. Milestone 8's CI quality gate is
+implemented and passes clean pull requests; its deliberate-failure verification remains open. The
+current focus is Milestone 10's narrow ChatGPT Action integration, followed by Milestone 11 cloud
+hardening. Import/export is deferred until after that secure cloud path unless recovery needs pull
+it forward.
 
 The repo already contains provisional pieces of later milestones, including an auth dependency placeholder and server-rendered pages. Treat that code as material to harden, not as permission to skip milestone verification.
 
@@ -743,7 +748,8 @@ MatrixedMind has a working Cloud Run deployment baseline with managed runtime se
 
 ### Goal
 
-Connect ChatGPT to MatrixedMind through a narrow Custom GPT Action.
+Prepare MatrixedMind to connect to ChatGPT through a narrow Custom GPT Action after the change is
+deployed from `main`.
 
 ### Scope
 
@@ -753,7 +759,7 @@ Connect ChatGPT to MatrixedMind through a narrow Custom GPT Action.
 - Manual ChatGPT test checklist
 - Token rotation/revocation guide
 - Allowed and forbidden behavior tests
-- Smoke test through deployed Cloud Run URL
+- Deployment and activation handoff to Milestone 11
 
 ### Out of scope
 
@@ -763,6 +769,7 @@ Connect ChatGPT to MatrixedMind through a narrow Custom GPT Action.
 - Destructive LLM capabilities
 - Full internal API exposure
 - Public publishing
+- Activating the Custom GPT against the deployed Cloud Run service
 
 ### Implementation tasks
 
@@ -773,28 +780,25 @@ Connect ChatGPT to MatrixedMind through a narrow Custom GPT Action.
 
 #### AI agent implementation tasks
 
-- [ ] Add `/openapi-llm.json`.
-- [ ] Generate an LLM-only OpenAPI schema.
-- [ ] Ensure the schema exposes only the allowed `/api/llm/*` endpoints.
-- [ ] Write the Custom GPT Action setup guide.
-- [ ] Write the manual ChatGPT test checklist.
-- [ ] Write the token rotation and revocation guide.
-- [ ] Add tests proving allowed LLM behavior.
-- [ ] Add tests proving forbidden LLM behavior.
-- [ ] Smoke test create/update through the deployed Cloud Run URL.
+- [x] Add `/openapi-llm.json`.
+- [x] Generate an LLM-only OpenAPI schema.
+- [x] Ensure the schema exposes only the allowed `/api/llm/*` endpoints.
+- [x] Write the Custom GPT Action setup guide.
+- [x] Write the manual ChatGPT test checklist.
+- [x] Write the token rotation and revocation guide.
+- [x] Add tests proving allowed LLM behavior.
+- [x] Add tests proving forbidden LLM behavior.
 
 ### Verification
 
-- [ ] `/openapi-llm.json` returns only LLM-safe operations.
-- [ ] Custom GPT Action can create or update a private draft record.
-- [ ] Custom GPT Action cannot delete, publish, change sharing, change indexing, change auth, or write outside allowed spaces.
-- [ ] LLM token revocation blocks later requests.
-- [ ] Smoke test passes through the deployed Cloud Run URL.
-- [ ] `uv run pytest`
+- [x] `/openapi-llm.json` returns only LLM-safe operations.
+- [x] LLM token revocation blocks later requests.
+- [x] `uv run pytest`
 
 ### Done when
 
-ChatGPT can use a Custom GPT Action to create or update private draft records through the deployed MatrixedMind service without gaining broad or destructive access.
+MatrixedMind exposes a tested LLM-only Action schema, documents secure Custom GPT configuration and
+token rotation, and is ready for deployed activation without exposing broad or destructive access.
 
 </details>
 
@@ -809,6 +813,9 @@ Harden the Cloud MVP before trusting it with higher-sensitivity personal knowled
 
 ### Scope
 
+- Custom GPT activation
+- Public Cloud Run invocation for app-authenticated routes
+- Deployed LLM API smoke testing
 - Alerting
 - Log review
 - Backup/restore validation
@@ -833,9 +840,17 @@ Harden the Cloud MVP before trusting it with higher-sensitivity personal knowled
 
 - [ ] Decide whether a custom domain is needed before broader use.
 - [ ] Decide whether static egress or private connectivity is needed.
+- [ ] Enable public Cloud Run invocation only after the deployed revision includes the narrow LLM
+  schema and app-level token enforcement.
+- [ ] Configure a private Custom GPT Action with a dedicated scoped MatrixedMind token.
 
 #### AI agent implementation tasks
 
+- [ ] Smoke test create and update through the deployed Cloud Run URL.
+- [ ] Verify deployed reads and writes cannot escape the token's allowed spaces.
+- [ ] Verify the deployed API exposes no delete, publish, sharing, indexing, auth, admin, or bulk
+  import capability to the Custom GPT.
+- [ ] Revoke the deployed test token and verify later requests fail.
 - [ ] Configure alerting for service health and error rates.
 - [ ] Document log review workflow.
 - [ ] Validate backup and restore assumptions.
@@ -847,6 +862,13 @@ Harden the Cloud MVP before trusting it with higher-sensitivity personal knowled
 
 ### Verification
 
+- [ ] `/openapi-llm.json` is reachable by ChatGPT while sensitive routes still require app-level
+  authentication.
+- [ ] Custom GPT Action can create or update a private draft record.
+- [ ] Custom GPT Action cannot delete, publish, change sharing, change indexing, change auth, or
+  write outside allowed spaces.
+- [ ] LLM token revocation blocks later deployed requests.
+- [ ] Smoke test passes through the deployed Cloud Run URL.
 - [ ] Alerts fire in a controlled test or documented manual check.
 - [ ] Restore procedure is validated or exact blocker is recorded.
 - [ ] Billing budget alerts are configured.
