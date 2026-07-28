@@ -59,7 +59,7 @@ GET  /api/llm/records/{space}/{slug}
 GET  /api/llm/records
 ```
 
-The LLM boundary is scoped, non-destructive, private/draft/noindex by default, body-size limited, and process-rate-limited. Tokens restrict operations and spaces. Every LLM write is attributed to `llm:chatgpt`, creates a revision, and appends an audit event. Distributed rate limiting remains a deployment-hardening concern if MatrixedMind scales beyond one Cloud Run instance.
+The LLM boundary is scoped, non-destructive, private/draft/noindex by default, bounded-stream body-size limited, and process-rate-limited. Tokens require an explicit owner and restrict operations and spaces. Every LLM write is attributed to `llm:chatgpt`, creates a revision, and appends an audit event. Distributed rate limiting remains a deployment-hardening concern if MatrixedMind scales beyond one Cloud Run instance.
 
 Cloud Run filesystems are not persistent, so hosted persistence is required for deployed records, revisions, audit events, and LLM token metadata.
 

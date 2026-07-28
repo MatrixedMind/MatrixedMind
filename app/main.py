@@ -22,6 +22,18 @@ async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
 app = FastAPI(title="MatrixedMind", lifespan=lifespan)
 
 
+async def buffer_limited_request_body(request: Request, limit: int) -> bool:
+    chunks: list[bytes] = []
+    total_size = 0
+    async for chunk in request.stream():
+        total_size += len(chunk)
+        if total_size > limit:
+            return False
+        chunks.append(chunk)
+    request._body = b"".join(chunks)
+    return True
+
+
 @app.middleware("http")
 async def enforce_llm_body_limit(
     request: Request,
@@ -42,8 +54,7 @@ async def enforce_llm_body_limit(
                     status_code=status.HTTP_413_CONTENT_TOO_LARGE,
                     content={"detail": "Request body too large"},
                 )
-        body = await request.body()
-        if len(body) > settings.llm_request_body_limit_bytes:
+        if not await buffer_limited_request_body(request, settings.llm_request_body_limit_bytes):
             return JSONResponse(
                 status_code=status.HTTP_413_CONTENT_TOO_LARGE,
                 content={"detail": "Request body too large"},

@@ -30,7 +30,7 @@ class InMemoryRecordRepository(RecordRepository):
                 now = datetime.now(UTC)
                 revision = RecordRevision(
                     revision_id=str(uuid4()),
-                    author_id=actor_id,
+                    author_id=r.updated_by,
                     timestamp=now,
                     body_markdown=r.body_markdown,
                 )

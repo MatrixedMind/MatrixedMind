@@ -95,7 +95,7 @@ GET /api/llm/records/{space}/{slug}
 GET /api/llm/records?space={space}
 ```
 
-These routes require `Authorization: Bearer <token>`. Provision tokens through application code using `issue_llm_token()` and persist only `hash_llm_token(raw_token)` in an `LlmApiToken`; there is intentionally no public token-administration endpoint.
+These routes require `Authorization: Bearer <token>`. Provision tokens through application code using `issue_llm_token()`, bind every `LlmApiToken` to an explicit `owner_id`, and persist only `hash_llm_token(raw_token)`; there is intentionally no public token-administration endpoint.
 
 The initial server-rendered pages are:
 

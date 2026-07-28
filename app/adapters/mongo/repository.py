@@ -61,7 +61,7 @@ class MongoRecordRepository:
         now = datetime.now(UTC)
         revision = RecordRevision(
             revision_id=str(ObjectId()),
-            author_id=actor_id,
+            author_id=existing.updated_by,
             timestamp=now,
             body_markdown=existing.body_markdown,
         )

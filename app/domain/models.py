@@ -40,7 +40,7 @@ class Record(BaseModel):
     visibility: RecordVisibility = "private"
     draft: bool = True
     index_after: datetime | None = None
-    owner_id: str = "dev-user"
+    owner_id: str
     created_by: str = "system"
     updated_by: str = "system"
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
@@ -175,8 +175,8 @@ class LlmApiToken(BaseModel):
     token_hash: str
     scopes: frozenset[LlmTokenScope]
     allowed_spaces: frozenset[str]
+    owner_id: str
     actor_id: str = "llm:chatgpt"
-    owner_id: str = "dev-user"
     revoked_at: datetime | None = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 

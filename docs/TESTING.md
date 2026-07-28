@@ -27,7 +27,7 @@ uv run pytest tests/integration
 
 MongoDB-backed tests use the local Compose service and the settings from `.env` or the safe defaults in `app/settings.py`; no seed data is required. If `tests/integration` cannot connect, first check that `docker compose ps` shows the `mongo` service as running, then verify that any local `MONGODB_URI` override points at the Compose MongoDB instance.
 
-Current integration coverage includes a MongoDB ping test, MongoDB repository contract coverage, MongoDB duplicate/missing-record/revision behavior, and FastAPI route tests using in-memory adapters. Route tests cover owner protection, record CRUD, server-rendered flows, crawler metadata, scoped LLM create/update/read/list behavior, private defaults, revision and audit attribution, token revocation, forbidden capabilities, body limits, and rate limits. Authorization unit tests cover all principal types plus precedence and deny behavior.
+Current integration coverage includes a MongoDB ping test, MongoDB repository contract coverage, MongoDB duplicate/missing-record/revision behavior, and FastAPI route tests using in-memory adapters. Route tests cover owner protection, record CRUD, server-rendered flows, crawler metadata, scoped LLM create/update/read/list behavior, private defaults, revision and audit attribution, token revocation, forbidden capabilities, body limits, and rate limits. Unit tests cover authorization principal precedence, required ownership, and bounded streaming that stops consuming a request after it crosses the configured body limit.
 
 ## API tests
 

@@ -37,6 +37,7 @@ def repos() -> tuple[
             token_hash=hash_llm_token(RAW_TOKEN),
             scopes=frozenset({"records:read", "records:write"}),
             allowed_spaces=frozenset({"personal"}),
+            owner_id="dev-user",
         )
     )
     return records, tokens, audits

@@ -13,6 +13,7 @@ def assert_record_repository_contract(repo: RecordRepository) -> None:
             title="Root",
             body_markdown="# Root",
             path="/root",
+            owner_id="owner",
         )
     )
     child = repo.create(
@@ -23,6 +24,8 @@ def assert_record_repository_contract(repo: RecordRepository) -> None:
             title="Child",
             body_markdown="# Child",
             path="/root/child",
+            owner_id="owner",
+            updated_by="original-author",
         )
     )
     repo.create(
@@ -32,6 +35,7 @@ def assert_record_repository_contract(repo: RecordRepository) -> None:
             title="Work Root",
             body_markdown="# Work Root",
             path="/root",
+            owner_id="owner",
         )
     )
 
@@ -54,6 +58,7 @@ def assert_record_repository_contract(repo: RecordRepository) -> None:
             title="Updated Child",
             body_markdown="# Updated Child",
             path="/root/child",
+            owner_id="owner",
         ),
     )
 
@@ -63,6 +68,7 @@ def assert_record_repository_contract(repo: RecordRepository) -> None:
     assert updated.id == child.id
     assert fetched == updated
     assert fetched.title == "Updated Child"
+    assert fetched.revisions[-1].author_id == "original-author"
 
     with pytest.raises(KeyError):
         repo.update(
@@ -72,5 +78,6 @@ def assert_record_repository_contract(repo: RecordRepository) -> None:
                 slug="missing",
                 title="Missing",
                 body_markdown="# Missing",
+                owner_id="owner",
             ),
         )
