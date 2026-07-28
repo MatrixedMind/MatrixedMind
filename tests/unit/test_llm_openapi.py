@@ -1,6 +1,7 @@
 from fastapi.testclient import TestClient
 
 from app.main import app
+from app.openapi import HTTP_METHODS
 
 EXPECTED_OPERATIONS = {
     ("/api/llm/records/upsert", "post", "upsertPrivateDraftRecord"),
@@ -18,6 +19,7 @@ def test_llm_openapi_exposes_only_safe_llm_operations() -> None:
         (path, method, operation["operationId"])
         for path, path_item in schema["paths"].items()
         for method, operation in path_item.items()
+        if method in HTTP_METHODS and isinstance(operation, dict)
     }
     assert operations == EXPECTED_OPERATIONS
     assert schema["servers"] == [{"url": "http://testserver"}]
@@ -35,8 +37,9 @@ def test_llm_openapi_requires_bearer_auth_for_every_operation() -> None:
         }
     }
     for path_item in schema["paths"].values():
-        for operation in path_item.values():
-            assert operation["security"] == [{"LlmBearerToken": []}]
+        for method, operation in path_item.items():
+            if method in HTTP_METHODS and isinstance(operation, dict):
+                assert operation["security"] == [{"LlmBearerToken": []}]
 
 
 def test_llm_openapi_request_schema_forbids_privileged_fields() -> None:
