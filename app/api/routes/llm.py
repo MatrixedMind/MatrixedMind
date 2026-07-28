@@ -22,7 +22,16 @@ def require_record_owner(record: Record, owner_id: str) -> None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Record not found")
 
 
-@router.post("/records/upsert", response_model=RecordResponse)
+@router.post(
+    "/records/upsert",
+    response_model=RecordResponse,
+    operation_id="upsertPrivateDraftRecord",
+    summary="Create or update a private draft record",
+    description=(
+        "Creates or updates a record in a token-authorized space. The record is always "
+        "saved as a private draft with indexing disabled."
+    ),
+)
 def upsert_record(
     request: Request,
     record_in: LlmRecordUpsert,
@@ -81,7 +90,12 @@ def upsert_record(
     return saved
 
 
-@router.get("/records/{space}/{slug}", response_model=RecordResponse)
+@router.get(
+    "/records/{space}/{slug}",
+    response_model=RecordResponse,
+    operation_id="getPrivateDraftRecord",
+    summary="Get a record by space and slug",
+)
 def get_record(
     request: Request,
     space: str,
@@ -98,7 +112,12 @@ def get_record(
     return record
 
 
-@router.get("/records", response_model=list[RecordResponse])
+@router.get(
+    "/records",
+    response_model=list[RecordResponse],
+    operation_id="listPrivateDraftRecords",
+    summary="List records in an authorized space",
+)
 def list_records(
     request: Request,
     repo: RecordRepoDep,

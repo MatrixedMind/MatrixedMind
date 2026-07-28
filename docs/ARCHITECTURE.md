@@ -92,6 +92,11 @@ Cloud Run filesystems are not persistent, so hosted persistence is required for 
 - `GET /api/llm/records/{space}/{slug}`: scoped LLM record read.
 - `GET /api/llm/records?space={space}`: scoped LLM record list.
 
+`GET /openapi-llm.json` is the public integration contract for the Custom GPT Action. MatrixedMind
+generates it from only the `/api/llm/*` routes, attaches deterministic Action operation IDs and
+bearer-token security to every operation, and excludes the internal API, browser routes, health
+routes, and unavailable destructive or administrative capabilities.
+
 Production browser identity-provider integration and import/export are not implemented yet. The Terraform-managed deployment baseline is implemented, but the first Cloud Run application deployment still requires owner-run infrastructure and deployment verification.
 
 ## Deployment strategy
