@@ -61,3 +61,14 @@ Terraform checks are required when infrastructure files change:
 - CI fails on lint, format, type, test, or Docker build failure.
 - CI passes on a clean branch.
 - Branch protection settings are documented after they are applied in GitHub.
+
+## Implementation status
+
+`.github/workflows/ci.yml` implements the required Python, Docker, and credential-free Terraform
+checks and exposes their combined result as `CI / Required`. The default pytest lane runs against a
+MongoDB 8 service. A separate manual job can execute the existing Firestore compatibility Cloud Run
+job through passwordless GitHub Workload Identity Federation.
+
+Repository branch protection still needs to require `CI / Required` after the first successful pull
+request run makes that status available in GitHub. Terraform plans remain credentialed, targeted
+operations and are not part of the required credential-free pull-request lane.

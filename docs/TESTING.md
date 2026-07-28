@@ -78,6 +78,38 @@ docker build -t matrixedmind:local .
 
 For CI changes, open a pull request or run the workflow through the closest supported local equivalent, then document what was actually verified.
 
+## CI verification
+
+`.github/workflows/ci.yml` defines the required pull-request quality gate. `CI / Required` succeeds
+only when the Python quality, Docker build, and Terraform static-check jobs all pass. The Python job
+starts MongoDB 8 and runs the exact milestone commands, including the full default pytest suite;
+the credential-gated Firestore tests skip in that lane.
+
+The optional Firestore workflow-dispatch job uses passwordless GitHub-to-GCP Workload Identity
+Federation and invokes the dedicated Cloud Run compatibility job. It is serialized, restricted to
+`main`, excluded from the required PR status, and must be requested explicitly. Its destructive
+test-data rules remain those documented in [`FIRESTORE_MONGO_SPIKE.md`](FIRESTORE_MONGO_SPIKE.md).
+
+Local workflow-equivalent verification is:
+
+```bash
+uv sync --locked
+uv run ruff check .
+uv run ruff format --check .
+uv run mypy app
+docker compose up -d mongo
+uv run pytest
+docker build -t matrixedmind:local .
+terraform fmt -check -recursive infra/
+terraform -chdir=infra/terraform/bootstrap init -backend=false -input=false
+terraform -chdir=infra/terraform/bootstrap validate
+terraform -chdir=infra/terraform/envs/dev init -backend=false -input=false
+terraform -chdir=infra/terraform/envs/dev validate
+```
+
+A local pass verifies the commands and workflow structure, but not GitHub's trigger or status
+reporting. Those require a pull request run before Milestone 8 can be marked fully verified.
+
 ## Test data
 
 Prefer small fixtures with explicit records, spaces, users, and revisions. Tests should avoid hidden dependency on execution order.
