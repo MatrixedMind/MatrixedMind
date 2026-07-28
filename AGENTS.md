@@ -15,15 +15,16 @@ Always refer to the app as MatrixedMind.
 
 ## Required workflow
 
-1. Read `docs/ROADMAP.md`.
-2. Work only on the current milestone unless instructed otherwise.
-3. Identify all milestone tasks marked as human intervention or decision tasks and confirm they are resolved (or explicitly blocked) before starting AI-agent implementation tasks.
-4. Make small, reviewable changes.
-5. Add or update tests with implementation changes.
-6. Update documentation in the same change when code changes behavior, routes, settings, commands, architecture boundaries, milestone status, or verification expectations.
-7. Commit files before running pre-commit/lint checks if operating in an agent environment that requires a committed state.
-8. Run the verification commands listed in the milestone.
-9. Report failures exactly, including IDE, type, lint, test, Docker, and Terraform errors.
+1. Before starting work for a new pull request, fetch `origin`, switch to `main`, fast-forward it with `git pull --ff-only origin main`, and create a fresh branch from the updated `main`.
+2. Read `docs/ROADMAP.md`.
+3. Work only on the current milestone unless instructed otherwise.
+4. Identify all milestone tasks marked as human intervention or decision tasks and confirm they are resolved (or explicitly blocked) before starting AI-agent implementation tasks.
+5. Make small, reviewable changes.
+6. Add or update tests with implementation changes.
+7. Update documentation in the same change when code changes behavior, routes, settings, commands, architecture boundaries, milestone status, or verification expectations.
+8. Commit files before running pre-commit/lint checks if operating in an agent environment that requires a committed state.
+9. Run the verification commands listed in the milestone.
+10. Report failures exactly, including IDE, type, lint, test, Docker, and Terraform errors.
 
 ## Documentation sync
 
