@@ -12,7 +12,7 @@ Milestone 5 is implemented and verified for a minimal server-rendered browser sh
 
 Milestone 6 is implemented and verified for owner auth boundaries, deterministic dev/test identities, centralized authorization policy, hashed/scoped/revocable LLM tokens, narrow private-by-default LLM record operations, revision and audit attribution, request limits, and forbidden capability handling.
 
-Milestone 7 is implemented and verified against Firestore Enterprise MongoDB compatibility in GCP. Milestone 8's CI quality gate is implemented and locally verified; pull-request execution and branch-protection verification remain before the milestone is complete. The roadmap then continues through Cloud Run deployment, ChatGPT Action integration, and cloud hardening. Import/export is deferred until after that secure cloud path unless recovery needs pull it forward.
+Milestone 7 is implemented and verified against Firestore Enterprise MongoDB compatibility in GCP. Milestone 8's CI quality gate is implemented and verified on a pull request; branch protection remains before the milestone is complete. The roadmap then continues through Cloud Run deployment, ChatGPT Action integration, and cloud hardening. Import/export is deferred until after that secure cloud path unless recovery needs pull it forward.
 
 The repo already contains provisional pieces of later milestones, including an auth dependency placeholder and server-rendered pages. Treat that code as material to harden, not as permission to skip milestone verification.
 
@@ -653,9 +653,9 @@ Make every PR automatically verifiable.
 
 ### Verification
 
-- [ ] Open PR triggers CI.
+- [x] Open PR triggers CI.
 - [ ] CI fails on lint, type, test, or Docker build failure.
-- [ ] CI passes on a clean branch.
+- [x] CI passes on a clean branch.
 
 ### Done when
 
