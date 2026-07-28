@@ -22,7 +22,7 @@ def test_llm_openapi_exposes_only_safe_llm_operations() -> None:
         if method in HTTP_METHODS and isinstance(operation, dict)
     }
     assert operations == EXPECTED_OPERATIONS
-    assert schema["servers"] == [{"url": "http://testserver"}]
+    assert "servers" not in schema
 
 
 def test_llm_openapi_requires_bearer_auth_for_every_operation() -> None:
