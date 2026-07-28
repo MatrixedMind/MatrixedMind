@@ -5,6 +5,7 @@ from fastapi.openapi.utils import get_openapi
 from fastapi.routing import APIRoute
 
 LLM_API_PREFIX = "/api/llm/"
+HTTP_METHODS = frozenset({"get", "put", "post", "delete", "options", "head", "patch", "trace"})
 
 
 def build_llm_openapi_schema(app: FastAPI, server_url: str) -> dict[str, Any]:
@@ -34,6 +35,7 @@ def build_llm_openapi_schema(app: FastAPI, server_url: str) -> dict[str, Any]:
         }
     }
     for path_item in schema["paths"].values():
-        for operation in path_item.values():
-            operation["security"] = [{"LlmBearerToken": []}]
+        for method, operation in path_item.items():
+            if method in HTTP_METHODS and isinstance(operation, dict):
+                operation["security"] = [{"LlmBearerToken": []}]
     return schema
