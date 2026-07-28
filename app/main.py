@@ -68,8 +68,8 @@ app.include_router(web_router)
 
 
 @app.get("/openapi-llm.json", include_in_schema=False)
-async def llm_openapi(request: Request) -> dict[str, object]:
-    return build_llm_openapi_schema(app, str(request.base_url))
+async def llm_openapi() -> dict[str, object]:
+    return build_llm_openapi_schema(app)
 
 
 @app.get("/health")
