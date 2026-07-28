@@ -33,6 +33,10 @@ MONGO_ENSURE_INDEXES=true
 MONGO_URI=mongodb://matrixed_mind:matrixed_mind@localhost:27017/matrixed_mind?authSource=admin
 ```
 
+`APP_SECRET_KEY` and `LLM_TOKEN_PEPPER` are required only when `APP_ENV=production`. The Cloud Run
+service reads them from explicit Secret Manager versions. Do not add real values to `.env`,
+`.env.example`, Terraform variable files, or GitHub configuration.
+
 Milestone 7 adds an opt-in Firestore MongoDB compatibility suite without changing the local
 `MONGO_URI` path. Passwordless GCP provisioning and the exact test commands are documented in
 [`FIRESTORE_MONGO_SPIKE.md`](FIRESTORE_MONGO_SPIKE.md). Do not store its test-only
@@ -95,7 +99,7 @@ GET /api/records/{space}/{slug}
 PUT /api/records/{space}/{slug}
 ```
 
-Browser and internal record routes use the owner auth dependency. `AUTH_MODE=dev` supplies the deterministic local `dev-user`; test mode requires `X-Test-User-Id`; production fails closed until a real verified identity implementation is configured.
+Browser and internal record routes use the owner auth dependency. `AUTH_MODE=dev` supplies the deterministic local `dev-user`; test mode requires `X-Test-User-Id`; production requires managed runtime secrets and still fails closed until a real verified identity implementation is configured.
 
 The separate ChatGPT Action boundary is:
 

@@ -5,6 +5,10 @@ github_repository = "your-github-owner/your-github-repo"
 enable_cloud_run_service = false
 container_image          = ""
 
+# Cloud Run references explicit versions; create these versions before enabling the service.
+app_secret_key_version    = "1"
+llm_token_pepper_version  = "1"
+
 # Enable after the dedicated test image has been pushed to Artifact Registry.
 enable_firestore_spike_job = false
 firestore_spike_image      = ""

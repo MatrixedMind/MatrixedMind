@@ -169,10 +169,12 @@ LLM API tokens must be:
 - Confirm app-level auth is enforced before allowing public Cloud Run invocation.
 - Use Terraform to configure billing budget alerts after billing is linked.
 
-The Terraform roots currently support:
+The Terraform roots and reusable modules currently support:
 
 - `infra/terraform/bootstrap`: creates a private, versioned GCS state bucket.
-- `infra/terraform/envs/dev`: enables required APIs; creates Artifact Registry, service accounts, Secret Manager placeholders, Workload Identity Federation, a Firestore Enterprise database, and MongoDB-compatible indexes; derives a passwordless GCP OIDC URI; and optionally creates the application service, compatibility-test job, and billing budget.
+- `infra/terraform/modules/*`: encapsulates Artifact Registry, runtime secrets, and the Cloud Run service.
+- `infra/terraform/envs/dev`: enables required APIs; creates service accounts, Workload Identity Federation, a Firestore Enterprise database, and MongoDB-compatible indexes; composes the reusable modules; derives a passwordless GCP OIDC URI; and optionally creates the application service, compatibility-test job, and billing budget.
+- `infra/terraform/envs/prod`: remains an explicit placeholder until production planning is complete.
 
 The owner still must provide:
 
@@ -180,8 +182,19 @@ The owner still must provide:
 - Local or CI credentials allowed to run Terraform.
 - Application secret values, added as Secret Manager versions outside Git. No Firestore password is required.
 - The first pushed container image before enabling Cloud Run in Terraform.
-- Application image and runtime secret values before enabling the Cloud Run application service.
+- Application image and numbered runtime secret versions before enabling the Cloud Run application service.
 - The decision to set `allow_unauthenticated_cloud_run = true`, and only after app-level auth is enforced.
+
+After the owner applies the Cloud Run service configuration, `.github/workflows/deploy-dev.yml`
+deploys only CI-verified `main` revisions. It uses Workload Identity Federation, pushes an immutable
+commit-tagged image, updates only the service image, and verifies `/health` and `/ready` with an
+authenticated identity token. Exact setup and recovery commands are in
+[`OPERATIONS.md`](OPERATIONS.md).
+
+The private development service was deployed and verified on 2026-07-28. Process health returned
+the production environment, readiness successfully pinged Firestore MongoDB compatibility,
+unauthenticated Cloud Run invocation returned `403`, and an authenticated request to a sensitive
+browser route reached MatrixedMind's fail-closed production auth and returned `401`.
 
 ## ChatGPT Custom GPT Action Setup Checklist
 
