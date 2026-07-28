@@ -12,7 +12,7 @@ Milestone 5 is implemented and verified for a minimal server-rendered browser sh
 
 Milestone 6 is implemented and verified for owner auth boundaries, deterministic dev/test identities, centralized authorization policy, hashed/scoped/revocable LLM tokens, narrow private-by-default LLM record operations, revision and audit attribution, request limits, and forbidden capability handling.
 
-Milestone 7 is now the current implementation focus: the Firestore MongoDB compatibility spike. The roadmap then continues through CI, Cloud Run deployment, ChatGPT Action integration, and cloud hardening. Import/export is deferred until after that secure cloud path unless recovery needs pull it forward.
+Milestone 7 is implemented and verified against Firestore Enterprise MongoDB compatibility in GCP. Milestone 8 is now the current implementation focus: the CI quality gate. The roadmap then continues through Cloud Run deployment, ChatGPT Action integration, and cloud hardening. Import/export is deferred until after that secure cloud path unless recovery needs pull it forward.
 
 The repo already contains provisional pieces of later milestones, including an auth dependency placeholder and server-rendered pages. Treat that code as material to harden, not as permission to skip milestone verification.
 
@@ -583,24 +583,24 @@ Prove whether Firestore Enterprise MongoDB compatibility can be the cloud persis
 
 #### AI agent implementation tasks
 
-- [ ] Document Firestore Enterprise database setup steps for the spike.
-- [ ] Document Firestore MongoDB compatibility connection settings, including `loadBalanced=true`, `SCRAM-SHA-256`, `tls=true`, and `retryWrites=false`.
-- [ ] Add a way to run repository contract tests against Firestore MongoDB compatibility without replacing local MongoDB development.
-- [ ] Verify unique compound index behavior.
-- [ ] Verify `ObjectId` behavior.
-- [ ] Verify duplicate key errors map to expected adapter behavior.
-- [ ] Verify `update_one` with `$set`.
-- [ ] Verify sorting behavior.
-- [ ] Verify readiness checks.
-- [ ] Document any adapter changes required for compatibility.
-- [ ] Record fallback criteria for MongoDB Atlas if Firestore compatibility fails.
+- [x] Document Firestore Enterprise database setup steps for the spike.
+- [x] Document Firestore MongoDB compatibility connection settings, including passwordless GCP OIDC, `loadBalanced=true`, `tls=true`, and `retryWrites=false`; retain SCRAM only for external diagnostics.
+- [x] Add a way to run repository contract tests against Firestore MongoDB compatibility without replacing local MongoDB development.
+- [x] Verify unique compound index behavior.
+- [x] Verify `ObjectId` behavior.
+- [x] Verify duplicate key errors map to expected adapter behavior.
+- [x] Verify `update_one` with `$set`.
+- [x] Verify sorting behavior.
+- [x] Verify readiness checks.
+- [x] Document any adapter changes required for compatibility.
+- [x] Record fallback criteria for MongoDB Atlas if Firestore compatibility fails.
 
 ### Verification
 
-- [ ] Repository contract tests pass against local MongoDB.
-- [ ] Repository contract tests pass against Firestore MongoDB compatibility, or exact blockers are documented.
-- [ ] Unique index, `ObjectId`, duplicate key, `$set`, sorting, and readiness behavior are verified.
-- [ ] `uv run pytest`
+- [x] Repository contract tests pass against local MongoDB.
+- [x] Repository contract tests pass against Firestore MongoDB compatibility, or exact blockers are documented.
+- [x] Unique index, `ObjectId`, duplicate key, `$set`, sorting, and readiness behavior are verified.
+- [x] `uv run pytest`
 
 ### Done when
 

@@ -1,0 +1,17 @@
+project_id        = "your-gcp-project-id"
+github_repository = "your-github-owner/your-github-repo"
+
+# Enable after an application image has been pushed.
+enable_cloud_run_service = false
+container_image          = ""
+
+# Enable after the dedicated test image has been pushed to Artifact Registry.
+enable_firestore_spike_job = false
+firestore_spike_image      = ""
+
+# Keep false until MatrixedMind app-level auth protects all sensitive routes.
+allow_unauthenticated_cloud_run = false
+
+# Optional billing budget.
+billing_account_id          = ""
+billing_budget_amount_units = null

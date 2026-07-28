@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     llm_request_body_limit_bytes: int = 65_536
     llm_rate_limit_requests: int = 60
     llm_rate_limit_window_seconds: int = 60
+    mongo_ensure_indexes: bool = True
     mongo_uri: str = (
         "mongodb://matrixed_mind:matrixed_mind@localhost:27017/matrixed_mind?authSource=admin"
     )

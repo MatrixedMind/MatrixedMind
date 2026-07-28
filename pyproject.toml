@@ -44,6 +44,9 @@ plugins = []
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q"
+markers = [
+  "firestore: opt-in tests against Firestore with MongoDB compatibility",
+]
 
 [tool.hatch.build.targets.wheel]
 packages = ["app"]

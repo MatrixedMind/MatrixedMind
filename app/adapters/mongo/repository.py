@@ -11,9 +11,10 @@ from app.domain.models import Record, RecordRevision
 
 
 class MongoRecordRepository:
-    def __init__(self, db: Database[dict[str, Any]]):
+    def __init__(self, db: Database[dict[str, Any]], *, ensure_indexes: bool = True):
         self.collection = db.records
-        self.ensure_indexes()
+        if ensure_indexes:
+            self.ensure_indexes()
 
     def ensure_indexes(self) -> None:
         self.collection.create_index(

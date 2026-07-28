@@ -29,6 +29,29 @@ MongoDB-backed tests use the local Compose service and the settings from `.env` 
 
 Current integration coverage includes a MongoDB ping test, MongoDB repository contract coverage, MongoDB duplicate/missing-record/revision behavior, and FastAPI route tests using in-memory adapters. Route tests cover owner protection, record CRUD, server-rendered flows, crawler metadata, scoped LLM create/update/read/list behavior, private defaults, revision and audit attribution, token revocation, forbidden capabilities, body limits, and rate limits. Unit tests cover authorization principal precedence, required ownership, and bounded streaming that stops consuming a request after it crosses the configured body limit.
 
+## Firestore MongoDB compatibility tests
+
+Tests under `tests/firestore/` are opt-in and skip when `FIRESTORE_MONGO_URI` is absent. They run the
+repository contract and explicit compatibility checks against a dedicated Firestore Enterprise
+database. The canonical execution path is the Terraform-managed Cloud Run Job, which authenticates
+with its service account and a passwordless OIDC URI. The tests remain outside the credential-free
+default path.
+
+```bash
+gcloud run jobs execute matrixedmind-firestore-spike --region=REGION --wait
+```
+
+The harness also accepts a correctly formed SCRAM URI for external diagnostics, but MatrixedMind
+does not use stored Firestore passwords for its Cloud Run runtime or GCP test job.
+
+The suite deletes every document in the target `records` collection before and after each test. Use
+only a dedicated non-production spike database. See
+[`FIRESTORE_MONGO_SPIKE.md`](FIRESTORE_MONGO_SPIKE.md) for provisioning, required URI options, and
+result-recording requirements.
+
+The milestone 7 GCP execution passed all six Firestore compatibility tests on 2026-07-28 using the
+Terraform-managed Cloud Run Job in `us-west1`.
+
 ## API tests
 
 Use FastAPI `TestClient` or `httpx` tests for route behavior. Cover success responses, validation errors, duplicate/conflict errors, not-found responses, and repository dependency overrides.

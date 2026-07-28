@@ -29,8 +29,18 @@ AUTH_MODE=dev
 LLM_REQUEST_BODY_LIMIT_BYTES=65536
 LLM_RATE_LIMIT_REQUESTS=60
 LLM_RATE_LIMIT_WINDOW_SECONDS=60
+MONGO_ENSURE_INDEXES=true
 MONGO_URI=mongodb://matrixed_mind:matrixed_mind@localhost:27017/matrixed_mind?authSource=admin
 ```
+
+Milestone 7 adds an opt-in Firestore MongoDB compatibility suite without changing the local
+`MONGO_URI` path. Passwordless GCP provisioning and the exact test commands are documented in
+[`FIRESTORE_MONGO_SPIKE.md`](FIRESTORE_MONGO_SPIKE.md). Do not store its test-only
+`FIRESTORE_MONGO_URI` in `.env` or `.env.example`.
+
+Local MongoDB adapters create their indexes by default. Terraform manages hosted Firestore indexes,
+and Cloud Run sets `MONGO_ENSURE_INDEXES=false` so the runtime service account needs data access but
+not index-administration permission.
 
 When running through Docker Compose, the `api` service uses the same database credentials with the Compose service host:
 
@@ -119,6 +129,15 @@ docker build -t matrixedmind:local .
 `uv run pre-commit run --all-files` already runs `ruff-format` and `ruff-check` in configured hook order, so you usually do not need to run those two commands separately unless you are debugging locally or mirroring CI steps explicitly.
 
 For infrastructure changes, also run the checks from `docs/OPERATIONS.md`.
+
+Terraform variable files may be based on:
+
+```text
+infra/terraform/bootstrap/terraform.tfvars.example
+infra/terraform/envs/dev/terraform.tfvars.example
+```
+
+Do not commit real `.tfvars` files.
 
 ## Common commands
 
