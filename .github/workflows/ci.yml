@@ -1,0 +1,202 @@
+name: CI
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      run_firestore_compatibility:
+        description: Run the destructive compatibility suite against the dedicated Firestore test database
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name != 'workflow_dispatch' }}
+
+env:
+  UV_NO_PROGRESS: "1"
+
+jobs:
+  python-quality:
+    name: Python quality
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      mongo:
+        image: mongo:8
+        env:
+          MONGO_INITDB_ROOT_USERNAME: matrixed_mind
+          MONGO_INITDB_ROOT_PASSWORD: matrixed_mind
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd "mongosh --quiet mongodb://matrixed_mind:matrixed_mind@localhost:27017/admin?authSource=admin --eval 'db.adminCommand(\"ping\")'"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up uv and Python
+        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+        with:
+          version: "0.11.32"
+          python-version: "3.12"
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+
+      - name: Sync locked dependencies
+        run: uv sync --locked
+
+      - name: Check lint
+        run: uv run ruff check .
+
+      - name: Check formatting
+        run: uv run ruff format --check .
+
+      - name: Check types
+        run: uv run mypy app
+
+      - name: Run tests
+        run: uv run pytest
+
+  docker-build:
+    name: Docker build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Build application image
+        run: docker build --tag matrixedmind:${{ github.sha }} .
+
+  terraform-static:
+    name: Terraform static checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
+        with:
+          terraform_version: "1.15.8"
+          terraform_wrapper: false
+
+      - name: Check Terraform formatting
+        run: terraform fmt -check -recursive infra/
+
+      - name: Initialize bootstrap root without backend
+        run: terraform -chdir=infra/terraform/bootstrap init -backend=false -input=false
+
+      - name: Validate bootstrap root
+        run: terraform -chdir=infra/terraform/bootstrap validate
+
+      - name: Initialize development root without backend
+        run: terraform -chdir=infra/terraform/envs/dev init -backend=false -input=false
+
+      - name: Validate development root
+        run: terraform -chdir=infra/terraform/envs/dev validate
+
+  required:
+    name: Required
+    if: always()
+    needs:
+      - python-quality
+      - docker-build
+      - terraform-static
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Confirm required jobs passed
+        env:
+          PYTHON_RESULT: ${{ needs.python-quality.result }}
+          DOCKER_RESULT: ${{ needs.docker-build.result }}
+          TERRAFORM_RESULT: ${{ needs.terraform-static.result }}
+        run: |
+          if [[ "$PYTHON_RESULT" != "success" || "$DOCKER_RESULT" != "success" || "$TERRAFORM_RESULT" != "success" ]]; then
+            echo "One or more required CI jobs did not pass."
+            exit 1
+          fi
+
+  firestore-compatibility:
+    name: Firestore compatibility (optional)
+    if: >-
+      github.event_name == 'workflow_dispatch' &&
+      github.ref == 'refs/heads/main' &&
+      inputs.run_firestore_compatibility
+    concurrency:
+      group: firestore-compatibility
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      FIRESTORE_SPIKE_JOB: ${{ vars.FIRESTORE_SPIKE_JOB }}
+      GCP_DEPLOYER_SERVICE_ACCOUNT: ${{ vars.GCP_DEPLOYER_SERVICE_ACCOUNT }}
+      GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+      GCP_REGION: ${{ vars.GCP_REGION }}
+      GCP_WORKLOAD_IDENTITY_PROVIDER: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+
+    steps:
+      - name: Require GCP workflow configuration
+        run: |
+          required_values=(
+            "$FIRESTORE_SPIKE_JOB"
+            "$GCP_DEPLOYER_SERVICE_ACCOUNT"
+            "$GCP_PROJECT_ID"
+            "$GCP_REGION"
+            "$GCP_WORKLOAD_IDENTITY_PROVIDER"
+          )
+          for value in "${required_values[@]}"; do
+            if [[ -z "$value" ]]; then
+              echo "::error::The Firestore compatibility workflow variables are incomplete."
+              exit 1
+            fi
+          done
+
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
+        with:
+          project_id: ${{ vars.GCP_PROJECT_ID }}
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOYER_SERVICE_ACCOUNT }}
+
+      - name: Set up Google Cloud CLI
+        uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3.0.1
+
+      - name: Execute Firestore compatibility job
+        run: >-
+          gcloud run jobs execute "$FIRESTORE_SPIKE_JOB"
+          --project="$GCP_PROJECT_ID"
+          --region="$GCP_REGION"
+          --wait

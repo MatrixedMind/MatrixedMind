@@ -12,7 +12,7 @@ Milestone 5 is implemented and verified for a minimal server-rendered browser sh
 
 Milestone 6 is implemented and verified for owner auth boundaries, deterministic dev/test identities, centralized authorization policy, hashed/scoped/revocable LLM tokens, narrow private-by-default LLM record operations, revision and audit attribution, request limits, and forbidden capability handling.
 
-Milestone 7 is implemented and verified against Firestore Enterprise MongoDB compatibility in GCP. Milestone 8 is now the current implementation focus: the CI quality gate. The roadmap then continues through Cloud Run deployment, ChatGPT Action integration, and cloud hardening. Import/export is deferred until after that secure cloud path unless recovery needs pull it forward.
+Milestone 7 is implemented and verified against Firestore Enterprise MongoDB compatibility in GCP. Milestone 8's CI quality gate is implemented and locally verified; pull-request execution and branch-protection verification remain before the milestone is complete. The roadmap then continues through Cloud Run deployment, ChatGPT Action integration, and cloud hardening. Import/export is deferred until after that secure cloud path unless recovery needs pull it forward.
 
 The repo already contains provisional pieces of later milestones, including an auth dependency placeholder and server-rendered pages. Treat that code as material to harden, not as permission to skip milestone verification.
 
@@ -641,15 +641,15 @@ Make every PR automatically verifiable.
 
 #### AI agent implementation tasks
 
-- [ ] Add a GitHub Actions workflow.
-- [ ] Run `uv sync --locked`.
-- [ ] Cache `uv` dependencies safely.
-- [ ] Run `uv run ruff check .`.
-- [ ] Run `uv run ruff format --check .`.
-- [ ] Run `uv run mypy app`.
-- [ ] Run `uv run pytest`.
-- [ ] Build the Docker image.
-- [ ] Add an optional integration test job for local MongoDB and Firestore compatibility when credentials are available.
+- [x] Add a GitHub Actions workflow.
+- [x] Run `uv sync --locked`.
+- [x] Cache `uv` dependencies safely.
+- [x] Run `uv run ruff check .`.
+- [x] Run `uv run ruff format --check .`.
+- [x] Run `uv run mypy app`.
+- [x] Run `uv run pytest`.
+- [x] Build the Docker image.
+- [x] Add an optional integration test job for local MongoDB and Firestore compatibility when credentials are available.
 
 ### Verification
 

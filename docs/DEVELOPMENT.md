@@ -130,6 +130,36 @@ docker build -t matrixedmind:local .
 
 For infrastructure changes, also run the checks from `docs/OPERATIONS.md`.
 
+## Continuous integration
+
+The `CI` workflow in `.github/workflows/ci.yml` runs for pull requests targeting `main`, pushes to
+`main`, and manual dispatches. Its required lanes perform the locked dependency sync, Ruff checks,
+strict mypy check, full pytest suite against a MongoDB 8 service, Docker build, and credential-free
+Terraform formatting and validation. The `Required` job combines those lanes into the single
+`CI / Required` status intended for branch protection.
+
+The optional Firestore compatibility lane is available only through a manual dispatch on `main`.
+It uses GitHub OIDC and the Terraform-managed Workload Identity Federation provider to execute the
+existing passwordless Cloud Run compatibility job. Configure these repository variables from the
+applied development Terraform outputs and settings before using it:
+
+```text
+FIRESTORE_SPIKE_JOB
+GCP_DEPLOYER_SERVICE_ACCOUNT
+GCP_PROJECT_ID
+GCP_REGION
+GCP_WORKLOAD_IDENTITY_PROVIDER
+```
+
+Run it explicitly with:
+
+```bash
+gh workflow run ci.yml --ref main -f run_firestore_compatibility=true
+```
+
+The Cloud Run job deletes documents in its dedicated Firestore test collection. Do not point it at
+a production database. Normal pull-request CI does not request GCP credentials.
+
 Terraform variable files may be based on:
 
 ```text
