@@ -32,6 +32,11 @@ LLM_RATE_LIMIT_WINDOW_SECONDS=60
 MONGO_URI=mongodb://matrixed_mind:matrixed_mind@localhost:27017/matrixed_mind?authSource=admin
 ```
 
+Milestone 7 adds an opt-in Firestore MongoDB compatibility suite without changing the local
+`MONGO_URI` path. Provisioning, secret handling, and the exact test commands are documented in
+[`FIRESTORE_MONGO_SPIKE.md`](FIRESTORE_MONGO_SPIKE.md). Do not store its test-only
+`FIRESTORE_MONGO_URI` in `.env` or `.env.example`.
+
 When running through Docker Compose, the `api` service uses the same database credentials with the Compose service host:
 
 ```text

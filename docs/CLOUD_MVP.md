@@ -63,6 +63,10 @@ MongoDB Atlas remains the fallback only if Firestore MongoDB compatibility block
 
 Before the cloud deployment baseline, run the repository contract suite against Firestore Enterprise MongoDB compatibility and document results.
 
+The executable runbook and current result record live in
+[`FIRESTORE_MONGO_SPIKE.md`](FIRESTORE_MONGO_SPIKE.md). The suite is opt-in and requires a dedicated
+non-production database because it clears the target `records` collection.
+
 The spike must verify at least:
 
 - Connection settings required by the documented Firestore MongoDB-compatible connection string.

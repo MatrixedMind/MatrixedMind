@@ -25,6 +25,11 @@ The application should depend on repository interfaces. Adapters own database-sp
 
 Repository behavior is defined by reusable contract assertions under `tests/contracts/`. The unit suite applies the contract to the in-memory adapter, and the integration suite applies the same contract to MongoDB.
 
+The opt-in suite under `tests/firestore/` applies that same contract plus explicit checks for
+compound uniqueness, `ObjectId`, duplicate-key mapping, `$set` updates, sorting, and readiness. It
+uses a separate `FIRESTORE_MONGO_URI`; the default application and test configuration remains local
+MongoDB.
+
 For the Cloud MVP, Firestore Enterprise edition with MongoDB compatibility is the preferred cloud persistence target. This must be verified by running repository contract tests against Firestore compatibility before cloud deployment is considered unblocked. Local Docker Compose MongoDB remains the local development path. MongoDB Atlas is fallback only if Firestore compatibility blocks the MVP.
 
 The current embedded revision array is acceptable for the MVP adapter, but it should not grow unbounded long term. LLM creates and updates produce attributed revisions, while audit events are stored append-only in a separate collection.

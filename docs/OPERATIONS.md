@@ -40,6 +40,10 @@ The database-aware readiness endpoint is:
 
 `/ready` pings MongoDB through the app's MongoDB connection and returns a 503 response with `MongoDB is not ready` when the ping fails.
 
+The Milestone 7 Firestore spike exercises the same application ping against Firestore MongoDB
+compatibility. Its credential and runbook are intentionally separate from normal local operations;
+see [`FIRESTORE_MONGO_SPIKE.md`](FIRESTORE_MONGO_SPIKE.md).
+
 ## Terraform
 
 Terraform roots live under:

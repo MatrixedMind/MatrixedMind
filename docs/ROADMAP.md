@@ -583,24 +583,24 @@ Prove whether Firestore Enterprise MongoDB compatibility can be the cloud persis
 
 #### AI agent implementation tasks
 
-- [ ] Document Firestore Enterprise database setup steps for the spike.
-- [ ] Document Firestore MongoDB compatibility connection settings, including `loadBalanced=true`, `SCRAM-SHA-256`, `tls=true`, and `retryWrites=false`.
-- [ ] Add a way to run repository contract tests against Firestore MongoDB compatibility without replacing local MongoDB development.
+- [x] Document Firestore Enterprise database setup steps for the spike.
+- [x] Document Firestore MongoDB compatibility connection settings, including `loadBalanced=true`, `SCRAM-SHA-256`, `tls=true`, and `retryWrites=false`.
+- [x] Add a way to run repository contract tests against Firestore MongoDB compatibility without replacing local MongoDB development.
 - [ ] Verify unique compound index behavior.
 - [ ] Verify `ObjectId` behavior.
 - [ ] Verify duplicate key errors map to expected adapter behavior.
 - [ ] Verify `update_one` with `$set`.
 - [ ] Verify sorting behavior.
 - [ ] Verify readiness checks.
-- [ ] Document any adapter changes required for compatibility.
-- [ ] Record fallback criteria for MongoDB Atlas if Firestore compatibility fails.
+- [x] Document any adapter changes required for compatibility.
+- [x] Record fallback criteria for MongoDB Atlas if Firestore compatibility fails.
 
 ### Verification
 
-- [ ] Repository contract tests pass against local MongoDB.
+- [x] Repository contract tests pass against local MongoDB.
 - [ ] Repository contract tests pass against Firestore MongoDB compatibility, or exact blockers are documented.
 - [ ] Unique index, `ObjectId`, duplicate key, `$set`, sorting, and readiness behavior are verified.
-- [ ] `uv run pytest`
+- [x] `uv run pytest`
 
 ### Done when
 
