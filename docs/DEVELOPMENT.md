@@ -25,6 +25,10 @@ Required local values:
 
 ```text
 APP_ENV=local
+AUTH_MODE=dev
+LLM_REQUEST_BODY_LIMIT_BYTES=65536
+LLM_RATE_LIMIT_REQUESTS=60
+LLM_RATE_LIMIT_WINDOW_SECONDS=60
 MONGO_URI=mongodb://matrixed_mind:matrixed_mind@localhost:27017/matrixed_mind?authSource=admin
 ```
 
@@ -80,6 +84,18 @@ GET /api/records/{space}
 GET /api/records/{space}/{slug}
 PUT /api/records/{space}/{slug}
 ```
+
+Browser and internal record routes use the owner auth dependency. `AUTH_MODE=dev` supplies the deterministic local `dev-user`; test mode requires `X-Test-User-Id`; production fails closed until a real verified identity implementation is configured.
+
+The separate ChatGPT Action boundary is:
+
+```text
+POST /api/llm/records/upsert
+GET /api/llm/records/{space}/{slug}
+GET /api/llm/records?space={space}
+```
+
+These routes require `Authorization: Bearer <token>`. Provision tokens through application code using `issue_llm_token()` and persist only `hash_llm_token(raw_token)` in an `LlmApiToken`; there is intentionally no public token-administration endpoint.
 
 The initial server-rendered pages are:
 

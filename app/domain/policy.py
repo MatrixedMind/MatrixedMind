@@ -4,6 +4,8 @@ from typing import Literal
 from pydantic import BaseModel
 
 RecordVisibility = Literal["private", "public"]
+PrincipalType = Literal["user", "organization", "org_group", "external_group", "public"]
+PolicyAction = Literal["read", "edit", "share", "discover"]
 
 INDEX_DELAY = timedelta(days=7)
 DEFAULT_ROBOTS_CONTENT = "noindex,nofollow,noarchive"
@@ -20,6 +22,63 @@ class CrawlerMetadata(BaseModel):
         follow_value = "follow" if self.follow else "nofollow"
         archive_value = "archive" if self.archive else "noarchive"
         return ",".join([index_value, follow_value, archive_value])
+
+
+class Principal(BaseModel):
+    type: PrincipalType
+    id: str
+
+
+class PolicyRule(BaseModel):
+    principal_type: PrincipalType
+    principal_id: str
+    action: PolicyAction
+    effect: Literal["allow", "deny"]
+
+
+def policy_allows(
+    *,
+    principals: set[tuple[PrincipalType, str]],
+    action: PolicyAction,
+    global_rules: list[PolicyRule] | None = None,
+    space_rules: list[PolicyRule] | None = None,
+    record_rules: list[PolicyRule] | None = None,
+) -> bool:
+    """Evaluate explicit policy with deny-overrides and record/space/global precedence."""
+    applicable_by_scope = [
+        [
+            rule
+            for rule in rules
+            if rule.action == action and (rule.principal_type, rule.principal_id) in principals
+        ]
+        for rules in (record_rules or [], space_rules or [], global_rules or [])
+    ]
+    if any(rule.effect == "deny" for rules in applicable_by_scope for rule in rules):
+        return False
+    for applicable in applicable_by_scope:
+        if any(rule.effect == "allow" for rule in applicable):
+            return True
+    return False
+
+
+def can_read(**kwargs: object) -> bool:
+    return policy_allows(action="read", **kwargs)  # type: ignore[arg-type]
+
+
+def can_edit(**kwargs: object) -> bool:
+    return policy_allows(action="edit", **kwargs)  # type: ignore[arg-type]
+
+
+def can_share(**kwargs: object) -> bool:
+    return policy_allows(action="share", **kwargs)  # type: ignore[arg-type]
+
+
+def can_discover(**kwargs: object) -> bool:
+    return policy_allows(action="discover", **kwargs)  # type: ignore[arg-type]
+
+
+def owner_can_discover_record(*, owner_id: str, visibility: RecordVisibility, user_id: str) -> bool:
+    return user_id == owner_id or visibility == "public"
 
 
 def default_crawler_metadata() -> CrawlerMetadata:

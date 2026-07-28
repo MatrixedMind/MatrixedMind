@@ -47,7 +47,7 @@ class MongoRecordRepository:
             ) from exc
         return self._get_by_id(result.inserted_id)
 
-    def update(self, record_id: str, record: Record) -> Record:
+    def update(self, record_id: str, record: Record, actor_id: str = "system") -> Record:
         try:
             object_id = ObjectId(record_id)
         except InvalidId as exc:
@@ -61,7 +61,7 @@ class MongoRecordRepository:
         now = datetime.now(UTC)
         revision = RecordRevision(
             revision_id=str(ObjectId()),
-            author_id="system",
+            author_id=actor_id,
             timestamp=now,
             body_markdown=existing.body_markdown,
         )
@@ -69,6 +69,7 @@ class MongoRecordRepository:
         record.id = record_id
         record.created_at = existing.created_at
         record.updated_at = now
+        record.updated_by = actor_id
         record.revisions = [*existing.revisions, revision]
         data = record.model_dump(by_alias=True, exclude={"id"})
 
