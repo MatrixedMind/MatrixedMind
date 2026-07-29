@@ -56,6 +56,9 @@ Current ADR-backed decisions:
 - Hosted development exposure: `docs/DECISIONS/0012-dev-hosting-exposure.md`
 - Markdown rendering and sanitization: `docs/DECISIONS/0013-markdown-rendering-and-sanitization.md`
 - Cloud MVP with Firestore MongoDB compatibility and ChatGPT Action: `docs/DECISIONS/0014-cloud-mvp-firestore-mongo-and-chatgpt-action.md`
+- Hosted and self-hosted deployment modes: `docs/DECISIONS/0015-hosted-and-self-hosted-deployment-modes.md`
+- Official public documentation mirror: `docs/DECISIONS/0016-official-public-documentation-mirror.md`
+- External Markdown image policy: `docs/DECISIONS/0017-external-markdown-image-policy.md`
 
 ## Idea backlog
 
@@ -834,7 +837,8 @@ Make the secure Cloud MVP usable through its custom domain and a narrow private 
 #### Human intervention or decision tasks
 
 - [x] Use a custom domain for the hosted MatrixedMind deployment.
-- [ ] Choose the shared-load-balancer deployment mode or direct Cloud Run deployment mode.
+- [x] Use the existing shared external load balancer for the hosted deployment; keep direct public
+  Cloud Run as a separate self-hosted deployment mode. See ADR 0015.
 - [ ] Enable public Cloud Run invocation only after the deployed revision includes the narrow LLM
   schema and app-level token enforcement.
 - [ ] Configure a private Custom GPT Action with a dedicated scoped MatrixedMind token.
@@ -847,14 +851,14 @@ Make the secure Cloud MVP usable through its custom domain and a narrow private 
   import capability to the Custom GPT.
 - [ ] Revoke the deployed test token and verify later requests fail.
 - [ ] Configure the custom-domain load-balancer route and Cloud Run ingress for the selected
-  deployment mode.
+  deployment mode. See ADR 0015.
 - [ ] Add the optional OpenAI ChatGPT-integration IP allowlist to the Action API host, with a
   reviewed refresh process for changes to the published range feed.
 - [ ] Add a visible AGPL source-offer link and license notice to the hosted interface, pointing to
   the corresponding public source for the deployed version.
 - [ ] Safely render externally hosted HTTPS images in Markdown while preserving only required image
   attributes, rejecting unsafe URL schemes, raw HTML, event handlers, and inline styles, and
-  enforcing optional configured image-source allowlists.
+  enforcing optional configured image-source allowlists. See ADR 0017.
 
 ### Verification
 
@@ -975,12 +979,13 @@ self-hosted instances.
 #### AI agent implementation tasks
 
 - [ ] Add a safe workflow for mirroring and unpublishing documentation records in the dedicated
-  public space.
+  public space. See ADR 0016.
 - [ ] Add public documentation navigation and stable record URLs.
 - [ ] Translate supported repository-relative Markdown links to the matching public documentation
-  records and detect links whose source target cannot be mirrored.
+  records and detect links whose source target cannot be mirrored. See ADR 0016.
 - [ ] Add tests for public read access, private-record isolation, and protected-route isolation.
 - [ ] Document the manual documentation-mirror publishing workflow and its opt-in configuration.
+  See ADR 0016.
 
 ### Verification
 
