@@ -15,9 +15,9 @@ Milestone 6 is implemented and verified for owner auth boundaries, deterministic
 Milestones 0 through 7 and Milestone 9 are implemented and verified, including Firestore Enterprise
 MongoDB compatibility and the Cloud Run deployment baseline. Milestone 8's CI quality gate is
 implemented and passes clean pull requests; its deliberate-failure verification remains open. The
-current focus is Milestone 10's narrow ChatGPT Action integration, followed by Milestone 11 cloud
-hardening. Import/export is deferred until after that secure cloud path unless recovery needs pull
-it forward.
+current focus is Milestone 11 hosted activation, followed by Milestone 12 cloud operational
+hardening and Milestone 13 public project documentation. Import/export is deferred until after that
+secure cloud path unless recovery needs pull it forward.
 
 The repo already contains provisional pieces of later milestones, including an auth dependency placeholder and server-rendered pages. Treat that code as material to harden, not as permission to skip milestone verification.
 
@@ -805,26 +805,21 @@ token rotation, and is ready for deployed activation without exposing broad or d
 ---
 
 <details>
-<summary><strong>Milestone 11: Cloud hardening</strong></summary>
+<summary><strong>Milestone 11: Hosted activation</strong></summary>
 
 ### Goal
 
-Harden the Cloud MVP before trusting it with higher-sensitivity personal knowledge.
+Make the secure Cloud MVP usable through its custom domain and a narrow private ChatGPT Action.
 
 ### Scope
 
 - Custom GPT activation
-- Public Cloud Run invocation for app-authenticated routes
+- Custom-domain routing through the shared external load balancer
+- Cloud Run ingress restricted to the load balancer when that deployment mode is selected
 - Deployed LLM API smoke testing
-- Alerting
-- Log review
-- Backup/restore validation
-- Billing budget alerts
-- Secret rotation procedure
-- Rate-limit tuning
-- Firestore cost review
-- Static egress/private connectivity review if needed
-- Custom domain decision
+- Optional OpenAI ChatGPT-integration IP allowlist for the Action API host
+- AGPL source-offer link for the hosted interface
+- Safe rendering of externally hosted Markdown images, with optional image-source allowlists
 
 ### Out of scope
 
@@ -838,8 +833,8 @@ Harden the Cloud MVP before trusting it with higher-sensitivity personal knowled
 
 #### Human intervention or decision tasks
 
-- [ ] Decide whether a custom domain is needed before broader use.
-- [ ] Decide whether static egress or private connectivity is needed.
+- [x] Use a custom domain for the hosted MatrixedMind deployment.
+- [ ] Choose the shared-load-balancer deployment mode or direct Cloud Run deployment mode.
 - [ ] Enable public Cloud Run invocation only after the deployed revision includes the narrow LLM
   schema and app-level token enforcement.
 - [ ] Configure a private Custom GPT Action with a dedicated scoped MatrixedMind token.
@@ -851,14 +846,15 @@ Harden the Cloud MVP before trusting it with higher-sensitivity personal knowled
 - [ ] Verify the deployed API exposes no delete, publish, sharing, indexing, auth, admin, or bulk
   import capability to the Custom GPT.
 - [ ] Revoke the deployed test token and verify later requests fail.
-- [ ] Configure alerting for service health and error rates.
-- [ ] Document log review workflow.
-- [ ] Validate backup and restore assumptions.
-- [ ] Configure billing budget alerts.
-- [ ] Document secret rotation procedure.
-- [ ] Tune rate limits based on LLM API smoke-test behavior.
-- [ ] Review Firestore document-size and index-write costs.
-- [ ] Document static egress/private connectivity tradeoffs if needed.
+- [ ] Configure the custom-domain load-balancer route and Cloud Run ingress for the selected
+  deployment mode.
+- [ ] Add the optional OpenAI ChatGPT-integration IP allowlist to the Action API host, with a
+  reviewed refresh process for changes to the published range feed.
+- [ ] Add a visible AGPL source-offer link and license notice to the hosted interface, pointing to
+  the corresponding public source for the deployed version.
+- [ ] Safely render externally hosted HTTPS images in Markdown while preserving only required image
+  attributes, rejecting unsafe URL schemes, raw HTML, event handlers, and inline styles, and
+  enforcing optional configured image-source allowlists.
 
 ### Verification
 
@@ -869,6 +865,66 @@ Harden the Cloud MVP before trusting it with higher-sensitivity personal knowled
   write outside allowed spaces.
 - [ ] LLM token revocation blocks later deployed requests.
 - [ ] Smoke test passes through the deployed Cloud Run URL.
+- [ ] The selected custom-domain routing and Cloud Run ingress mode work without exposing an
+  unintended direct public path.
+- [ ] The Action API allowlist accepts current ChatGPT integration requests and rejects an
+  unapproved source when the optional policy is enabled.
+- [ ] The hosted interface offers the corresponding source for its deployed version.
+- [ ] Approved HTTPS Markdown images render, while malicious image markup and unsafe URLs are
+  removed or neutralized.
+
+### Done when
+
+The Cloud MVP is available through its intended deployment mode, supports the narrow private
+ChatGPT Action, and includes the baseline hosted-interface safety controls.
+
+</details>
+
+---
+
+<details>
+<summary><strong>Milestone 12: Cloud operational hardening</strong></summary>
+
+### Goal
+
+Add the operational guardrails needed before MatrixedMind is trusted with higher-sensitivity
+personal knowledge or sustained use.
+
+### Scope
+
+- Alerting and log review
+- Backup and restore validation
+- Billing budget alerts
+- Secret rotation procedure
+- Rate-limit tuning
+- Firestore cost review
+- Static egress or private-connectivity review when required
+
+### Out of scope
+
+- New product capabilities
+- Public documentation publishing
+- Image uploads and object storage
+
+### Implementation tasks
+
+#### Human intervention or decision tasks
+
+- [ ] Decide whether static egress or private connectivity is needed for an external dependency.
+
+#### AI agent implementation tasks
+
+- [ ] Configure alerting for service health and error rates.
+- [ ] Document log review workflow.
+- [ ] Validate backup and restore assumptions.
+- [ ] Configure billing budget alerts.
+- [ ] Document and test a secret rotation procedure with a non-production token.
+- [ ] Tune rate limits based on deployed LLM API behavior.
+- [ ] Review Firestore document-size and index-write costs.
+- [ ] Document static egress/private connectivity tradeoffs if needed.
+
+### Verification
+
 - [ ] Alerts fire in a controlled test or documented manual check.
 - [ ] Restore procedure is validated or exact blocker is recorded.
 - [ ] Billing budget alerts are configured.
@@ -877,7 +933,68 @@ Harden the Cloud MVP before trusting it with higher-sensitivity personal knowled
 
 ### Done when
 
-The Cloud MVP has the operational guardrails needed for cautious personal use.
+The hosted service has documented, tested operational safeguards for cautious sustained use.
+
+</details>
+
+---
+
+<details>
+<summary><strong>Milestone 13: Public project documentation</strong></summary>
+
+### Goal
+
+Use MatrixedMind to mirror official MatrixedMind Markdown documentation in a public-facing site
+without weakening the private personal-knowledge workflow or enabling public docs by default for
+self-hosted instances.
+
+### Scope
+
+- A dedicated public documentation space that is disabled by default
+- An explicitly configured official documentation source, separate from the self-hosted default
+- A deliberate, reviewed workflow that mirrors the configured Markdown documentation source
+- Deterministic translation of repository-relative Markdown links to public documentation records
+- Stable public documentation URLs and navigation
+- Crawler metadata appropriate for deliberately public documentation
+- Tests proving public documentation cannot expose private records or protected functionality
+
+### Out of scope
+
+- Arbitrary public publishing for all users
+- Automatic publishing on every source-repository change
+- Public API access
+- Full-text search
+- Multi-user sharing UI
+
+### Implementation tasks
+
+#### Human intervention or decision tasks
+
+- [ ] Confirm the official public documentation source and the publishing review policy.
+
+#### AI agent implementation tasks
+
+- [ ] Add a safe workflow for mirroring and unpublishing documentation records in the dedicated
+  public space.
+- [ ] Add public documentation navigation and stable record URLs.
+- [ ] Translate supported repository-relative Markdown links to the matching public documentation
+  records and detect links whose source target cannot be mirrored.
+- [ ] Add tests for public read access, private-record isolation, and protected-route isolation.
+- [ ] Document the manual documentation-mirror publishing workflow and its opt-in configuration.
+
+### Verification
+
+- [ ] A visitor can read the approved public documentation without an account.
+- [ ] Private records, drafts, edit routes, internal APIs, and LLM APIs remain unavailable to an
+  unauthenticated visitor.
+- [ ] Public documentation emits the intended crawler metadata.
+- [ ] The publication guide identifies the configured source and shows that a default self-hosted
+  instance has no public documentation source enabled.
+
+### Done when
+
+MatrixedMind mirrors its configured official documentation source in a small, tested public site
+while private knowledge and privileged application capabilities remain isolated.
 
 </details>
 
@@ -889,9 +1006,10 @@ These items remain deferred until after the secure Cloud MVP path is working:
 
 - Import/export implementation from ADR 0009.
 - Full multi-user auth and sharing UI.
-- Public publishing.
+- General public publishing beyond the dedicated documentation site.
 - OAuth integration.
 - MCP integration.
 - Plugin infrastructure.
-- Custom domain implementation unless Milestone 11 pulls the decision forward.
+- Additional custom domains beyond the Milestone 11 hosted activation domain.
 - Polished UI.
+- Automatic repository-to-MatrixedMind documentation publishing.
