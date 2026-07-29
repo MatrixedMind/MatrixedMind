@@ -126,7 +126,6 @@ resource "google_firestore_database" "mongo_compatible" {
   database_edition                    = "ENTERPRISE"
   mongodb_compatible_data_access_mode = "DATA_ACCESS_MODE_ENABLED"
   firestore_data_access_mode          = "DATA_ACCESS_MODE_DISABLED"
-  realtime_updates_mode               = "REALTIME_UPDATES_MODE_DISABLED"
   point_in_time_recovery_enablement   = "POINT_IN_TIME_RECOVERY_ENABLED"
   delete_protection_state             = "DELETE_PROTECTION_ENABLED"
   deletion_policy                     = "ABANDON"
