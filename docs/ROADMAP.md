@@ -12,8 +12,9 @@ Milestone 5 is implemented and verified for a minimal server-rendered browser sh
 
 Milestone 6 is implemented and verified for owner auth boundaries, deterministic dev/test identities, centralized authorization policy, hashed/scoped/revocable LLM tokens, narrow private-by-default LLM record operations, revision and audit attribution, request limits, and forbidden capability handling.
 
-Milestones 0 through 7 and Milestone 9 are implemented and verified, including Firestore Enterprise
-MongoDB compatibility and the Cloud Run deployment baseline. Milestone 8's CI quality gate is
+Milestones 0 through 7 and Milestones 9 and 10 are implemented and verified, including Firestore
+Enterprise MongoDB compatibility, the Cloud Run deployment baseline, and the narrow ChatGPT Action
+integration. Milestone 8's CI quality gate is
 implemented and passes clean pull requests; its deliberate-failure verification remains open. The
 current focus is Milestone 11 hosted activation, followed by Milestone 12 cloud operational
 hardening and Milestone 13 public project documentation. Import/export is deferred until after that
