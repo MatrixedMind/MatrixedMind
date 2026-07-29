@@ -507,7 +507,43 @@ def test_view_record_html_sanitizes_raw_html_in_markdown(client: TestClient) -> 
     response = client.get("/test/unsafe-html")
 
     assert response.status_code == 200
-    assert "<img" not in response.text
+    assert "<img>safe" in response.text
+    assert 'src="x"' not in response.text
     assert "<script" not in response.text
     assert "onerror=" not in response.text
     assert "safe" in response.text
+
+
+def test_view_record_html_renders_approved_https_markdown_image(client: TestClient) -> None:
+    client.post(
+        "/api/records/",
+        json={
+            **record_payload("safe-image"),
+            "body_markdown": "![Diagram](https://images.example.com/diagram.png)",
+        },
+    )
+
+    response = client.get("/test/safe-image")
+
+    assert response.status_code == 200
+    assert '<img src="https://images.example.com/diagram.png" alt="Diagram">' in response.text
+
+
+def test_view_record_html_enforces_configured_image_source_allowlist(
+    client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(settings, "markdown_image_source_allowlist", "approved.example")
+    client.post(
+        "/api/records/",
+        json={
+            **record_payload("blocked-image"),
+            "body_markdown": "![Blocked](https://attacker.example/image.png)",
+        },
+    )
+
+    response = client.get("/test/blocked-image")
+
+    assert response.status_code == 200
+    assert "<img" not in response.text
+    assert "Blocked" in response.text

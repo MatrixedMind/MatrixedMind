@@ -64,6 +64,37 @@ def test_production_settings_accept_managed_runtime_secrets() -> None:
     assert production.llm_token_pepper is not None
 
 
+@pytest.mark.parametrize(
+    "image_source_allowlist",
+    [
+        "https://images.example.com",
+        "images.example.com/path",
+        "images.example.com:443",
+        "user@images.example.com",
+        "*.",
+        ".example.com",
+        "-images.example.com",
+        "images-.example.com",
+        "localhost",
+    ],
+)
+def test_settings_reject_invalid_image_source_allowlist(
+    image_source_allowlist: str,
+) -> None:
+    with pytest.raises(ValueError, match="exact hostnames or .* wildcards"):
+        Settings(markdown_image_source_allowlist=image_source_allowlist)
+
+
+def test_settings_accept_exact_and_wildcard_image_sources() -> None:
+    configured = Settings(
+        markdown_image_source_allowlist="images.example.com, *.usercontent.example"
+    )
+
+    assert configured.markdown_image_source_allowlist == (
+        "images.example.com, *.usercontent.example"
+    )
+
+
 def test_issued_llm_token_is_only_represented_by_hash() -> None:
     raw_token = issue_llm_token()
     token_hash = hash_llm_token(raw_token)

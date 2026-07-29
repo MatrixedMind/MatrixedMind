@@ -1,7 +1,9 @@
 from typing import Literal
 
-from pydantic import SecretStr, model_validator
+from pydantic import SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+from app.rendering import normalize_image_source_allowlist
 
 
 class Settings(BaseSettings):
@@ -14,10 +16,17 @@ class Settings(BaseSettings):
     llm_rate_limit_requests: int = 60
     llm_rate_limit_window_seconds: int = 60
     llm_token_pepper: SecretStr | None = None
+    markdown_image_source_allowlist: str = ""
     mongo_ensure_indexes: bool = True
     mongo_uri: str = (
         "mongodb://matrixed_mind:matrixed_mind@localhost:27017/matrixed_mind?authSource=admin"
     )
+
+    @field_validator("markdown_image_source_allowlist")
+    @classmethod
+    def validate_markdown_image_source_allowlist(cls, value: str) -> str:
+        normalize_image_source_allowlist(value)
+        return value
 
     @model_validator(mode="after")
     def production_fails_closed(self) -> "Settings":
