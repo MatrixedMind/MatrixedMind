@@ -95,6 +95,23 @@ variable "llm_token_pepper_version" {
   }
 }
 
+variable "markdown_image_source_allowlist" {
+  description = "Optional comma-separated exact or wildcard hosts allowed for rendered HTTPS Markdown images."
+  type        = string
+  default     = ""
+}
+
+variable "source_repository_url" {
+  description = "Public HTTPS source repository used by the hosted AGPL source offer."
+  type        = string
+  default     = "https://github.com/MatrixedMind/MatrixedMind"
+
+  validation {
+    condition     = can(regex("^https://[^/?#]+(/[^?#]*)?$", var.source_repository_url))
+    error_message = "source_repository_url must be a public HTTPS repository URL without query or fragment."
+  }
+}
+
 variable "enable_firestore_spike_job" {
   description = "Create the Cloud Run Job that runs the Firestore compatibility suite in GCP."
   type        = bool
@@ -111,12 +128,6 @@ variable "firestore_spike_image" {
   description = "Test image URI containing the Firestore compatibility suite."
   type        = string
   default     = ""
-}
-
-variable "allow_unauthenticated_cloud_run" {
-  description = "Grant allUsers Cloud Run invoker. Keep false until app-level auth protects sensitive routes."
-  type        = bool
-  default     = false
 }
 
 variable "billing_account_id" {

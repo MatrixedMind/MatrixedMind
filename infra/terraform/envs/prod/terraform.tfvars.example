@@ -1,0 +1,28 @@
+project_id        = "your-production-project-id"
+github_repository = "your-github-owner/your-github-repo"
+
+# Apply the production foundation first. Enable only after an immutable image and both numbered
+# secret versions exist.
+enable_cloud_run_service = false
+container_image          = ""
+app_secret_key_version   = "1"
+llm_token_pepper_version = "1"
+
+# Empty allows any safe external HTTPS image host. Use exact hosts or *.domain wildcards to limit it.
+markdown_image_source_allowlist = ""
+
+# Public source offered from the hosted interface. The image build embeds the exact Git commit.
+source_repository_url = "https://github.com/MatrixedMind/MatrixedMind"
+
+# Stage privately first. Change to external_load_balancer only after application-level protection,
+# the public-invoker organization-policy exception, and the separate edge attachment are approved.
+cloud_run_invocation_mode = "private"
+
+# Required for cross-project attachment after the edge administrator identity is selected. Use an
+# explicit managed-domain user, group, or service account; never use allUsers here.
+edge_load_balancer_service_user_members = []
+load_balancer_backend_service_name      = null
+
+# Optional defense in depth. Keep null until Cloud Armor Enterprise cost, the published range feed,
+# and its refresh procedure have been reviewed. Scoped bearer tokens remain mandatory.
+openai_action_address_group_name = null
