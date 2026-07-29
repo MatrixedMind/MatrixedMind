@@ -95,6 +95,34 @@ def test_settings_accept_exact_and_wildcard_image_sources() -> None:
     )
 
 
+@pytest.mark.parametrize(
+    ("repository_url", "revision"),
+    [
+        ("http://example.com/source", "local"),
+        ("https://user@example.com/source", "local"),
+        ("https://example.com/source?branch=main", "local"),
+        ("https://example.com/source", "main"),
+        ("https://example.com/source", "ABCDEF" * 6 + "ABCD"),
+    ],
+)
+def test_settings_reject_invalid_source_offer_configuration(
+    repository_url: str,
+    revision: str,
+) -> None:
+    with pytest.raises(ValueError):
+        Settings(source_repository_url=repository_url, source_revision=revision)
+
+
+def test_source_offer_points_to_the_exact_deployed_revision() -> None:
+    revision = "a" * 40
+    configured = Settings(
+        source_repository_url="https://example.com/owner/repository/",
+        source_revision=revision,
+    )
+
+    assert configured.source_offer_url == f"https://example.com/owner/repository/tree/{revision}"
+
+
 def test_issued_llm_token_is_only_represented_by_hash() -> None:
     raw_token = issue_llm_token()
     token_hash = hash_llm_token(raw_token)

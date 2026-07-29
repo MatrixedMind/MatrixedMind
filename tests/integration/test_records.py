@@ -45,6 +45,24 @@ def test_protected_routes_require_identity_outside_dev_mode(
     assert client.get("/", headers={"X-Test-User-Id": "owner"}).status_code == 200
 
 
+def test_source_offer_is_public_without_exposing_protected_content(
+    client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(settings, "auth_mode", "test")
+
+    response = client.get("/source")
+
+    assert response.status_code == 200
+    assert '<meta name="robots" content="noindex,nofollow,noarchive">' in response.text
+    assert "GNU Affero General Public License v3.0" in response.text
+    assert (
+        '<a href="https://github.com/MatrixedMind/MatrixedMind">'
+        "View the corresponding source code</a>"
+    ) in response.text
+    assert "No pages yet" not in response.text
+
+
 def test_read_and_list_filter_private_records_owned_by_another_user(
     client: TestClient,
     repo: InMemoryRecordRepository,
@@ -452,6 +470,11 @@ def test_view_record_html(client: TestClient) -> None:
     assert '<a href="/">Home</a>' in response.text
     assert '<a href="/test/hello-world/edit">Edit</a>' in response.text
     assert '<a href="/records/new">New page</a>' in response.text
+    assert "GNU Affero General Public License v3.0" in response.text
+    assert (
+        '<a href="https://github.com/MatrixedMind/MatrixedMind">Source for this version</a>'
+        in response.text
+    )
     assert "<h1>Hello World</h1>" in response.text
     assert "<h1>Hello</h1>" in response.text
 

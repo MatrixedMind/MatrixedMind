@@ -22,6 +22,7 @@ from app.settings import settings
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/web/templates")
+templates.env.globals["source_offer_url"] = settings.source_offer_url
 
 
 async def parse_urlencoded_form(request: Request) -> dict[str, str]:
@@ -109,6 +110,18 @@ def index(request: Request, repo: RecordRepoDep, user: CurrentUserDep) -> Respon
             "title": "MatrixedMind",
             "records": records,
             "robots_content": crawler_metadata.robots_content,
+        },
+    )
+
+
+@router.get("/source", response_class=HTMLResponse)
+def source_offer(request: Request) -> Response:
+    return templates.TemplateResponse(
+        request=request,
+        name="source.html",
+        context={
+            "title": "MatrixedMind source",
+            "robots_content": default_crawler_metadata().robots_content,
         },
     )
 
