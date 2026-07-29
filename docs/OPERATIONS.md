@@ -95,12 +95,31 @@ terraform validate
 terraform plan
 ```
 
-The dev root can apply foundational infrastructure before the app is deployable. Keep
+The dev root can apply foundational infrastructure before the app is deployable. It always passes
+the module's `private` invocation mode and never creates load-balancer integration resources. Keep
 `enable_cloud_run_service = false` until the application image and both numbered runtime secret
 versions exist. Keep
-`enable_firestore_spike_job = false` until the dedicated test image exists. Keep
-`allow_unauthenticated_cloud_run = false` until MatrixedMind enforces app-level auth for sensitive
-routes.
+`enable_firestore_spike_job = false` until the dedicated test image exists.
+
+The module accepts exactly one invocation mode:
+
+- `private`: current restricted staging behavior; no `allUsers` invoker and no load-balancer NEG.
+- `direct`: self-hosted direct public Cloud Run; public invoker with normal Cloud Run ingress.
+- `external_load_balancer`: public platform invoker, ingress restricted to internal and Cloud Load
+  Balancing traffic, plus a serverless NEG and backend service in the application project.
+
+The production root supports `private` staging and `external_load_balancer`; direct public Cloud Run
+remains available through the reusable module for self-hosted compositions. In hosted mode, the
+production root exports a fully qualified backend-service reference and grants only configured
+edge administrators `roles/compute.loadBalancerServiceUser`. It does not alter an existing URL map,
+certificate, static IP, frontend, or DNS record. Those separate shared-edge changes require a
+reviewed plan and explicit approval. A non-null
+`openai_action_address_group_name` attaches a Cloud Armor policy to the MatrixedMind backend. The
+policy allows a reviewed Cloud Armor Enterprise address group to `/api/llm/*`, denies other network
+sources from those paths, and allows non-LLM paths to continue to application-level controls. Keep
+the reference null unless Cloud Armor Enterprise cost, the published ChatGPT-integration range feed,
+and its refresh procedure have been reviewed; the scoped bearer token remains mandatory regardless
+of network policy.
 
 Firestore uses passwordless GCP OIDC. Terraform derives the non-secret URI, grants the Cloud Run
 service accounts `roles/datastore.user`, and creates the MongoDB-compatible indexes. The application
@@ -149,18 +168,33 @@ docker build --platform linux/amd64 --tag "$MATRIXEDMIND_IMAGE" .
 docker push "$MATRIXEDMIND_IMAGE"
 ```
 
+For an image intended for hosted use, embed the exact source revision in the same build:
+
+```bash
+docker build --platform linux/amd64 \
+  --build-arg SOURCE_REVISION="$(git rev-parse HEAD)" \
+  --tag "$MATRIXEDMIND_IMAGE" .
+```
+
+The visible AGPL source offer combines that immutable revision with the configured public
+`SOURCE_REPOSITORY_URL`. Verify the resulting link before hosted activation.
+
 The explicit platform is required when building from Apple Silicon because Cloud Run requires an
 image manifest with Linux AMD64 support. GitHub's Ubuntu deployment runner already builds AMD64.
 
 Set `container_image` to that URI, set the two secret-version variables to the numbered versions
-that were created, and set `enable_cloud_run_service = true`. Keep
-`allow_unauthenticated_cloud_run = false` for the restricted development deployment. Review and
-apply the service plan:
+that were created, and set `enable_cloud_run_service = true`. The development root remains private.
+Review and apply the service plan:
 
 ```bash
 terraform -chdir=infra/terraform/envs/dev plan -var-file=terraform.tfvars -out=service.tfplan
 terraform -chdir=infra/terraform/envs/dev apply service.tfplan
 ```
+
+The production root is locally validated but has not been applied to a live project. Its foundation,
+public-invoker policy exception, cross-project edge attachment, DNS, secrets, and deployment remain
+owner-approved activation steps. Do not infer a tested hosted topology from the presence of the
+Terraform root.
 
 Do not commit `*.tfplan`; remove local plan files after use.
 
@@ -183,8 +217,9 @@ runs after successful CI on `main` and can also be dispatched manually from `mai
 
 1. GitHub Actions authenticates to GCP with Workload Identity Federation.
 2. Builds and pushes a commit-tagged Docker image to Artifact Registry.
-3. Updates only the Cloud Run image, leaving Terraform-owned configuration unchanged.
-4. Calls `/health` and `/ready` with the deployer service account's Cloud Run identity token.
+3. Embeds that verified commit in the image for the hosted source-offer link.
+4. Updates only the Cloud Run image, leaving Terraform-owned configuration unchanged.
+5. Calls `/health` and `/ready` with the deployer service account's Cloud Run identity token.
 
 Terraform remains authoritative for environment variables, secret versions, probes, IAM, scaling,
 and exposure. Run and apply a reviewed Terraform plan for those changes.

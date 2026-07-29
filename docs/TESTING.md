@@ -29,6 +29,11 @@ MongoDB-backed tests use the local Compose service and the settings from `.env` 
 
 Current integration coverage includes a MongoDB ping test, MongoDB repository contract coverage, MongoDB duplicate/missing-record/revision behavior, and FastAPI route tests using in-memory adapters. Route tests cover owner protection, record CRUD, server-rendered flows, crawler metadata, scoped LLM create/update/read/list behavior, private defaults, revision and audit attribution, token revocation, forbidden capabilities, body limits, and rate limits. Unit tests cover the LLM-only OpenAPI allowlist and bearer security contract, authorization principal precedence, required ownership, and bounded streaming that stops consuming a request after it crosses the configured body limit.
 
+Rendering tests cover approved external HTTPS images, exact and wildcard source allowlists, unsafe
+schemes and authorities, raw-HTML policy parity, stripped event/style attributes, and preservation
+of the existing safe-link behavior. Settings tests also verify that the hosted source offer can use
+only a public HTTPS repository URL and either a local marker or a full lowercase Git commit SHA.
+
 ## Firestore MongoDB compatibility tests
 
 Tests under `tests/firestore/` are opt-in and skip when `FIRESTORE_MONGO_URI` is absent. They run the
@@ -68,6 +73,19 @@ For Terraform changes:
 terraform fmt -check
 terraform validate
 terraform plan
+```
+
+The Cloud Run module has offline mocked Terraform tests for its exclusive `private`, `direct`, and
+`external_load_balancer` invocation modes, application-project backend ownership, explicit
+cross-project service-user IAM members, and invalid-input rejection. The production root separately
+tests private staging, the cross-project backend contract, its required edge member, and rejection
+of direct mode:
+
+```bash
+terraform -chdir=infra/terraform/modules/cloud_run_service init -backend=false -input=false
+terraform -chdir=infra/terraform/modules/cloud_run_service test
+terraform -chdir=infra/terraform/envs/prod init -backend=false -input=false
+terraform -chdir=infra/terraform/envs/prod test
 ```
 
 For container changes:

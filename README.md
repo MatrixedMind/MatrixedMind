@@ -32,6 +32,9 @@ MatrixedMind is still an early, pre-MVP project, but its core is taking shape. T
 - Keep new content private and hidden from search-engine indexing by default.
 - Separate one owner's records from another owner's records.
 - Accept narrowly scoped, authenticated AI-assisted reads and writes through a dedicated API.
+- Render externally hosted HTTPS Markdown images through the sanitizer, with optional source-host
+  allowlists and no upload or object-storage coupling.
+- Show an AGPLv3 source offer whose deployment build can link to the exact corresponding Git commit.
 - Run locally with MongoDB.
 - Run as a private Cloud Run service backed by Google Cloud's hosted Firestore database using
   MongoDB compatibility, managed secrets, and automated deployment checks.

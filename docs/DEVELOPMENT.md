@@ -29,9 +29,22 @@ AUTH_MODE=dev
 LLM_REQUEST_BODY_LIMIT_BYTES=65536
 LLM_RATE_LIMIT_REQUESTS=60
 LLM_RATE_LIMIT_WINDOW_SECONDS=60
+MARKDOWN_IMAGE_SOURCE_ALLOWLIST=
 MONGO_ENSURE_INDEXES=true
 MONGO_URI=mongodb://matrixed_mind:matrixed_mind@localhost:27017/matrixed_mind?authSource=admin
+SOURCE_REPOSITORY_URL=https://github.com/MatrixedMind/MatrixedMind
+SOURCE_REVISION=local
 ```
+
+An empty `MARKDOWN_IMAGE_SOURCE_ALLOWLIST` permits images from any otherwise-safe external HTTPS
+host. Configure a comma-separated list of exact hosts such as `images.example.com` or explicit
+wildcards such as `*.usercontent.example` to restrict image rendering. Wildcards match subdomains,
+not the parent domain. Image uploads and object storage are not part of this setting.
+
+`SOURCE_REPOSITORY_URL` must identify the public HTTPS source repository. Local builds use
+`SOURCE_REVISION=local` and link to that repository. Deployment image builds pass a full Git commit
+SHA so the hosted link targets the matching source tree. Do not set a moving branch name as the
+deployed source revision.
 
 `APP_SECRET_KEY` and `LLM_TOKEN_PEPPER` are required only when `APP_ENV=production`. The Cloud Run
 service reads them from explicit Secret Manager versions. Do not add real values to `.env`,
@@ -121,6 +134,7 @@ The initial server-rendered pages are:
 
 ```text
 http://localhost:8000/
+http://localhost:8000/source
 http://localhost:8000/{space}/{slug}
 ```
 

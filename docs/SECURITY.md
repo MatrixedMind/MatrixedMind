@@ -18,6 +18,10 @@ Local/dev auth and production auth must be separated behind an auth dependency b
 
 Production auth must not rely on a shared secret, hard-coded token, or network obscurity.
 
+The public `/source` route contains only the AGPL license notice and corresponding-source link. It
+uses restrictive crawler metadata and does not expose record data or a privileged application
+capability.
+
 Cloud Run may allow public unauthenticated invocation at the platform layer only when MatrixedMind enforces app-level authentication and authorization for all sensitive routes. Public platform reachability is acceptable for the MVP only because ChatGPT Custom GPT Actions need an HTTPS endpoint they can call.
 
 ## LLM API tokens
@@ -121,6 +125,18 @@ MatrixedMind stores personal knowledge content. Treat record bodies, revisions, 
 Import/export features must avoid writing outside intended directories and should document the export format clearly.
 
 Do not store high-sensitivity data until cloud persistence, app-level auth, backups, audit logging, token revocation, and Firestore Enterprise MongoDB compatibility are implemented and verified. Until then, treat hosted data as provisional and suitable only for low-sensitivity testing.
+
+## External Markdown images
+
+Rendered images require absolute HTTPS URLs. URL credentials, non-default ports, relative sources,
+and non-HTTPS schemes are rejected. Sanitization removes event handlers, inline styles, and all
+image attributes except `src`, `alt`, and `title`; raw HTML is subject to the same source policy as
+Markdown image syntax.
+
+Deployments can leave the image-source allowlist empty or restrict it to exact hosts and explicit
+subdomain wildcards. The allowlist is a rendering control, not an upload mechanism, proxy, or
+server-side fetch. A viewer's browser still contacts an approved external host, which can observe
+the request and can make the image unavailable independently of MatrixedMind.
 
 ## Dependencies
 

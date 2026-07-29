@@ -10,6 +10,9 @@ MatrixedMind is a single FastAPI service serving HTML and JSON. It is a Python-f
 - API routes: JSON endpoints for records and future automation in `app/api/routes/`. The future LLM-facing API must live behind a separate `/api/llm/*` boundary rather than exposing the normal app API to ChatGPT.
 - Domain models: Python/Pydantic models in `app/domain/models.py`. The implemented models include records, revisions, users, memberships, scoped LLM tokens, and append-only audit events.
 - Domain validation: reusable slug, path, title, and Markdown rules in `app/domain/validation.py`.
+- Rendering boundary: `app/rendering.py` renders Markdown and sanitizes HTML. It permits external
+  images only over HTTPS, applies an optional exact-host or wildcard-host source allowlist, and
+  preserves only `src`, `alt`, and `title` on approved images.
 - Domain policy: centralized authorization and crawler/indexing helpers in `app/domain/policy.py`. Explicit rules support all five ADR 0007 principal types, deny overrides allow, and record/space/global inheritance is deterministic. Records are private and noindex by default.
 - Repository interfaces: protocols in `app/domain/ports.py` used by application code.
 - Storage adapters: memory and MongoDB adapters under `app/adapters/`, with future storage choices kept behind repository interfaces.
@@ -77,6 +80,8 @@ Cloud Run filesystems are not persistent, so hosted persistence is required for 
 
 - `GET /health`: process health and local environment value.
 - `GET /ready`: MongoDB readiness check.
+- `GET /source`: public AGPLv3 notice and corresponding-source link with restrictive crawler
+  metadata and no record content.
 - `GET /`: server-rendered home page listing records from the default space.
 - `GET /{space}/{slug}`: server-rendered record detail page.
 - `GET /records/new`: server-rendered new record form.
@@ -99,11 +104,31 @@ routes, and unavailable destructive or administrative capabilities.
 
 Production browser identity-provider integration and import/export are not implemented yet. The Terraform-managed deployment baseline is implemented, but the first Cloud Run application deployment still requires owner-run infrastructure and deployment verification.
 
+The shared web layout includes the AGPLv3 notice and a source-offer link. Deployment images built by
+the development workflow embed the verified Git commit so that the link targets the corresponding
+source revision rather than a moving branch.
+
 ## Deployment strategy
 
 Deploy the app as a container to Cloud Run. Images are stored in Artifact Registry. Secrets are stored in Secret Manager and injected at explicit versions. Infrastructure is managed with Terraform and remote state in a versioned GCS backend. GitHub Actions authenticates to GCP with Workload Identity Federation, builds immutable commit-tagged images, deploys verified `main` revisions, and checks process health plus hosted-persistence readiness.
 
 Cloud Run may allow public unauthenticated invocation at the platform layer only after MatrixedMind enforces app-level auth for sensitive browser, internal API, and LLM API routes.
+
+The Cloud Run module uses one exclusive invocation-mode value. `private` preserves the restricted
+staging baseline, `direct` is the lower-cost direct public mode for self-hosters, and
+`external_load_balancer` grants platform invocation while restricting ingress to internal and Cloud
+Load Balancing traffic. The last mode creates the serverless NEG and backend service beside Cloud
+Run in the application project. It outputs the fully qualified backend reference but does not create
+or modify a load-balancer frontend, static IP, certificate, URL map, or DNS record.
+
+The official hosted topology separates a shared edge project, a private development project, and a
+production application project. The production backend is designed for same-organization
+cross-project service referencing from a global external Application Load Balancer without Shared
+VPC. The existing edge still requires a separately approved and verified modernization and routing
+cutover, so this topology is not yet a deployment claim. Operators enrolled in Cloud Armor
+Enterprise can optionally attach a policy that restricts only `/api/llm/*` through a reviewed
+ChatGPT-integration address group; scoped bearer-token authentication remains required and is the
+primary security boundary.
 
 ## Local development strategy
 

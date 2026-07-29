@@ -838,8 +838,10 @@ Make the secure Cloud MVP usable through its custom domain and a narrow private 
 #### Human intervention or decision tasks
 
 - [x] Use a custom domain for the hosted MatrixedMind deployment.
-- [x] Use the existing shared external load balancer for the hosted deployment; keep direct public
-  Cloud Run as a separate self-hosted deployment mode. See ADR 0015.
+- [x] Use separate shared-edge, private-development, and production-application projects. Reuse the
+  existing shared external load balancer and static IP through global cross-project service
+  referencing without Shared VPC; keep direct public Cloud Run as a separate self-hosted mode. See
+  ADR 0015.
 - [ ] Enable public Cloud Run invocation only after the deployed revision includes the narrow LLM
   schema and app-level token enforcement.
 - [ ] Configure a private Custom GPT Action with a dedicated scoped MatrixedMind token.
@@ -855,9 +857,9 @@ Make the secure Cloud MVP usable through its custom domain and a narrow private 
   deployment mode. See ADR 0015.
 - [ ] Add the optional OpenAI ChatGPT-integration IP allowlist to the Action API host, with a
   reviewed refresh process for changes to the published range feed.
-- [ ] Add a visible AGPL source-offer link and license notice to the hosted interface, pointing to
+- [x] Add a visible AGPL source-offer link and license notice to the hosted interface, pointing to
   the corresponding public source for the deployed version.
-- [ ] Safely render externally hosted HTTPS images in Markdown while preserving only required image
+- [x] Safely render externally hosted HTTPS images in Markdown while preserving only required image
   attributes, rejecting unsafe URL schemes, raw HTML, event handlers, and inline styles, and
   enforcing optional configured image-source allowlists. See ADR 0017.
 
