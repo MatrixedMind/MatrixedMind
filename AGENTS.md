@@ -6,13 +6,17 @@ Always refer to the app as MatrixedMind.
 
 ## Codex task naming
 
-When a task's work is associated with a roadmap milestone, rename the current Codex task as soon as the milestone is identified.
+When a task's primary work is implementation or verification for a roadmap milestone, rename the
+current Codex task as soon as the milestone is identified.
 
 Use the exact format:
 
 `Milestone {number} - {milestone title}`
 
 Take the title from the corresponding heading in `docs/ROADMAP.md`, excluding the `Milestone {number}:` prefix.
+
+For standalone work that is not implementing or verifying a roadmap milestone, use a concise
+descriptive task title instead, such as `Documentation update - hosted activation decisions`.
 
 ## Source of truth
 
