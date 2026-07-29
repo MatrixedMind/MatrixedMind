@@ -18,6 +18,9 @@ This file summarizes the current roadmap decisions without changing milestone im
 | Cloud persistence | Prefer Firestore Enterprise edition with MongoDB compatibility for cloud persistence, prove compatibility with repository contract tests before deployment is unblocked, and keep MongoDB Atlas as fallback only. | `docs/DECISIONS/0014-cloud-mvp-firestore-mongo-and-chatgpt-action.md` |
 | First ChatGPT integration | Use Custom GPT Actions with API key authentication as the first LLM integration path. Defer OAuth and MCP. | `docs/DECISIONS/0014-cloud-mvp-firestore-mongo-and-chatgpt-action.md` |
 | LLM write API | Expose a separate narrow, scoped, non-destructive `/api/llm/*` API. LLM tokens must be scoped, revocable, hashed at rest, and constrained to allowed spaces and operations. | `docs/DECISIONS/0014-cloud-mvp-firestore-mongo-and-chatgpt-action.md` |
+| Milestone 11 deployment topology | Reuse an existing shared external HTTPS load balancer and static IP for the hosted deployment. Self-hosters choose exactly one Terraform mode: direct public Cloud Run or external-load-balancer routing with direct ingress blocked. | `docs/DECISIONS/0015-hosted-and-self-hosted-deployment-modes.md` |
+| Milestone 13 official documentation mirror | Keep the official mirror opt-in and separate from self-hosted defaults. Start with manual, reviewed publishing from a deliberately configured source, and translate supported repository-relative links deterministically. | `docs/DECISIONS/0016-official-public-documentation-mirror.md` |
+| Milestone 11 external Markdown images | Allow safe external HTTPS images with optional configured source allowlists, preserving only required attributes. Defer uploads and portable storage-backed attachments. | `docs/DECISIONS/0017-external-markdown-image-policy.md` |
 
 ## Roadmap checkbox updates
 
@@ -33,5 +36,7 @@ When updating `docs/ROADMAP.md`, these human decision tasks can be marked comple
 - Milestone 9: define Terraform roots in `infra/terraform/envs/{dev,prod}`.
 - Hosted development exposure: document whether the dev service is public or private.
 - Milestone 6-11 cloud MVP direction: Cloud Run, Firestore Enterprise MongoDB compatibility with MongoDB Atlas fallback only, API-key-authenticated Custom GPT Actions, and a narrow non-destructive LLM write API.
+- Milestone 11 deployment mode: use the existing shared external load balancer for the hosted
+  deployment while keeping direct public Cloud Run as a mutually exclusive self-hosted mode.
 
 Do not mark implementation tasks complete until the corresponding code, tests, and verification commands are actually done.
