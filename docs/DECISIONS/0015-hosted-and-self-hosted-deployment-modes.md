@@ -7,8 +7,8 @@ Accepted
 ## Context
 
 MatrixedMind needs a custom-domain deployment without adding unnecessary recurring infrastructure
-cost. The user's `hot-chee-to` GCP project already has a shared external HTTPS load balancer and
-static IP that can route another service.
+cost. An existing GCP project already has a shared external HTTPS load balancer and static IP that
+can route another service.
 
 Self-hosters may have different cost, domain, and isolation requirements. Terraform therefore needs
 an explicit deployment choice rather than assuming that every installation has an external load
@@ -16,9 +16,8 @@ balancer or that every Cloud Run service should remain directly public.
 
 ## Decision
 
-The initial hosted MatrixedMind deployment will reuse the existing shared external HTTPS load
-balancer and static IP in the `hot-chee-to` GCP project. This avoids the recurring cost of a second
-load balancer.
+The initial hosted MatrixedMind deployment will reuse an existing shared external HTTPS load
+balancer and static IP. This avoids the recurring cost of a second load balancer.
 
 Self-hosted Terraform will support two mutually exclusive deployment modes:
 
@@ -49,7 +48,7 @@ verified yet.
 
 ### Negative
 
-- The hosted deployment depends on shared edge infrastructure in the `hot-chee-to` project.
+- The hosted deployment depends on shared edge infrastructure in an existing project.
 - Terraform must validate mutually exclusive modes and handle externally supplied edge resources.
 - Operators choosing the load-balancer mode must configure and verify that direct Cloud Run ingress
   is blocked.
