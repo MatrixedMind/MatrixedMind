@@ -141,9 +141,12 @@ explicit project, environment, narrow time range, and investigation objective. E
 or granting its IAM roles is a separate owner-approved cloud mutation; repository configuration
 does not create an observer identity or credentials.
 
-Terraform can declare Cloud Run health/error alert policies and project-scoped billing budgets,
-but both are safe-by-default opt-in settings. They require reviewed existing notification-channel
-resource names, a billing account and amount for budgets, and an explicitly approved live plan.
+Terraform can declare a conventional per-environment email notification channel, Cloud Run
+health/error alert policies, and project-scoped billing budgets. These are safe-by-default opt-in
+settings: the actual delivery destination is an apply-time input and must not be committed, though
+Terraform state retains it. Generated channel resource names are wired directly to alerts and
+budgets; separately managed channel resource names remain an optional reuse path. Budgets require
+a billing account and amount, and every live change requires an explicitly approved plan.
 No static egress, NAT, or private connector is part of the current architecture because no known
 runtime dependency needs fixed-IP allowlisting or private connectivity. Reassess that boundary if
 a future dependency introduces either requirement.

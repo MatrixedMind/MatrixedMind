@@ -311,32 +311,36 @@ mutate Cloud Run or Firestore. Stop when the requested evidence is sufficient ra
 unchanged state.
 
 Terraform declares two optional Cloud Run policies per environment: a 5xx request-rate policy and
-a p99 latency policy. Both policies and budget alerts are disabled by default; development budget
-creation also requires an explicit enable flag, billing account, amount, and existing reviewed
-Monitoring notification-channel resource names. Budgets never fall back to unreviewed billing IAM recipients.
-The initial latency threshold is
-10,000 milliseconds; thresholds are not a production tuning decision. Tune them only after
-deployed request-volume, error-rate, and latency data is reviewed. A controlled alert test or documented manual check remains required
-before treating either policy as verified.
+a p99 latency policy. Both policies and budget alerts are disabled by default. When either is
+enabled with an apply-time `operational_notification_email`, Terraform creates the conventional
+MatrixedMind environment channel and wires its generated resource name directly into the policies
+and budget. Externally managed channel resource names are optional reuse inputs; budget reuse
+must be verified read-only as email channels and may total no more than five. Budgets never fall
+back to unreviewed billing IAM recipients. The recipient is not committed, but Terraform state
+retains it. The initial latency threshold is 10,000 milliseconds; thresholds are not a production
+tuning decision. Tune them only after deployed request-volume, error-rate, and latency data is
+reviewed. A controlled alert test or documented manual check remains required before treating
+either policy as verified.
 
 For an existing development budget configuration, treat the new enable flag as an audited
 configuration migration: set `enable_billing_budget = true` alongside the existing billing account,
-amount, and reviewed notification-channel resource names before running any plan or apply. Leaving
-the flag false while any of those legacy inputs are populated is intentionally invalid, preventing
-an unreviewed plan from silently destroying the budget. Do not add literal billing IDs or recipient
-identities to version-controlled example files.
+amount, and an apply-time notification destination (or verified external email channel) before
+running any plan or apply. Leaving the flag false while budget inputs are populated is intentionally
+invalid, preventing an unreviewed plan from silently destroying the budget. Do not add literal
+billing IDs or recipient identities to version-controlled example files.
 
 ## Backup and recovery
 
 Import/export remains important for portability and recovery, but it is now deferred until after the secure Cloud MVP path unless recovery requirements pull it forward. Before MatrixedMind is treated as durable personal infrastructure, either import/export or another validated backup/restore path must exist and be tested.
 
 Firestore point-in-time recovery is enabled in the Terraform database definitions, but that is an
-assumption, not a validated MatrixedMind restore procedure. A restore exercise must use a
-non-production target, identify the source timestamp and target database/project, restore only
-approved test data, run the repository contract/readiness checks, and document cleanup. The exact
-current blocker is that no owner-confirmed development project ID, approved restoration target,
-or approval for the live restore operation exists. Do not represent point-in-time recovery as a
-tested backup until that exercise has passed.
+assumption, not a validated MatrixedMind restore procedure. The proposed isolated development
+target is `matrixedmind-dev-restore-validation-<UTC-date>` in `matrixed-mind-dev`; it must contain
+only approved test data. The exercise identifies the source timestamp, restores into that target,
+runs repository contract/readiness checks, records results, then deletes the temporary target only
+after evidence is captured. If validation fails, stop access, preserve the target for diagnosis,
+and leave the source database untouched. The remaining blocker is approval of the single audited
+live-mutation plan, not a request for the owner to invent a target name.
 
 ### Non-production secret-rotation test
 
@@ -376,11 +380,15 @@ other cloud mutation, present one audited plan and wait for explicit approval. T
 the exact APIs, confirmed project IDs, service-account identities, IAM roles, Terraform diff or
 commands, verification steps, and rollback.
 
-The unresolved inputs are the owner-confirmed development and production project IDs (the shared
-edge project is excluded), Monitoring notification-channel recipients/resource names, billing
-account IDs and budget amounts, observer service-account names and impersonation principals,
-least-privilege IAM roles, and the approved non-production restoration target. No literal project
-ID, email address, billing account, recipient, or IAM identity is inferred from this repository.
+The proposed observer scope is `matrixed-mind-dev` and `matrixedmind-prod`; the shared-edge
+project remains excluded pending approval of this plan. The recommended keyless impersonating
+principal is the discovered active ADC user `user:paul@matrixedmind.com`. The agent chooses the
+routine observer service-account IDs `matrixedmind-dev-observer` and
+`matrixedmind-prod-observer`, and the temporary restore-target naming convention above. The only
+owner decisions still needed for the single plan are the notification destination, development and
+production budget amounts, and approval of the complete live mutation. The plan will include the
+required billing account IDs, APIs, IAM roles, commands, verification, and rollback; none are
+applied until approved.
 
 ## Rollback
 

@@ -21,7 +21,7 @@ locals {
     "run.googleapis.com",
     "secretmanager.googleapis.com",
     "sts.googleapis.com",
-  ]), var.enable_operational_alerting ? toset(["monitoring.googleapis.com"]) : toset([]), var.billing_account_id != "" && var.billing_budget_amount_units != null && length(var.billing_budget_monitoring_notification_channels) > 0 ? toset(["billingbudgets.googleapis.com"]) : toset([]))
+  ]), var.enable_operational_alerting || var.enable_billing_budget ? toset(["monitoring.googleapis.com"]) : toset([]), var.enable_billing_budget ? toset(["billingbudgets.googleapis.com"]) : toset([]))
 
   runtime_secrets = {
     APP_SECRET_KEY = {
@@ -35,6 +35,15 @@ locals {
   }
 
   firestore_oidc_uri = "mongodb://${google_firestore_database.mongo_compatible.uid}.${google_firestore_database.mongo_compatible.location_id}.firestore.goog:443/${google_firestore_database.mongo_compatible.name}?loadBalanced=true&tls=true&retryWrites=false&authMechanism=MONGODB-OIDC&authMechanismProperties=ENVIRONMENT:gcp,TOKEN_RESOURCE:FIRESTORE"
+
+  operational_notification_channels = setunion(
+    toset(google_monitoring_notification_channel.operational[*].name),
+    var.external_operational_notification_channels,
+  )
+  budget_notification_channels = setunion(
+    toset(google_monitoring_notification_channel.operational[*].name),
+    var.external_budget_notification_channels,
+  )
 }
 
 resource "terraform_data" "invocation_contract" {
@@ -302,8 +311,24 @@ module "cloud_run_service" {
   ]
 }
 
+resource "google_monitoring_notification_channel" "operational" {
+  count = (var.enable_operational_alerting || var.enable_billing_budget) && nonsensitive(var.operational_notification_email != null) ? 1 : 0
+
+  project      = var.project_id
+  display_name = "MatrixedMind production operations"
+  type         = "email"
+  labels = {
+    email_address = var.operational_notification_email
+  }
+
+  # Do not force-delete a channel that may still be used outside this root.
+  force_delete = false
+
+  depends_on = [google_project_service.required]
+}
+
 resource "google_billing_budget" "prod" {
-  count = var.billing_account_id != "" && var.billing_budget_amount_units != null && length(var.billing_budget_monitoring_notification_channels) > 0 ? 1 : 0
+  count = var.enable_billing_budget ? 1 : 0
 
   billing_account = var.billing_account_id
   display_name    = "MatrixedMind production"
@@ -333,7 +358,7 @@ resource "google_billing_budget" "prod" {
 
   all_updates_rule {
     disable_default_iam_recipients   = true
-    monitoring_notification_channels = var.billing_budget_monitoring_notification_channels
+    monitoring_notification_channels = local.budget_notification_channels
   }
 
   depends_on = [google_project_service.required]
@@ -345,7 +370,7 @@ resource "google_monitoring_alert_policy" "cloud_run_error_rate" {
   project               = var.project_id
   display_name          = "MatrixedMind production Cloud Run 5xx error rate"
   combiner              = "OR"
-  notification_channels = var.operational_alert_notification_channels
+  notification_channels = local.operational_notification_channels
 
   conditions {
     display_name = "Cloud Run 5xx requests exceed the configured rate"
@@ -373,7 +398,7 @@ resource "google_monitoring_alert_policy" "cloud_run_latency" {
   project               = var.project_id
   display_name          = "MatrixedMind production Cloud Run p99 request latency"
   combiner              = "OR"
-  notification_channels = var.operational_alert_notification_channels
+  notification_channels = local.operational_notification_channels
 
   conditions {
     display_name = "Cloud Run p99 request latency exceeds the configured threshold"

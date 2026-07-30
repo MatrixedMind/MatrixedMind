@@ -76,8 +76,10 @@ terraform plan
 ```
 
 Milestone 12 operational Terraform is intentionally opt-in. Static validation must confirm that
-the dev and production roots accept their default disabled alert/budget configuration and reject
-enabled service-health alerting or a development budget without its required notification inputs.
+the dev and production roots accept their default disabled alert/budget configuration, reject
+enabled service-health alerting or a budget without a notification destination, and prove a managed
+email channel is wired into both policies and the budget. A delivery destination is apply-time only
+and remains absent from version control, though it is retained in Terraform state.
 A live plan or apply must not be
 used as a substitute for the cloud-mutation approval gate. Once approved, verify alert policies
 with a controlled test or documented manual check, validate one non-production secret rotation,

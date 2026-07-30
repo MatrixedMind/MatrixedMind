@@ -926,6 +926,8 @@ personal knowledge or sustained use.
   through ADC/service-account impersonation; exact service-account identities and IAM roles still
   require the audited cloud-mutation plan.
 - [ ] Confirm which development and production projects the observer may inspect.
+  Proposed for the final audited plan: `matrixed-mind-dev` and `matrixedmind-prod`; the shared-edge
+  project remains excluded. This is an approval of live scope, not a separate identifier request.
 - [x] Decide whether HashiCorp's Terraform MCP server runs as a pinned local binary or pinned
   container image. Use a pinned, checksum-verified local binary unless HashiCorp has no supported
   local artifact.
@@ -989,12 +991,13 @@ personal knowledge or sustained use.
 
 ### Current implementation status
 
-Repository-only operational configuration and procedures are in progress. Alert policies and
-billing budgets are declared as disabled-by-default Terraform options; no project IDs, notification
-channels, billing accounts, APIs, IAM roles, service accounts, alerts, budgets, secret rotations,
-or restore operations have been created or changed for Milestone 12. The remaining manual blocker
-is an explicitly approved audited cloud-mutation plan after the owner confirms the two private
-resource project IDs and other listed inputs.
+Repository-only operational configuration and procedures are in progress. Alert policies, billing
+budgets, and their conventional Terraform-managed notification channels are disabled by default;
+no project IDs, notification channels, billing accounts, APIs, IAM roles, service accounts, alerts,
+budgets, secret rotations, or restore operations have been created or changed for Milestone 12.
+The single remaining manual blocker is approval of the audited cloud-mutation plan. It asks only
+for the notification destination and development/production budget amounts; it recommends routine
+identifiers, the two proposed observer projects, and the isolated development restore target.
 
 ### Done when
 

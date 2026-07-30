@@ -174,27 +174,86 @@ variable "billing_budget_amount_units" {
   default     = null
 }
 
-variable "billing_budget_monitoring_notification_channels" {
-  description = "Existing Cloud Monitoring notification-channel resource names for production budget alerts. Leave empty to keep the optional budget disabled."
-  type        = set(string)
-  default     = []
+variable "operational_notification_email" {
+  description = "Optional production email destination for Terraform-managed MatrixedMind operational notifications. Supply only at apply time; Terraform state retains it."
+  type        = string
+  default     = null
+  sensitive   = true
+
+  validation {
+    condition = var.operational_notification_email == null || (
+      trimspace(var.operational_notification_email) != ""
+      && !strcontains(var.operational_notification_email, "\n")
+      && !strcontains(var.operational_notification_email, "\r")
+      && can(regex("^[^@[:space:]]+@[^@[:space:]]+\\.[^@[:space:]]+$", var.operational_notification_email))
+    )
+    error_message = "operational_notification_email must be a single non-empty email address without line breaks."
+  }
 }
 
-variable "enable_operational_alerting" {
-  description = "Create Cloud Run health and error alert policies only after reviewed notification channels are supplied."
+variable "external_operational_notification_channels" {
+  description = "Optional externally managed full Cloud Monitoring channel resource names for production alert policies."
+  type        = set(string)
+  default     = []
+
+  validation {
+    condition = alltrue([
+      for channel in var.external_operational_notification_channels :
+      can(regex("^projects/[^/[:space:]]+/notificationChannels/[0-9]+$", channel))
+    ])
+    error_message = "external_operational_notification_channels must contain full Cloud Monitoring channel resource names."
+  }
+}
+
+variable "external_budget_notification_channels" {
+  description = "Optional externally managed email Cloud Monitoring channel resource names for the production billing budget. Verify their email type with read-only discovery before apply."
+  type        = set(string)
+  default     = []
+
+  validation {
+    condition = (
+      alltrue([
+        for channel in var.external_budget_notification_channels :
+        can(regex("^projects/[^/[:space:]]+/notificationChannels/[0-9]+$", channel))
+      ])
+      && length(var.external_budget_notification_channels) + (var.operational_notification_email == null ? 0 : 1) <= 5
+    )
+    error_message = "external_budget_notification_channels must contain full email-channel resource names and, with the managed channel, total no more than five."
+  }
+}
+
+variable "enable_billing_budget" {
+  description = "Create the production billing budget only after its billing account, amount, and a managed or externally managed email notification channel are supplied."
   type        = bool
   default     = false
 
   validation {
-    condition     = !var.enable_operational_alerting || length(var.operational_alert_notification_channels) > 0
-    error_message = "operational_alert_notification_channels must be set when enable_operational_alerting is true."
+    condition = (
+      (
+        var.enable_billing_budget
+        && var.billing_account_id != ""
+        && var.billing_budget_amount_units != null
+        && (var.operational_notification_email != null || length(var.external_budget_notification_channels) > 0)
+      )
+      || (
+        !var.enable_billing_budget
+        && var.billing_account_id == ""
+        && var.billing_budget_amount_units == null
+      )
+    )
+    error_message = "When enable_billing_budget is true, set billing_account_id, billing_budget_amount_units, and a managed or external budget notification channel. When false, leave the budget inputs empty to avoid an unreviewed destruction plan."
   }
 }
 
-variable "operational_alert_notification_channels" {
-  description = "Existing Cloud Monitoring notification-channel resource names for production service-health alerts."
-  type        = set(string)
-  default     = []
+variable "enable_operational_alerting" {
+  description = "Create Cloud Run health and error alert policies only after a managed or externally managed notification channel is supplied."
+  type        = bool
+  default     = false
+
+  validation {
+    condition     = !var.enable_operational_alerting || var.operational_notification_email != null || length(var.external_operational_notification_channels) > 0
+    error_message = "operational_notification_email or external_operational_notification_channels must be set when enable_operational_alerting is true."
+  }
 }
 
 variable "cloud_run_error_rate_threshold" {
