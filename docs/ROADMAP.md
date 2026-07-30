@@ -844,7 +844,7 @@ Make the secure Cloud MVP usable through its custom domain and a narrow private 
   ADR 0015.
 - [x] Enable the hosted load-balancer invocation path only after the deployed revision includes the
   narrow LLM schema and app-level token enforcement, without enabling direct public Cloud Run.
-- [ ] Configure a private Custom GPT Action with a dedicated scoped MatrixedMind token.
+- [x] Configure a private Custom GPT Action with a dedicated scoped MatrixedMind token.
 
 #### AI agent implementation tasks
 
