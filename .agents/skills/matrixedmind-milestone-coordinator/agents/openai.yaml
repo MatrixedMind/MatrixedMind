@@ -1,0 +1,4 @@
+interface:
+  display_name: "MatrixedMind Milestone Coordinator"
+  short_description: "Coordinate one MatrixedMind milestone"
+  default_prompt: "Use $matrixedmind-milestone-coordinator to coordinate this MatrixedMind milestone deliverable."

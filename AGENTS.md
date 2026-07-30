@@ -58,6 +58,37 @@ descriptive task title instead, such as `Documentation update - hosted activatio
 - Do not introduce a second service or queue unless the roadmap and ADRs are updated first.
 - Keep persistence behind repository interfaces and adapters.
 
+## Codex workflow routing
+
+- Require `matrixedmind-milestone-coordinator` for milestone implementation, milestone
+  verification, and other coordinated multi-agent deliverables.
+- Require `matrixedmind-copilot-review-loop` after a milestone PR is pushed or when Copilot
+  review feedback must be addressed.
+- After a milestone is complete, validated, and ready for review, publish its intended commits,
+  push its branch, and create or convert its PR against the default branch as ready for review;
+  verify it is non-draft before the Copilot loop. These publication steps are standing
+  authorization for MatrixedMind milestone work; do not merge or perform unrelated remote/cloud
+  mutations without their separate authorization.
+- Before classifying an external-command failure as authentication or credentials, distinguish
+  sandbox or network denial, local credential retrieval, remote authentication, authorization,
+  and Git transport. Treat `gh auth status`, `gh api`, `gh repo`, `git fetch`, `git push`, and
+  `git ls-remote` as inconclusive without network access. When network or `.git` writes are
+  restricted, request the narrow elevation needed for the preflight or publication command.
+- Allow at most one unchanged retry of a failed external command; a further retry requires a
+  changed hypothesis, credential state, permission level, or execution environment. Never ask
+  for reauthentication based only on a restricted-sandbox failure, and never print tokens,
+  credential values, or secret contents.
+- Begin coordinator work in the project default `read-only` sandbox with untrusted-command
+  approvals. Do not delegate from or elevate a broad-access parent turn unless the access is
+  explicitly required and approved; parent runtime overrides take precedence over agent defaults.
+- Use no more than two concurrent subagents by default. Delegate version-sensitive or
+  provider-sensitive GCP, Firebase, Google AI, Gemini CLI, Terraform-on-GCP, and Google API
+  research to `gcp_docs_researcher`; its Developer Knowledge MCP server is scoped to that agent
+  only and requires local `GOOGLE_DEVELOPER_KNOWLEDGE_API_KEY`. Enabling the service and
+  provisioning authentication remain manual or explicitly approved cloud actions.
+- Do not use Browser, Chrome, Computer Use, or GUI application-control tools unless the user explicitly requests them and a CLI, API, test client, or purpose-built connector cannot perform the task. Put unavoidable browser verification in a fresh, narrowly scoped task.
+- Do not poll GitHub, deployments, or other external systems through repeated model turns in a long-running implementation task. Use a bounded wait or a standalone low-cost monitor with a coarse interval, stop condition, and concise output.
+
 ## Quality gates
 
 ### Run pre-commit (covers formatting, linting, type checks, and infra checks automatically)

@@ -1,0 +1,4 @@
+interface:
+  display_name: "MatrixedMind Copilot Review Loop"
+  short_description: "Validate and address Copilot PR feedback"
+  default_prompt: "Use $matrixedmind-copilot-review-loop to handle Copilot feedback on this MatrixedMind pull request."
