@@ -41,6 +41,7 @@ GET  /api/llm/records?space={space}
 
 Every operation must use the `LlmBearerToken` security scheme. Stop if the schema exposes an
 internal `/api/records/*`, browser, admin, delete, publish, auth, sharing, health, or readiness route.
+The schema's `servers` entry must contain the same HTTPS origin as `MATRIXEDMIND_URL`.
 
 ## Configure the Custom GPT
 
