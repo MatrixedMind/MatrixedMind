@@ -4,7 +4,7 @@ locals {
     direct                 = "INGRESS_TRAFFIC_ALL"
     external_load_balancer = "INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER"
   }
-  public_invocation = var.invocation_mode != "private"
+  public_iam_invocation = var.invocation_mode == "direct"
   backend_service_name = coalesce(
     var.load_balancer_backend_service_name,
     "${var.name}-backend",
@@ -20,11 +20,12 @@ locals {
 }
 
 resource "google_cloud_run_v2_service" "this" {
-  project             = var.project_id
-  name                = var.name
-  location            = var.location
-  ingress             = local.ingress_by_invocation_mode[var.invocation_mode]
-  deletion_protection = var.deletion_protection
+  project              = var.project_id
+  name                 = var.name
+  location             = var.location
+  ingress              = local.ingress_by_invocation_mode[var.invocation_mode]
+  invoker_iam_disabled = var.invocation_mode == "external_load_balancer"
+  deletion_protection  = var.deletion_protection
 
   template {
     service_account = var.service_account_email
@@ -98,7 +99,7 @@ resource "google_cloud_run_v2_service" "this" {
 }
 
 resource "google_cloud_run_v2_service_iam_member" "public_invoker" {
-  count = local.public_invocation ? 1 : 0
+  count = local.public_iam_invocation ? 1 : 0
 
   project  = var.project_id
   location = var.location

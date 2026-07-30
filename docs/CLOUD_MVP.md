@@ -186,8 +186,9 @@ The owner still must provide:
 - The first pushed container image before enabling Cloud Run in Terraform.
 - Application image and numbered runtime secret versions before enabling the Cloud Run application service.
 - The decision to change the production `cloud_run_invocation_mode` from `private`, and only after
-  app-level auth, the narrowly scoped public-invoker policy exception, and the separate edge
-  attachment are ready.
+  app-level auth, the narrowly scoped public platform-invocation configuration, and the separate
+  edge attachment are ready. In the hosted organization, Domain Restricted Sharing means this uses
+  the Cloud Run Invoker IAM-check setting instead of an `allUsers` IAM binding.
 
 After the owner applies the Cloud Run service configuration, `.github/workflows/deploy-dev.yml`
 deploys only CI-verified `main` revisions. It uses Workload Identity Federation, pushes an immutable

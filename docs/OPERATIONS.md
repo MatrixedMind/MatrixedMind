@@ -105,8 +105,10 @@ The module accepts exactly one invocation mode:
 
 - `private`: current restricted staging behavior; no `allUsers` invoker and no load-balancer NEG.
 - `direct`: self-hosted direct public Cloud Run; public invoker with normal Cloud Run ingress.
-- `external_load_balancer`: public platform invoker, ingress restricted to internal and Cloud Load
-  Balancing traffic, plus a serverless NEG and backend service in the application project.
+- `external_load_balancer`: the Invoker IAM check is disabled without an `allUsers` binding, ingress
+  is restricted to internal and Cloud Load Balancing traffic, and a serverless NEG and backend
+  service are created in the application project. This is compatible with Domain Restricted
+  Sharing; app-level bearer authentication remains the primary LLM API boundary.
 
 The production root supports `private` staging and `external_load_balancer`; direct public Cloud Run
 remains available through the reusable module for self-hosted compositions. In hosted mode, the

@@ -35,6 +35,11 @@ run "private_staging_mode" {
   }
 
   assert {
+    condition     = google_cloud_run_v2_service.this.invoker_iam_disabled == false
+    error_message = "Private staging must retain the Cloud Run Invoker IAM check."
+  }
+
+  assert {
     condition     = length(google_compute_region_network_endpoint_group.load_balancer) == 0
     error_message = "Private staging must not create a serverless load-balancer NEG."
   }
@@ -65,6 +70,11 @@ run "direct_public_mode" {
   assert {
     condition     = length(google_cloud_run_v2_service_iam_member.public_invoker) == 1
     error_message = "Direct mode must grant public platform invocation."
+  }
+
+  assert {
+    condition     = google_cloud_run_v2_service.this.invoker_iam_disabled == false
+    error_message = "Direct mode must use its explicit allUsers IAM binding."
   }
 
   assert {
@@ -102,8 +112,13 @@ run "external_load_balancer_mode" {
   }
 
   assert {
-    condition     = length(google_cloud_run_v2_service_iam_member.public_invoker) == 1
-    error_message = "The external load balancer still needs unauthenticated platform invocation."
+    condition     = length(google_cloud_run_v2_service_iam_member.public_invoker) == 0
+    error_message = "Hosted load-balancer mode must not use an allUsers IAM binding."
+  }
+
+  assert {
+    condition     = google_cloud_run_v2_service.this.invoker_iam_disabled == true
+    error_message = "Hosted load-balancer mode must disable the Invoker IAM check for Domain Restricted Sharing."
   }
 
   assert {
