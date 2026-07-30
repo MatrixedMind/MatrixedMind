@@ -27,3 +27,16 @@ load_balancer_backend_service_name      = null
 # Optional defense in depth. Keep null until Cloud Armor Enterprise cost, the published range feed,
 # and its refresh procedure have been reviewed. Scoped bearer tokens remain mandatory.
 openai_action_address_group_name = null
+
+# Optional billing budget. Use existing notification-channel resource names; do not add emails,
+# billing-account IDs, or recipient identities to version control.
+billing_account_id          = ""
+billing_budget_amount_units = null
+billing_budget_monitoring_notification_channels = []
+
+# Disabled until a reviewed plan names existing notification channels and receives explicit cloud
+# mutation approval. Tune these only from deployed metrics, not guesses.
+enable_operational_alerting             = false
+operational_alert_notification_channels = []
+cloud_run_error_rate_threshold          = 0.05
+cloud_run_latency_threshold_milliseconds = 10000

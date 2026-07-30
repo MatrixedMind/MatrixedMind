@@ -1,0 +1,6 @@
+# HashiCorp public release metadata. Do not add private-registry or credential data.
+version = "1.1.0"
+platform = "darwin_arm64"
+archive = "terraform-mcp-server_1.1.0_darwin_arm64.zip"
+sha256 = "741e7175224a54fcef1c132c272a3fbf9362f4fc00469ae2c370b8c2ae8f3ef8"
+source = "https://releases.hashicorp.com/terraform-mcp-server/1.1.0/terraform-mcp-server_1.1.0_darwin_arm64.zip"

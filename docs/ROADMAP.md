@@ -918,25 +918,31 @@ personal knowledge or sustained use.
 
 #### Human intervention or decision tasks
 
-- [ ] Decide whether static egress or private connectivity is needed for an external dependency.
-- [ ] Select and approve the authentication approach and least-privilege identity for read-only
-  Google Cloud MCP access.
+- [x] Decide whether static egress or private connectivity is needed for an external dependency.
+  None is currently needed; revisit when a dependency requires fixed-IP allowlisting or private
+  networking.
+- [x] Select and approve the authentication approach for read-only Google Cloud MCP access.
+  Use dedicated keyless, read-only observer service accounts, preferably one per environment,
+  through ADC/service-account impersonation; exact service-account identities and IAM roles still
+  require the audited cloud-mutation plan.
 - [ ] Confirm which development and production projects the observer may inspect.
-- [ ] Decide whether HashiCorp's Terraform MCP server runs as a pinned local binary or pinned
-  container image.
-- [ ] Require explicit approval before enabling Google Cloud MCP services or granting associated
-  IAM roles.
+- [x] Decide whether HashiCorp's Terraform MCP server runs as a pinned local binary or pinned
+  container image. Use a pinned, checksum-verified local binary unless HashiCorp has no supported
+  local artifact.
+- [x] Require explicit approval before enabling Google Cloud MCP services or granting associated
+  IAM roles. Approval is required before every live cloud mutation; repository configuration and
+  read-only discovery are authorized now.
 
 #### AI agent implementation tasks
 
 - [ ] Configure alerting for service health and error rates.
-- [ ] Document log review workflow.
+- [x] Document log review workflow.
 - [ ] Validate backup and restore assumptions.
 - [ ] Configure billing budget alerts.
 - [ ] Document and test a secret rotation procedure with a non-production token.
 - [ ] Tune rate limits based on deployed LLM API behavior.
 - [ ] Review Firestore document-size and index-write costs.
-- [ ] Document static egress/private connectivity tradeoffs if needed.
+- [x] Document static egress/private connectivity tradeoffs if needed.
 - [ ] Extend `gcp_docs_researcher` with HashiCorp's official Terraform MCP server, pinned to a
   reviewed version or immutable container digest. Enable only public Terraform Registry
   documentation tools: `search_providers` and `get_provider_details`; allow
@@ -980,6 +986,15 @@ personal knowledge or sustained use.
   service-account JSON, or generated credentials.
 - [ ] Any unavailable authentication, API enablement, IAM grant, or live verification is recorded
   as an exact manual blocker rather than marked complete.
+
+### Current implementation status
+
+Repository-only operational configuration and procedures are in progress. Alert policies and
+billing budgets are declared as disabled-by-default Terraform options; no project IDs, notification
+channels, billing accounts, APIs, IAM roles, service accounts, alerts, budgets, secret rotations,
+or restore operations have been created or changed for Milestone 12. The remaining manual blocker
+is an explicitly approved audited cloud-mutation plan after the owner confirms the two private
+resource project IDs and other listed inputs.
 
 ### Done when
 

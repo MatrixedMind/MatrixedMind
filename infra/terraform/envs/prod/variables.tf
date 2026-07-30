@@ -161,3 +161,60 @@ variable "openai_action_address_group_name" {
     error_message = "openai_action_address_group_name must be null or a valid address-group name."
   }
 }
+
+variable "billing_account_id" {
+  description = "Bare production billing account ID. Leave empty to keep the optional budget disabled."
+  type        = string
+  default     = ""
+}
+
+variable "billing_budget_amount_units" {
+  description = "Monthly production budget amount in whole USD units. Set null to keep the optional budget disabled."
+  type        = number
+  default     = null
+}
+
+variable "billing_budget_monitoring_notification_channels" {
+  description = "Existing Cloud Monitoring notification-channel resource names for production budget alerts. Leave empty to keep the optional budget disabled."
+  type        = set(string)
+  default     = []
+}
+
+variable "enable_operational_alerting" {
+  description = "Create Cloud Run health and error alert policies only after reviewed notification channels are supplied."
+  type        = bool
+  default     = false
+
+  validation {
+    condition     = !var.enable_operational_alerting || length(var.operational_alert_notification_channels) > 0
+    error_message = "operational_alert_notification_channels must be set when enable_operational_alerting is true."
+  }
+}
+
+variable "operational_alert_notification_channels" {
+  description = "Existing Cloud Monitoring notification-channel resource names for production service-health alerts."
+  type        = set(string)
+  default     = []
+}
+
+variable "cloud_run_error_rate_threshold" {
+  description = "Cloud Run 5xx request-rate threshold in requests per second."
+  type        = number
+  default     = 0.05
+
+  validation {
+    condition     = var.cloud_run_error_rate_threshold > 0
+    error_message = "cloud_run_error_rate_threshold must be greater than zero."
+  }
+}
+
+variable "cloud_run_latency_threshold_milliseconds" {
+  description = "Cloud Run p99 request-latency threshold in milliseconds."
+  type        = number
+  default     = 10000
+
+  validation {
+    condition     = var.cloud_run_latency_threshold_milliseconds > 0
+    error_message = "cloud_run_latency_threshold_milliseconds must be greater than zero."
+  }
+}

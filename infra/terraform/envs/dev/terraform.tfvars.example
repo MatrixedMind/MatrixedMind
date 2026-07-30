@@ -22,6 +22,17 @@ firestore_spike_image      = ""
 # The development root always keeps Cloud Run private. Public invocation modes belong to a
 # self-hosted composition or the separate production root.
 
-# Optional billing budget.
+# Optional billing budget. It remains disabled unless all inputs and the explicit enable flag are
+# set. Use reviewed existing channel resource names for explicit recipients and do not add emails,
+# billing-account IDs, or recipient identities to version control.
+enable_billing_budget       = false
 billing_account_id          = ""
 billing_budget_amount_units = null
+billing_budget_monitoring_notification_channels = []
+
+# Disabled until a reviewed plan names existing notification channels and receives explicit cloud
+# mutation approval. Tune these only from deployed metrics, not guesses.
+enable_operational_alerting             = false
+operational_alert_notification_channels = []
+cloud_run_error_rate_threshold          = 0.05
+cloud_run_latency_threshold_milliseconds = 10000

@@ -17,6 +17,25 @@ run "private_foundation" {
     condition     = length(module.cloud_run_service) == 0
     error_message = "The production foundation must not create Cloud Run before it is explicitly enabled."
   }
+
+  assert {
+    condition = (
+      length(google_monitoring_alert_policy.cloud_run_error_rate) == 0
+      && length(google_monitoring_alert_policy.cloud_run_latency) == 0
+      && length(google_billing_budget.prod) == 0
+    )
+    error_message = "Operational alerting and budgets must remain disabled until their explicit inputs are supplied."
+  }
+}
+
+run "operational_alerting_requires_notification_channels" {
+  command = plan
+
+  variables {
+    enable_operational_alerting = true
+  }
+
+  expect_failures = [var.enable_operational_alerting]
 }
 
 run "cross_project_backend" {

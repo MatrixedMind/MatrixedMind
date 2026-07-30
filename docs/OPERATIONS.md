@@ -298,9 +298,89 @@ Use Cloud Run logs for request and application errors. Local development should 
 docker compose logs api
 ```
 
+### Hosted log review
+
+Use the read-only observer only after the development and production project IDs have been
+confirmed by the owner. For each investigation, state one environment, one project, a short UTC
+time range, and an objective. Start with Cloud Run service metadata and a narrow Cloud Logging
+filter for the named service and severity or status class; use a small result limit and sanitize
+identifiers, token-like values, request bodies, and record content from any report. Correlate an
+error with Cloud Monitoring request-count, latency, and alert-policy metadata before widening the
+time range. The observer must not deploy, change IAM, create credentials, inspect secrets, or
+mutate Cloud Run or Firestore. Stop when the requested evidence is sufficient rather than polling
+unchanged state.
+
+Terraform declares two optional Cloud Run policies per environment: a 5xx request-rate policy and
+a p99 latency policy. Both policies and budget alerts are disabled by default; development budget
+creation also requires an explicit enable flag, billing account, amount, and existing reviewed
+Monitoring notification-channel resource names. Budgets never fall back to unreviewed billing IAM recipients.
+The initial latency threshold is
+10,000 milliseconds; thresholds are not a production tuning decision. Tune them only after
+deployed request-volume, error-rate, and latency data is reviewed. A controlled alert test or documented manual check remains required
+before treating either policy as verified.
+
+For an existing development budget configuration, treat the new enable flag as an audited
+configuration migration: set `enable_billing_budget = true` alongside the existing billing account,
+amount, and reviewed notification-channel resource names before running any plan or apply. Leaving
+the flag false while any of those legacy inputs are populated is intentionally invalid, preventing
+an unreviewed plan from silently destroying the budget. Do not add literal billing IDs or recipient
+identities to version-controlled example files.
+
 ## Backup and recovery
 
 Import/export remains important for portability and recovery, but it is now deferred until after the secure Cloud MVP path unless recovery requirements pull it forward. Before MatrixedMind is treated as durable personal infrastructure, either import/export or another validated backup/restore path must exist and be tested.
+
+Firestore point-in-time recovery is enabled in the Terraform database definitions, but that is an
+assumption, not a validated MatrixedMind restore procedure. A restore exercise must use a
+non-production target, identify the source timestamp and target database/project, restore only
+approved test data, run the repository contract/readiness checks, and document cleanup. The exact
+current blocker is that no owner-confirmed development project ID, approved restoration target,
+or approval for the live restore operation exists. Do not represent point-in-time recovery as a
+tested backup until that exercise has passed.
+
+### Non-production secret-rotation test
+
+After a reviewed cloud-mutation plan is explicitly approved, test rotation in development only:
+
+1. Create a new value outside the repository and add it as a new Secret Manager version.
+2. Change only the matching explicit numeric Terraform version input; never use `latest`.
+3. Review the plan, apply it, and confirm the resulting Cloud Run revision uses that number.
+4. Run the authenticated `/health` and `/ready` checks and one scoped LLM-token request using a
+   deliberately non-production token.
+5. Confirm the prior token or secret behavior is understood before disabling its old version;
+   record the rollback version and restore it through a reviewed Terraform plan if needed.
+
+No rotation test has been run for Milestone 12. It is blocked by the same live-mutation approval
+gate; secret values, token values, and service-account keys must never be placed in Terraform,
+plans, logs, or this repository.
+
+### Cost and connectivity review
+
+Review Firestore cost from deployed metrics and billing data before changing limits: measure
+document sizes, document reads/writes/deletes, index-write amplification, retention, and the
+cost of the Firestore compatibility test job. Keep record bodies and embedded revisions bounded,
+avoid unnecessary composite indexes, and revisit this review after material query, schema, or
+retention changes. This is documentation of a review method, not evidence that current production
+costs have been measured.
+
+No MatrixedMind runtime dependency currently requires fixed-IP allowlisting, static egress, or
+private connectivity. Do not add a NAT, private connector, or related routing cost now. Revisit
+the decision before onboarding a dependency that requires source-IP allowlisting, private-only
+addressing, VPC access, or an equivalent network boundary.
+
+### Cloud mutation approval gate
+
+Repository configuration and read-only discovery are approved. Before any live API enablement,
+IAM grant, service-account creation, alert/budget creation, secret rotation, restore test, or
+other cloud mutation, present one audited plan and wait for explicit approval. That plan must name
+the exact APIs, confirmed project IDs, service-account identities, IAM roles, Terraform diff or
+commands, verification steps, and rollback.
+
+The unresolved inputs are the owner-confirmed development and production project IDs (the shared
+edge project is excluded), Monitoring notification-channel recipients/resource names, billing
+account IDs and budget amounts, observer service-account names and impersonation principals,
+least-privilege IAM roles, and the approved non-production restoration target. No literal project
+ID, email address, billing account, recipient, or IAM identity is inferred from this repository.
 
 ## Rollback
 

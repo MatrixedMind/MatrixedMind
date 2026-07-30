@@ -75,6 +75,15 @@ terraform validate
 terraform plan
 ```
 
+Milestone 12 operational Terraform is intentionally opt-in. Static validation must confirm that
+the dev and production roots accept their default disabled alert/budget configuration and reject
+enabled service-health alerting or a development budget without its required notification inputs.
+A live plan or apply must not be
+used as a substitute for the cloud-mutation approval gate. Once approved, verify alert policies
+with a controlled test or documented manual check, validate one non-production secret rotation,
+and run a restore exercise against an approved non-production target. Those hosted checks remain
+unperformed until the owner confirms the project IDs and approves the audited plan.
+
 The Cloud Run module has offline mocked Terraform tests for its exclusive `private`, `direct`, and
 `external_load_balancer` invocation modes, application-project backend ownership, explicit
 cross-project service-user IAM members, and invalid-input rejection. The production root separately

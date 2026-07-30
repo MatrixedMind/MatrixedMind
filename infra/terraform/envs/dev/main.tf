@@ -10,9 +10,8 @@ data "google_project" "current" {
 }
 
 locals {
-  required_services = toset([
+  required_services = setunion(toset([
     "artifactregistry.googleapis.com",
-    "billingbudgets.googleapis.com",
     "cloudbuild.googleapis.com",
     "cloudresourcemanager.googleapis.com",
     "firestore.googleapis.com",
@@ -21,7 +20,7 @@ locals {
     "run.googleapis.com",
     "secretmanager.googleapis.com",
     "sts.googleapis.com",
-  ])
+  ]), var.enable_operational_alerting ? toset(["monitoring.googleapis.com"]) : toset([]), var.enable_billing_budget && var.billing_account_id != "" && var.billing_budget_amount_units != null && length(var.billing_budget_monitoring_notification_channels) > 0 ? toset(["billingbudgets.googleapis.com"]) : toset([]))
 
   runtime_secrets = {
     APP_SECRET_KEY = {
@@ -341,7 +340,7 @@ resource "google_cloud_run_v2_job" "firestore_spike" {
 }
 
 resource "google_billing_budget" "dev" {
-  count = var.billing_account_id != "" && var.billing_budget_amount_units != null ? 1 : 0
+  count = var.enable_billing_budget && var.billing_account_id != "" && var.billing_budget_amount_units != null && length(var.billing_budget_monitoring_notification_channels) > 0 ? 1 : 0
 
   billing_account = var.billing_account_id
   display_name    = "MatrixedMind dev"
@@ -367,6 +366,66 @@ resource "google_billing_budget" "dev" {
 
   threshold_rules {
     threshold_percent = 1.0
+  }
+
+  all_updates_rule {
+    disable_default_iam_recipients   = true
+    monitoring_notification_channels = var.billing_budget_monitoring_notification_channels
+  }
+
+  depends_on = [google_project_service.required]
+}
+
+resource "google_monitoring_alert_policy" "cloud_run_error_rate" {
+  count = var.enable_operational_alerting ? 1 : 0
+
+  project               = var.project_id
+  display_name          = "MatrixedMind dev Cloud Run 5xx error rate"
+  combiner              = "OR"
+  notification_channels = var.operational_alert_notification_channels
+
+  conditions {
+    display_name = "Cloud Run 5xx requests exceed the configured rate"
+
+    condition_threshold {
+      filter          = "metric.type=\"run.googleapis.com/request_count\" AND resource.type=\"cloud_run_revision\" AND resource.label.\"service_name\"=\"${var.cloud_run_service_name}\" AND metric.label.\"response_code_class\"=\"5xx\""
+      duration        = "300s"
+      comparison      = "COMPARISON_GT"
+      threshold_value = var.cloud_run_error_rate_threshold
+
+      aggregations {
+        alignment_period     = "60s"
+        per_series_aligner   = "ALIGN_RATE"
+        cross_series_reducer = "REDUCE_SUM"
+      }
+    }
+  }
+
+  depends_on = [google_project_service.required]
+}
+
+resource "google_monitoring_alert_policy" "cloud_run_latency" {
+  count = var.enable_operational_alerting ? 1 : 0
+
+  project               = var.project_id
+  display_name          = "MatrixedMind dev Cloud Run p99 request latency"
+  combiner              = "OR"
+  notification_channels = var.operational_alert_notification_channels
+
+  conditions {
+    display_name = "Cloud Run p99 request latency exceeds the configured threshold"
+
+    condition_threshold {
+      filter          = "metric.type=\"run.googleapis.com/request_latencies\" AND resource.type=\"cloud_run_revision\" AND resource.label.\"service_name\"=\"${var.cloud_run_service_name}\""
+      duration        = "300s"
+      comparison      = "COMPARISON_GT"
+      threshold_value = var.cloud_run_latency_threshold_milliseconds
+
+      aggregations {
+        alignment_period   = "60s"
+        per_series_aligner = "ALIGN_PERCENTILE_99"
+      }
+    }
   }
 
   depends_on = [google_project_service.required]
