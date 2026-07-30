@@ -191,10 +191,13 @@ terraform -chdir=infra/terraform/envs/dev plan -var-file=terraform.tfvars -out=s
 terraform -chdir=infra/terraform/envs/dev apply service.tfplan
 ```
 
-The production root is locally validated but has not been applied to a live project. Its foundation,
-public-invoker policy exception, cross-project edge attachment, DNS, secrets, and deployment remain
-owner-approved activation steps. Do not infer a tested hosted topology from the presence of the
-Terraform root.
+The production foundation and IAM-private Cloud Run staging service were applied and verified on
+2026-07-29. Terraform converged without drift; the deployed service used the runtime service
+account, explicit numbered secret versions, and a digest-pinned Linux AMD64 image. Authenticated
+`/health`, `/ready`, and `/openapi-llm.json` checks passed, while an unauthenticated health request
+returned `403`. Public-invoker policy, cross-project edge attachment, DNS, and custom-domain routing
+remain separate owner-approved activation steps. These private staging checks do not establish a
+tested public hosted topology.
 
 Do not commit `*.tfplan`; remove local plan files after use.
 
