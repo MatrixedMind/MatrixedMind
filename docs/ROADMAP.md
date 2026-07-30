@@ -838,44 +838,47 @@ Make the secure Cloud MVP usable through its custom domain and a narrow private 
 #### Human intervention or decision tasks
 
 - [x] Use a custom domain for the hosted MatrixedMind deployment.
-- [x] Use the existing shared external load balancer for the hosted deployment; keep direct public
-  Cloud Run as a separate self-hosted deployment mode. See ADR 0015.
-- [ ] Enable public Cloud Run invocation only after the deployed revision includes the narrow LLM
-  schema and app-level token enforcement.
-- [ ] Configure a private Custom GPT Action with a dedicated scoped MatrixedMind token.
+- [x] Use separate shared-edge, private-development, and production-application projects. Reuse the
+  existing shared external load balancer and static IP through global cross-project service
+  referencing without Shared VPC; keep direct public Cloud Run as a separate self-hosted mode. See
+  ADR 0015.
+- [x] Enable the hosted load-balancer invocation path only after the deployed revision includes the
+  narrow LLM schema and app-level token enforcement, without enabling direct public Cloud Run.
+- [x] Configure a private Custom GPT Action with a dedicated scoped MatrixedMind token.
 
 #### AI agent implementation tasks
 
-- [ ] Smoke test create and update through the deployed Cloud Run URL.
-- [ ] Verify deployed reads and writes cannot escape the token's allowed spaces.
-- [ ] Verify the deployed API exposes no delete, publish, sharing, indexing, auth, admin, or bulk
+- [x] Smoke test create and update through the deployed Cloud Run URL.
+- [x] Verify deployed reads and writes cannot escape the token's allowed spaces.
+- [x] Verify the deployed API exposes no delete, publish, sharing, indexing, auth, admin, or bulk
   import capability to the Custom GPT.
-- [ ] Revoke the deployed test token and verify later requests fail.
-- [ ] Configure the custom-domain load-balancer route and Cloud Run ingress for the selected
+- [x] Revoke the deployed test token and verify later requests fail.
+- [x] Configure the custom-domain load-balancer route and Cloud Run ingress for the selected
   deployment mode. See ADR 0015.
-- [ ] Add the optional OpenAI ChatGPT-integration IP allowlist to the Action API host, with a
-  reviewed refresh process for changes to the published range feed.
-- [ ] Add a visible AGPL source-offer link and license notice to the hosted interface, pointing to
+- [x] Add optional OpenAI ChatGPT-integration IP allowlist support to the Action API host, with a
+  reviewed refresh process for changes to the published range feed; leave it disabled unless the
+  operator opts into Cloud Armor Enterprise and supplies a reviewed address group.
+- [x] Add a visible AGPL source-offer link and license notice to the hosted interface, pointing to
   the corresponding public source for the deployed version.
-- [ ] Safely render externally hosted HTTPS images in Markdown while preserving only required image
+- [x] Safely render externally hosted HTTPS images in Markdown while preserving only required image
   attributes, rejecting unsafe URL schemes, raw HTML, event handlers, and inline styles, and
   enforcing optional configured image-source allowlists. See ADR 0017.
 
 ### Verification
 
-- [ ] `/openapi-llm.json` is reachable by ChatGPT while sensitive routes still require app-level
-  authentication.
-- [ ] Custom GPT Action can create or update a private draft record.
-- [ ] Custom GPT Action cannot delete, publish, change sharing, change indexing, change auth, or
+- [x] `/openapi-llm.json` is reachable through the custom domain while sensitive routes still
+  require app-level authentication.
+- [x] Custom GPT Action can create or update a private draft record.
+- [x] Custom GPT Action cannot delete, publish, change sharing, change indexing, change auth, or
   write outside allowed spaces.
-- [ ] LLM token revocation blocks later deployed requests.
-- [ ] Smoke test passes through the deployed Cloud Run URL.
-- [ ] The selected custom-domain routing and Cloud Run ingress mode work without exposing an
+- [x] LLM token revocation blocks later deployed requests.
+- [x] Smoke test passes through the deployed Cloud Run URL.
+- [x] The selected custom-domain routing and Cloud Run ingress mode work without exposing an
   unintended direct public path.
-- [ ] The Action API allowlist accepts current ChatGPT integration requests and rejects an
-  unapproved source when the optional policy is enabled.
-- [ ] The hosted interface offers the corresponding source for its deployed version.
-- [ ] Approved HTTPS Markdown images render, while malicious image markup and unsafe URLs are
+- [ ] When the optional Action API allowlist is enabled, it accepts current ChatGPT integration
+  requests and rejects an unapproved source.
+- [x] The hosted interface offers the corresponding source for its deployed version.
+- [x] Approved HTTPS Markdown images render, while malicious image markup and unsafe URLs are
   removed or neutralized.
 
 ### Done when

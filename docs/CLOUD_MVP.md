@@ -32,7 +32,7 @@ Firestore Enterprise edition with MongoDB compatibility
 - Multi-user sharing UI.
 - Import/export as a prerequisite for the first cloud MVP.
 - Plugin infrastructure.
-- Custom domain.
+- Requiring a custom domain for portable self-hosted Cloud MVP deployments.
 - Polished browser UI.
 - Destructive LLM tools.
 - Bulk import through the LLM API.
@@ -174,7 +174,9 @@ The Terraform roots and reusable modules currently support:
 - `infra/terraform/bootstrap`: creates a private, versioned GCS state bucket.
 - `infra/terraform/modules/*`: encapsulates Artifact Registry, runtime secrets, and the Cloud Run service.
 - `infra/terraform/envs/dev`: enables required APIs; creates service accounts, Workload Identity Federation, a Firestore Enterprise database, and MongoDB-compatible indexes; composes the reusable modules; derives a passwordless GCP OIDC URI; and optionally creates the application service, compatibility-test job, and billing budget.
-- `infra/terraform/envs/prod`: remains an explicit placeholder until production planning is complete.
+- `infra/terraform/envs/prod`: defines production application resources separately from the shared
+  edge project. It stages Cloud Run privately and can create the production serverless NEG and
+  global external managed backend service after activation prerequisites are approved.
 
 The owner still must provide:
 
@@ -183,7 +185,10 @@ The owner still must provide:
 - Application secret values, added as Secret Manager versions outside Git. No Firestore password is required.
 - The first pushed container image before enabling Cloud Run in Terraform.
 - Application image and numbered runtime secret versions before enabling the Cloud Run application service.
-- The decision to set `allow_unauthenticated_cloud_run = true`, and only after app-level auth is enforced.
+- The decision to change the production `cloud_run_invocation_mode` from `private`, and only after
+  app-level auth, the narrowly scoped public platform-invocation configuration, and the separate
+  edge attachment are ready. In the hosted organization, Domain Restricted Sharing means this uses
+  the Cloud Run Invoker IAM-check setting instead of an `allUsers` IAM binding.
 
 After the owner applies the Cloud Run service configuration, `.github/workflows/deploy-dev.yml`
 deploys only CI-verified `main` revisions. It uses Workload Identity Federation, pushes an immutable

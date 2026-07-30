@@ -77,7 +77,7 @@ jobs:
           VERIFIED_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
         run: |
           image_uri="${GCP_REGION}-docker.pkg.dev/${GCP_PROJECT_ID}/${GCP_ARTIFACT_REGISTRY_REPOSITORY}/matrixedmind:${VERIFIED_SHA}"
-          docker build --tag "$image_uri" .
+          docker build --build-arg SOURCE_REVISION="$VERIFIED_SHA" --tag "$image_uri" .
           docker push "$image_uri"
           echo "IMAGE_URI=$image_uri" >> "$GITHUB_ENV"
 

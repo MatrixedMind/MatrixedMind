@@ -5,16 +5,12 @@ provider "google" {
   user_project_override = true
 }
 
-data "google_project" "current" {
-  project_id = var.project_id
-}
-
 locals {
   required_services = toset([
     "artifactregistry.googleapis.com",
-    "billingbudgets.googleapis.com",
     "cloudbuild.googleapis.com",
     "cloudresourcemanager.googleapis.com",
+    "compute.googleapis.com",
     "firestore.googleapis.com",
     "iam.googleapis.com",
     "iamcredentials.googleapis.com",
@@ -25,19 +21,31 @@ locals {
 
   runtime_secrets = {
     APP_SECRET_KEY = {
-      secret_id = "matrixedmind-dev-app-secret-key"
+      secret_id = "matrixedmind-prod-app-secret-key"
       version   = var.app_secret_key_version
     }
     LLM_TOKEN_PEPPER = {
-      secret_id = "matrixedmind-dev-llm-token-pepper"
+      secret_id = "matrixedmind-prod-llm-token-pepper"
       version   = var.llm_token_pepper_version
     }
   }
 
   firestore_oidc_uri = "mongodb://${google_firestore_database.mongo_compatible.uid}.${google_firestore_database.mongo_compatible.location_id}.firestore.goog:443/${google_firestore_database.mongo_compatible.name}?loadBalanced=true&tls=true&retryWrites=false&authMechanism=MONGODB-OIDC&authMechanismProperties=ENVIRONMENT:gcp,TOKEN_RESOURCE:FIRESTORE"
-  # This service remains IAM-private. Its Cloud Run HTTPS URL is a stable canonical
-  # origin for the schema setting required by the production runtime configuration.
-  cloud_run_service_url = "https://${var.cloud_run_service_name}-${data.google_project.current.number}.${var.region}.run.app"
+}
+
+resource "terraform_data" "invocation_contract" {
+  input = var.cloud_run_invocation_mode
+
+  lifecycle {
+    precondition {
+      condition = (
+        !var.enable_cloud_run_service
+        || var.cloud_run_invocation_mode != "external_load_balancer"
+        || length(var.edge_load_balancer_service_user_members) > 0
+      )
+      error_message = "External-load-balancer mode requires at least one explicit edge load-balancer service-user member."
+    }
+  }
 }
 
 resource "google_project_service" "required" {
@@ -62,7 +70,7 @@ module "artifact_registry" {
 resource "google_service_account" "runtime" {
   project      = var.project_id
   account_id   = var.runtime_service_account_id
-  display_name = "MatrixedMind dev runtime"
+  display_name = "MatrixedMind production runtime"
 
   depends_on = [google_project_service.required]
 }
@@ -70,15 +78,7 @@ resource "google_service_account" "runtime" {
 resource "google_service_account" "github_deployer" {
   project      = var.project_id
   account_id   = var.github_deployer_service_account_id
-  display_name = "MatrixedMind dev GitHub Actions deployer"
-
-  depends_on = [google_project_service.required]
-}
-
-resource "google_service_account" "firestore_spike" {
-  project      = var.project_id
-  account_id   = var.firestore_spike_service_account_id
-  display_name = "MatrixedMind Firestore compatibility runner"
+  display_name = "MatrixedMind production GitHub Actions deployer"
 
   depends_on = [google_project_service.required]
 }
@@ -97,12 +97,6 @@ resource "google_project_iam_member" "runtime_firestore_user" {
   project = var.project_id
   role    = "roles/datastore.user"
   member  = google_service_account.runtime.member
-}
-
-resource "google_project_iam_member" "firestore_spike_user" {
-  project = var.project_id
-  role    = "roles/datastore.user"
-  member  = google_service_account.firestore_spike.member
 }
 
 resource "google_project_iam_member" "github_artifact_registry_writer" {
@@ -228,9 +222,9 @@ resource "google_firestore_index" "audit_target" {
 
 resource "google_iam_workload_identity_pool" "github" {
   project                   = var.project_id
-  workload_identity_pool_id = "matrixedmind-dev-github"
-  display_name              = "MatrixedMind dev GitHub"
-  description               = "Allows the configured GitHub repository to deploy MatrixedMind dev."
+  workload_identity_pool_id = "matrixedmind-prod-github"
+  display_name              = "MatrixedMind production GitHub"
+  description               = "Allows the configured GitHub repository to deploy MatrixedMind production."
 
   depends_on = [google_project_service.required]
 }
@@ -267,27 +261,32 @@ module "cloud_run_service" {
 
   source = "../../modules/cloud_run_service"
 
-  project_id            = var.project_id
-  name                  = var.cloud_run_service_name
-  location              = var.region
-  container_image       = var.container_image
-  service_account_email = google_service_account.runtime.email
-  invocation_mode       = "private"
+  project_id                         = var.project_id
+  name                               = var.cloud_run_service_name
+  location                           = var.region
+  container_image                    = var.container_image
+  service_account_email              = google_service_account.runtime.email
+  invocation_mode                    = var.cloud_run_invocation_mode
+  external_load_balancer_scheme      = "EXTERNAL_MANAGED"
+  load_balancer_backend_service_name = var.load_balancer_backend_service_name
+  load_balancer_service_user_members = var.edge_load_balancer_service_user_members
+  openai_action_address_group_name   = var.openai_action_address_group_name
   invoker_members = [
     "serviceAccount:${var.github_deployer_service_account_id}@${var.project_id}.iam.gserviceaccount.com",
   ]
   environment_variables = {
     APP_ENV                         = "production"
     AUTH_MODE                       = "production"
-    LLM_API_SERVER_URL              = local.cloud_run_service_url
     MARKDOWN_IMAGE_SOURCE_ALLOWLIST = var.markdown_image_source_allowlist
     MONGO_URI                       = local.firestore_oidc_uri
     MONGO_ENSURE_INDEXES            = "false"
+    LLM_API_SERVER_URL              = var.llm_api_server_url
     SOURCE_REPOSITORY_URL           = var.source_repository_url
   }
   secret_environment_variables = module.runtime_secrets.secret_env
 
   depends_on = [
+    terraform_data.invocation_contract,
     module.artifact_registry,
     google_firestore_index.audit_target,
     google_firestore_index.audit_timestamp,
@@ -297,77 +296,4 @@ module "cloud_run_service" {
     module.runtime_secrets,
     google_project_iam_member.runtime_firestore_user,
   ]
-}
-
-resource "google_cloud_run_v2_job" "firestore_spike" {
-  count = var.enable_firestore_spike_job ? 1 : 0
-
-  project  = var.project_id
-  name     = var.firestore_spike_job_name
-  location = var.region
-
-  template {
-    template {
-      service_account = google_service_account.firestore_spike.email
-      max_retries     = 0
-      timeout         = "900s"
-
-      containers {
-        image   = var.firestore_spike_image
-        command = ["uv"]
-        args    = ["run", "pytest", "tests/firestore", "-rs"]
-
-        env {
-          name  = "FIRESTORE_MONGO_URI"
-          value = local.firestore_oidc_uri
-        }
-      }
-    }
-  }
-
-  lifecycle {
-    precondition {
-      condition     = var.firestore_spike_image != ""
-      error_message = "firestore_spike_image must be set when enable_firestore_spike_job is true."
-    }
-  }
-
-  depends_on = [
-    module.artifact_registry,
-    google_firestore_index.records_space_slug_unique,
-    google_firestore_index.records_space_parent,
-    google_project_iam_member.firestore_spike_user,
-  ]
-}
-
-resource "google_billing_budget" "dev" {
-  count = var.billing_account_id != "" && var.billing_budget_amount_units != null ? 1 : 0
-
-  billing_account = var.billing_account_id
-  display_name    = "MatrixedMind dev"
-
-  budget_filter {
-    projects = ["projects/${data.google_project.current.number}"]
-  }
-
-  amount {
-    specified_amount {
-      currency_code = "USD"
-      units         = tostring(var.billing_budget_amount_units)
-    }
-  }
-
-  threshold_rules {
-    threshold_percent = 0.5
-  }
-
-  threshold_rules {
-    threshold_percent = 0.9
-  }
-
-  threshold_rules {
-    threshold_percent = 1.0
-  }
-
-  depends_on = [google_project_service.required]
 }

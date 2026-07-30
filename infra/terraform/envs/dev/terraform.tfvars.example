@@ -9,12 +9,18 @@ container_image          = ""
 app_secret_key_version    = "1"
 llm_token_pepper_version  = "1"
 
+# Empty allows any safe external HTTPS image host. Use exact hosts or *.domain wildcards to limit it.
+markdown_image_source_allowlist = ""
+
+# Public source offered from the hosted interface. The image build embeds the exact Git commit.
+source_repository_url = "https://github.com/MatrixedMind/MatrixedMind"
+
 # Enable after the dedicated test image has been pushed to Artifact Registry.
 enable_firestore_spike_job = false
 firestore_spike_image      = ""
 
-# Keep false until MatrixedMind app-level auth protects all sensitive routes.
-allow_unauthenticated_cloud_run = false
+# The development root always keeps Cloud Run private. Public invocation modes belong to a
+# self-hosted composition or the separate production root.
 
 # Optional billing budget.
 billing_account_id          = ""

@@ -1,11 +1,9 @@
 from typing import Any
 from urllib.parse import parse_qs
 
-import nh3
 from fastapi import APIRouter, HTTPException, Request, Response, status
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
-from markdown_it import MarkdownIt
 from pydantic import ValidationError
 
 from app.api.schemas.records import RecordCreate, RecordUpdate
@@ -19,47 +17,12 @@ from app.domain.policy import (
     next_index_after_for_update,
     owner_can_discover_record,
 )
+from app.rendering import render_safe_markdown
+from app.settings import settings
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/web/templates")
-md = MarkdownIt()
-
-ALLOWED_HTML_TAGS: set[str] = {
-    "a",
-    "blockquote",
-    "br",
-    "code",
-    "em",
-    "h1",
-    "h2",
-    "h3",
-    "h4",
-    "h5",
-    "h6",
-    "hr",
-    "li",
-    "ol",
-    "p",
-    "pre",
-    "strong",
-    "ul",
-}
-
-ALLOWED_HTML_ATTRIBUTES: dict[str, set[str]] = {
-    "a": {"href", "title"},
-}
-
-ALLOWED_HTML_SCHEMES: set[str] = {"http", "https", "mailto"}
-
-
-def render_safe_markdown(markdown_text: str) -> str:
-    rendered_html = md.render(markdown_text)
-    return nh3.clean(
-        rendered_html,
-        tags=ALLOWED_HTML_TAGS,
-        attributes=ALLOWED_HTML_ATTRIBUTES,
-        url_schemes=ALLOWED_HTML_SCHEMES,
-    )
+templates.env.globals["source_offer_url"] = settings.source_offer_url
 
 
 async def parse_urlencoded_form(request: Request) -> dict[str, str]:
@@ -147,6 +110,18 @@ def index(request: Request, repo: RecordRepoDep, user: CurrentUserDep) -> Respon
             "title": "MatrixedMind",
             "records": records,
             "robots_content": crawler_metadata.robots_content,
+        },
+    )
+
+
+@router.get("/source", response_class=HTMLResponse)
+def source_offer(request: Request) -> Response:
+    return templates.TemplateResponse(
+        request=request,
+        name="source.html",
+        context={
+            "title": "MatrixedMind source",
+            "robots_content": default_crawler_metadata().robots_content,
         },
     )
 
@@ -351,7 +326,10 @@ def view_record(
     ):
         raise HTTPException(status_code=404, detail="Record not found")
 
-    content_html = render_safe_markdown(record.body_markdown)
+    content_html = render_safe_markdown(
+        record.body_markdown,
+        image_source_allowlist=settings.markdown_image_source_allowlist,
+    )
     crawler_metadata = crawler_metadata_for_record(
         visibility=record.visibility,
         index_after=record.index_after,

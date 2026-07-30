@@ -45,6 +45,24 @@ def test_protected_routes_require_identity_outside_dev_mode(
     assert client.get("/", headers={"X-Test-User-Id": "owner"}).status_code == 200
 
 
+def test_source_offer_is_public_without_exposing_protected_content(
+    client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(settings, "auth_mode", "test")
+
+    response = client.get("/source")
+
+    assert response.status_code == 200
+    assert '<meta name="robots" content="noindex,nofollow,noarchive">' in response.text
+    assert "GNU Affero General Public License v3.0" in response.text
+    assert (
+        '<a href="https://github.com/MatrixedMind/MatrixedMind">'
+        "View the corresponding source code</a>"
+    ) in response.text
+    assert "No pages yet" not in response.text
+
+
 def test_read_and_list_filter_private_records_owned_by_another_user(
     client: TestClient,
     repo: InMemoryRecordRepository,
@@ -452,6 +470,11 @@ def test_view_record_html(client: TestClient) -> None:
     assert '<a href="/">Home</a>' in response.text
     assert '<a href="/test/hello-world/edit">Edit</a>' in response.text
     assert '<a href="/records/new">New page</a>' in response.text
+    assert "GNU Affero General Public License v3.0" in response.text
+    assert (
+        '<a href="https://github.com/MatrixedMind/MatrixedMind">Source for this version</a>'
+        in response.text
+    )
     assert "<h1>Hello World</h1>" in response.text
     assert "<h1>Hello</h1>" in response.text
 
@@ -507,7 +530,43 @@ def test_view_record_html_sanitizes_raw_html_in_markdown(client: TestClient) -> 
     response = client.get("/test/unsafe-html")
 
     assert response.status_code == 200
-    assert "<img" not in response.text
+    assert "<img>safe" in response.text
+    assert 'src="x"' not in response.text
     assert "<script" not in response.text
     assert "onerror=" not in response.text
     assert "safe" in response.text
+
+
+def test_view_record_html_renders_approved_https_markdown_image(client: TestClient) -> None:
+    client.post(
+        "/api/records/",
+        json={
+            **record_payload("safe-image"),
+            "body_markdown": "![Diagram](https://images.example.com/diagram.png)",
+        },
+    )
+
+    response = client.get("/test/safe-image")
+
+    assert response.status_code == 200
+    assert '<img src="https://images.example.com/diagram.png" alt="Diagram">' in response.text
+
+
+def test_view_record_html_enforces_configured_image_source_allowlist(
+    client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(settings, "markdown_image_source_allowlist", "approved.example")
+    client.post(
+        "/api/records/",
+        json={
+            **record_payload("blocked-image"),
+            "body_markdown": "![Blocked](https://attacker.example/image.png)",
+        },
+    )
+
+    response = client.get("/test/blocked-image")
+
+    assert response.status_code == 200
+    assert "<img" not in response.text
+    assert "Blocked" in response.text

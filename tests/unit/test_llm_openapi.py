@@ -1,7 +1,9 @@
+import pytest
 from fastapi.testclient import TestClient
 
 from app.main import app
 from app.openapi import HTTP_METHODS
+from app.settings import settings
 
 EXPECTED_OPERATIONS = {
     ("/api/llm/records/upsert", "post", "upsertPrivateDraftRecord"),
@@ -11,7 +13,7 @@ EXPECTED_OPERATIONS = {
 
 
 def test_llm_openapi_exposes_only_safe_llm_operations() -> None:
-    response = TestClient(app).get("/openapi-llm.json")
+    response = TestClient(app, base_url="https://matrixedmind.example").get("/openapi-llm.json")
 
     assert response.status_code == 200
     schema = response.json()
@@ -22,7 +24,18 @@ def test_llm_openapi_exposes_only_safe_llm_operations() -> None:
         if method in HTTP_METHODS and isinstance(operation, dict)
     }
     assert operations == EXPECTED_OPERATIONS
-    assert "servers" not in schema
+    assert schema["servers"] == [{"url": "https://matrixedmind.example"}]
+
+
+def test_llm_openapi_advertises_https_behind_production_tls_termination(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(settings, "app_env", "production")
+    monkeypatch.setattr(settings, "llm_api_server_url", "https://matrixedmind.example")
+
+    schema = TestClient(app, base_url="http://attacker.example").get("/openapi-llm.json").json()
+
+    assert schema["servers"] == [{"url": "https://matrixedmind.example"}]
 
 
 def test_llm_openapi_requires_bearer_auth_for_every_operation() -> None:
