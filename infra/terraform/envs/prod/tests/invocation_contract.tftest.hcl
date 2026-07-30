@@ -38,6 +38,26 @@ run "operational_alerting_requires_notification_channels" {
   expect_failures = [var.enable_operational_alerting]
 }
 
+run "billing_budget_rejects_zero_amount" {
+  command = plan
+
+  variables {
+    billing_budget_amount_units = 0
+  }
+
+  expect_failures = [var.billing_budget_amount_units]
+}
+
+run "billing_budget_rejects_fractional_amount" {
+  command = plan
+
+  variables {
+    billing_budget_amount_units = 100.5
+  }
+
+  expect_failures = [var.billing_budget_amount_units]
+}
+
 run "managed_notification_channel_wires_alerts_and_budget" {
   command = plan
 

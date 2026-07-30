@@ -1,6 +1,11 @@
 #!/bin/sh
 set -eu
 
+if [ "$(/usr/bin/uname -s)" != 'Darwin' ] || [ "$(/usr/bin/uname -m)" != 'arm64' ]; then
+  echo 'Skipping Terraform MCP wrapper failure-mode tests: requires Darwin arm64'
+  exit 0
+fi
+
 wrapper=.codex/scripts/terraform-mcp-registry-docs
 assert_failure() {
   expected=$1

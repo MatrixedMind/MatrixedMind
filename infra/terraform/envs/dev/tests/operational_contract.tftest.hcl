@@ -34,6 +34,26 @@ run "billing_budget_requires_notification_destination" {
   expect_failures = [var.enable_billing_budget]
 }
 
+run "billing_budget_rejects_zero_amount" {
+  command = plan
+
+  variables {
+    billing_budget_amount_units = 0
+  }
+
+  expect_failures = [var.billing_budget_amount_units]
+}
+
+run "billing_budget_rejects_fractional_amount" {
+  command = plan
+
+  variables {
+    billing_budget_amount_units = 50.5
+  }
+
+  expect_failures = [var.billing_budget_amount_units]
+}
+
 run "managed_notification_channel_wires_alerts_and_budget" {
   command = plan
 

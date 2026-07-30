@@ -140,6 +140,14 @@ variable "billing_budget_amount_units" {
   description = "Monthly budget amount in whole USD units. Set null to skip budget creation."
   type        = number
   default     = null
+
+  validation {
+    condition = var.billing_budget_amount_units == null || (
+      var.billing_budget_amount_units > 0
+      && floor(var.billing_budget_amount_units) == var.billing_budget_amount_units
+    )
+    error_message = "billing_budget_amount_units must be null or a positive whole number of USD units."
+  }
 }
 
 variable "operational_notification_email" {
