@@ -222,13 +222,14 @@ terraform -chdir=infra/terraform/envs/dev plan -var-file=terraform.tfvars -out=s
 terraform -chdir=infra/terraform/envs/dev apply service.tfplan
 ```
 
-The production foundation and IAM-private Cloud Run staging service were applied and verified on
-2026-07-29. Terraform converged without drift; the deployed service used the runtime service
-account, explicit numbered secret versions, and a digest-pinned Linux AMD64 image. Authenticated
-`/health`, `/ready`, and `/openapi-llm.json` checks passed, while an unauthenticated health request
-returned `403`. Public-invoker policy, cross-project edge attachment, DNS, and custom-domain routing
-remain separate owner-approved activation steps. These private staging checks do not establish a
-tested public hosted topology.
+The production foundation was first verified with an IAM-private Cloud Run staging service on
+2026-07-29. The hosted topology was then activated and verified through its custom domain on
+2026-07-30 UTC. The shared global external Application Load Balancer retained its static IP and
+existing co-hosted route, both managed certificates became active, and Terraform adopted the live
+frontend with a no-change drift plan. `/health`, `/ready`, and `/openapi-llm.json` returned `200`
+through the custom domain, the protected root returned the expected application-level `401`, and
+the direct public `run.app` health path returned `404`. HTTP requests for both hostnames redirected
+to HTTPS, and the existing co-hosted site continued to return `200` over HTTPS.
 
 Do not commit `*.tfplan`; remove local plan files after use.
 

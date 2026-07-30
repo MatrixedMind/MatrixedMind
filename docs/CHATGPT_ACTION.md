@@ -27,7 +27,7 @@ editor after issuance.
 Set the service URL without a trailing slash:
 
 ```bash
-export MATRIXEDMIND_URL="https://YOUR_CLOUD_RUN_URL"
+export MATRIXEDMIND_URL="https://YOUR_MATRIXEDMIND_DOMAIN"
 curl -fsS "$MATRIXEDMIND_URL/openapi-llm.json"
 ```
 
@@ -46,7 +46,7 @@ internal `/api/records/*`, browser, admin, delete, publish, auth, sharing, healt
 
 1. Open the GPT editor and create or edit the private Custom GPT used for MatrixedMind.
 2. In the Action section, import
-   `https://YOUR_CLOUD_RUN_URL/openapi-llm.json` or paste its returned JSON.
+   `https://YOUR_MATRIXEDMIND_DOMAIN/openapi-llm.json` or paste its returned JSON.
 3. Open the Action authentication settings and select **API Key**.
 4. Configure the key as a bearer credential and enter the raw MatrixedMind LLM token.
 5. Confirm that the editor discovers only `upsertPrivateDraftRecord`,

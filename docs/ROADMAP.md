@@ -842,8 +842,8 @@ Make the secure Cloud MVP usable through its custom domain and a narrow private 
   existing shared external load balancer and static IP through global cross-project service
   referencing without Shared VPC; keep direct public Cloud Run as a separate self-hosted mode. See
   ADR 0015.
-- [ ] Enable public Cloud Run invocation only after the deployed revision includes the narrow LLM
-  schema and app-level token enforcement.
+- [x] Enable the hosted load-balancer invocation path only after the deployed revision includes the
+  narrow LLM schema and app-level token enforcement, without enabling direct public Cloud Run.
 - [ ] Configure a private Custom GPT Action with a dedicated scoped MatrixedMind token.
 
 #### AI agent implementation tasks
@@ -853,10 +853,11 @@ Make the secure Cloud MVP usable through its custom domain and a narrow private 
 - [x] Verify the deployed API exposes no delete, publish, sharing, indexing, auth, admin, or bulk
   import capability to the Custom GPT.
 - [x] Revoke the deployed test token and verify later requests fail.
-- [ ] Configure the custom-domain load-balancer route and Cloud Run ingress for the selected
+- [x] Configure the custom-domain load-balancer route and Cloud Run ingress for the selected
   deployment mode. See ADR 0015.
-- [ ] Add the optional OpenAI ChatGPT-integration IP allowlist to the Action API host, with a
-  reviewed refresh process for changes to the published range feed.
+- [x] Add optional OpenAI ChatGPT-integration IP allowlist support to the Action API host, with a
+  reviewed refresh process for changes to the published range feed; leave it disabled unless the
+  operator opts into Cloud Armor Enterprise and supplies a reviewed address group.
 - [x] Add a visible AGPL source-offer link and license notice to the hosted interface, pointing to
   the corresponding public source for the deployed version.
 - [x] Safely render externally hosted HTTPS images in Markdown while preserving only required image
@@ -865,19 +866,19 @@ Make the secure Cloud MVP usable through its custom domain and a narrow private 
 
 ### Verification
 
-- [ ] `/openapi-llm.json` is reachable by ChatGPT while sensitive routes still require app-level
-  authentication.
+- [x] `/openapi-llm.json` is reachable through the custom domain while sensitive routes still
+  require app-level authentication.
 - [ ] Custom GPT Action can create or update a private draft record.
 - [ ] Custom GPT Action cannot delete, publish, change sharing, change indexing, change auth, or
   write outside allowed spaces.
 - [x] LLM token revocation blocks later deployed requests.
 - [x] Smoke test passes through the deployed Cloud Run URL.
-- [ ] The selected custom-domain routing and Cloud Run ingress mode work without exposing an
+- [x] The selected custom-domain routing and Cloud Run ingress mode work without exposing an
   unintended direct public path.
-- [ ] The Action API allowlist accepts current ChatGPT integration requests and rejects an
-  unapproved source when the optional policy is enabled.
+- [ ] When the optional Action API allowlist is enabled, it accepts current ChatGPT integration
+  requests and rejects an unapproved source.
 - [ ] The hosted interface offers the corresponding source for its deployed version.
-- [ ] Approved HTTPS Markdown images render, while malicious image markup and unsafe URLs are
+- [x] Approved HTTPS Markdown images render, while malicious image markup and unsafe URLs are
   removed or neutralized.
 
 ### Done when

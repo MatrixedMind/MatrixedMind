@@ -122,17 +122,15 @@ Run in the application project. It outputs the fully qualified backend reference
 or modify a load-balancer frontend, static IP, certificate, URL map, or DNS record.
 
 The official hosted topology separates a shared edge project, a private development project, and a
-production application project. The production backend is designed for same-organization
-cross-project service referencing from a global external Application Load Balancer without Shared
-VPC. `infra/terraform/edge` implements a separately stateful, staged modernization boundary: its
-default plan prepares DNS-authorized certificates for both hostnames, an SNI certificate map, host
-routes, and replacement proxies without managing the live backend or forwarding rules. After a
-separately approved in-place migration to `EXTERNAL_MANAGED`, the root can adopt the existing
-backend and forwarding rules under explicit confirmation gates while retaining the same static IP.
-The edge preparation, migration, DNS, and adoption remain unapplied, so this topology is not yet a
-deployment claim. Operators enrolled in Cloud Armor Enterprise can optionally attach a policy that
-restricts only `/api/llm/*` through a reviewed ChatGPT-integration address group; scoped
-bearer-token authentication remains required and is the primary security boundary.
+production application project. The production backend uses same-organization cross-project
+service referencing from a global external Application Load Balancer without Shared VPC.
+`infra/terraform/edge` owns the DNS-authorized certificates, SNI certificate map, host routes,
+proxies, and the adopted `EXTERNAL_MANAGED` backend and forwarding rules while retaining the shared
+static IP. The deployed production Cloud Run service accepts traffic from Cloud Load Balancing but
+does not expose a working direct public `run.app` path. Operators enrolled in Cloud Armor
+Enterprise can optionally attach a policy that restricts only `/api/llm/*` through a reviewed
+ChatGPT-integration address group; scoped bearer-token authentication remains required and is the
+primary security boundary.
 
 ## Local development strategy
 
