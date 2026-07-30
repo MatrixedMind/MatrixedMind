@@ -131,6 +131,15 @@ resource "google_service_account_iam_member" "github_can_act_as_runtime" {
   member             = google_service_account.github_deployer.member
 }
 
+# The pinned deploy workflow mints an ID token as this deployer account for its
+# authenticated Cloud Run health and readiness checks. Preserve this binding
+# until that workflow's token-minting path is separately verified and changed.
+resource "google_service_account_iam_member" "github_can_mint_identity_token" {
+  service_account_id = google_service_account.github_deployer.name
+  role               = "roles/iam.serviceAccountTokenCreator"
+  member             = google_service_account.github_deployer.member
+}
+
 resource "google_firestore_database" "mongo_compatible" {
   project     = var.project_id
   name        = var.firestore_database_id
