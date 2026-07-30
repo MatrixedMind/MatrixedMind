@@ -103,7 +103,8 @@ single Terraform apply. Only after the migration and target switch have been ver
 operator import those existing resources and set `manage_migrated_frontend = true`,
 `frontend_migration_confirmed = true`, and `certificates_active_confirmed = true`. This adoption
 path reuses the existing forwarding-rule names and static IP instead of creating a second load
-balancer. The migration, DNS records, imports, and hosted smoke tests have not yet been executed.
+balancer. The migration, DNS records, imports, and hosted smoke tests were completed on
+2026-07-30; the verified activation record appears later in this document.
 
 Reusable modules should live under:
 

@@ -35,6 +35,9 @@ locals {
   }
 
   firestore_oidc_uri = "mongodb://${google_firestore_database.mongo_compatible.uid}.${google_firestore_database.mongo_compatible.location_id}.firestore.goog:443/${google_firestore_database.mongo_compatible.name}?loadBalanced=true&tls=true&retryWrites=false&authMechanism=MONGODB-OIDC&authMechanismProperties=ENVIRONMENT:gcp,TOKEN_RESOURCE:FIRESTORE"
+  # This service remains IAM-private. Its Cloud Run HTTPS URL is a stable canonical
+  # origin for the schema setting required by the production runtime configuration.
+  cloud_run_service_url = "https://${var.cloud_run_service_name}-${data.google_project.current.number}.${var.region}.run.app"
 }
 
 resource "google_project_service" "required" {
@@ -276,6 +279,7 @@ module "cloud_run_service" {
   environment_variables = {
     APP_ENV                         = "production"
     AUTH_MODE                       = "production"
+    LLM_API_SERVER_URL              = local.cloud_run_service_url
     MARKDOWN_IMAGE_SOURCE_ALLOWLIST = var.markdown_image_source_allowlist
     MONGO_URI                       = local.firestore_oidc_uri
     MONGO_ENSURE_INDEXES            = "false"
