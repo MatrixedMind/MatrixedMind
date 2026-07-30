@@ -15,7 +15,7 @@ markdown_image_source_allowlist = ""
 source_repository_url = "https://github.com/MatrixedMind/MatrixedMind"
 
 # Stage privately first. Change to external_load_balancer only after application-level protection,
-# the public-invoker organization-policy exception, and the separate edge attachment are approved.
+# the Invoker IAM-check policy, and the separate edge attachment are approved.
 cloud_run_invocation_mode = "private"
 
 # Required for cross-project attachment after the edge administrator identity is selected. Use an

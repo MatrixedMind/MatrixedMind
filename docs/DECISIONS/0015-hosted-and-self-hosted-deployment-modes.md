@@ -50,9 +50,12 @@ A Shared VPC is not required for this same-organization global cross-project ref
 deferred. It can be reconsidered if later networking requirements justify its additional IAM and
 operational overhead.
 
-This ADR defines the intended topology and configuration contract. It does not claim that the
-Terraform modes, load-balancer route, DNS, or Cloud Run ingress restrictions are implemented or
-verified yet.
+The three exclusive Terraform invocation modes and their ingress/IAM contracts are implemented and
+locally tested. A separately stateful edge root implements non-disruptive certificate, SNI, routing,
+and proxy preparation plus explicitly confirmed post-migration adoption of the existing backend and
+forwarding rules. The production external-mode plan and edge preparation remain unapplied; this ADR
+does not claim that the load-balancer route, DNS, or hosted Cloud Run ingress path is deployed or
+verified.
 
 ## Consequences
 

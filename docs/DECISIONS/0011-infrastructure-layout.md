@@ -15,6 +15,7 @@ Use this layout:
 ```text
 infra/terraform/
   bootstrap/
+  edge/
   modules/
   envs/
     dev/
@@ -22,6 +23,12 @@ infra/terraform/
 ```
 
 `bootstrap` is only for resources needed before normal environment configuration can run.
+
+`edge` owns the separately planned shared load-balancer frontend. Its preparation mode creates
+DNS-authorized certificates, SNI mappings, host routing, and replacement proxies without mutating
+the live frontend. After a separately approved in-place migration, its adoption mode can manage the
+existing backend and forwarding rules under explicit confirmation gates without absorbing those
+resources into an application-environment root.
 
 `envs/dev` owns the private hosted development environment.
 
@@ -47,4 +54,4 @@ such as a shared load-balancer frontend are not part of either application-envir
 
 - Formatting checks pass for all infrastructure files.
 - Validation passes for initialized roots.
-- A plan can be generated independently for each application environment.
+- A plan can be generated independently for each application environment and the shared edge.

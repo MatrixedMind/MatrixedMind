@@ -79,13 +79,17 @@ The Cloud Run module has offline mocked Terraform tests for its exclusive `priva
 `external_load_balancer` invocation modes, application-project backend ownership, explicit
 cross-project service-user IAM members, and invalid-input rejection. The production root separately
 tests private staging, the cross-project backend contract, its required edge member, and rejection
-of direct mode:
+of direct mode. The edge root tests non-disruptive DNS-authorized certificate and host-route
+preparation, confirmed post-migration adoption of the existing frontend, and rejection of
+unconfirmed adoption:
 
 ```bash
 terraform -chdir=infra/terraform/modules/cloud_run_service init -backend=false -input=false
 terraform -chdir=infra/terraform/modules/cloud_run_service test
 terraform -chdir=infra/terraform/envs/prod init -backend=false -input=false
 terraform -chdir=infra/terraform/envs/prod test
+terraform -chdir=infra/terraform/edge init -backend=false -input=false
+terraform -chdir=infra/terraform/edge test
 ```
 
 For container changes:

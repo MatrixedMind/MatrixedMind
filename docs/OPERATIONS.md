@@ -46,10 +46,16 @@ see [`FIRESTORE_MONGO_SPIKE.md`](FIRESTORE_MONGO_SPIKE.md).
 
 ## Terraform
 
-Terraform roots live under:
+Application-environment Terraform roots live under:
 
 ```text
 infra/terraform/envs/{dev,prod}
+```
+
+The separately planned shared-edge root lives under:
+
+```text
+infra/terraform/edge
 ```
 
 Bootstrap resources live under:
@@ -75,6 +81,29 @@ terraform plan -var-file=terraform.tfvars
 ```
 
 Use the same pattern for `envs/prod` with the production bucket.
+
+Initialize `edge` with its own remote-state prefix after the production backend service exists:
+
+```bash
+terraform -chdir=infra/terraform/edge init \
+  -backend-config="bucket=<your-edge-state-bucket>"
+terraform -chdir=infra/terraform/edge plan -var-file=terraform.tfvars
+```
+
+The edge root defaults to non-disruptive preparation: it does not manage the existing backend or
+forwarding rules and cannot compete for the live static IP. It prepares DNS authorizations and
+Certificate Manager certificates for both hostnames, exact SNI certificate-map entries, separate
+host routes for the existing site and MatrixedMind, and replacement HTTP/HTTPS proxies. Domain
+owners must add the two output CNAME records and both certificates must become `ACTIVE` before any
+frontend migration.
+
+The existing classic backend and forwarding rules require Google's staged in-place migration to
+`EXTERNAL_MANAGED`; that externally coordinated operation is deliberately not represented as a
+single Terraform apply. Only after the migration and target switch have been verified may an
+operator import those existing resources and set `manage_migrated_frontend = true`,
+`frontend_migration_confirmed = true`, and `certificates_active_confirmed = true`. This adoption
+path reuses the existing forwarding-rule names and static IP instead of creating a second load
+balancer. The migration, DNS records, imports, and hosted smoke tests have not yet been executed.
 
 Reusable modules should live under:
 

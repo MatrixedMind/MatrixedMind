@@ -1,0 +1,22 @@
+edge_project_id = "your-shared-edge-project-id"
+
+# Prefer a keyless dedicated edge administrator. The caller needs permission to impersonate it.
+impersonate_service_account = "matrixedmind-edge-admin@your-shared-edge-project-id.iam.gserviceaccount.com"
+
+existing_hostname     = "existing.example.com"
+matrixedmind_hostname = "matrixedmind.example.com"
+static_ip_address     = "203.0.113.10"
+
+existing_serverless_neg_self_link = "https://www.googleapis.com/compute/v1/projects/your-shared-edge-project-id/regions/us-central1/networkEndpointGroups/existing-site"
+existing_backend_service_self_link = "https://www.googleapis.com/compute/v1/projects/your-shared-edge-project-id/global/backendServices/existing-site"
+matrixedmind_backend_service_self_link = "https://www.googleapis.com/compute/v1/projects/your-production-project-id/global/backendServices/matrixedmind-prod-backend"
+
+existing_backend_service_name       = "existing-site"
+existing_https_forwarding_rule_name = "existing-site-https"
+existing_http_forwarding_rule_name  = "existing-site-http"
+
+# Preparation must leave all three false. After the separately approved, staged in-place migration,
+# import the existing backend and forwarding rules before enabling management here.
+manage_migrated_frontend        = false
+frontend_migration_confirmed    = false
+certificates_active_confirmed   = false

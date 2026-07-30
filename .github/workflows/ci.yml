@@ -119,6 +119,28 @@ jobs:
       - name: Validate development root
         run: terraform -chdir=infra/terraform/envs/dev validate
 
+      - name: Initialize production root without backend
+        run: terraform -chdir=infra/terraform/envs/prod init -backend=false -input=false
+
+      - name: Validate and test production root
+        run: |
+          terraform -chdir=infra/terraform/envs/prod validate
+          terraform -chdir=infra/terraform/envs/prod test
+
+      - name: Initialize shared-edge root without backend
+        run: terraform -chdir=infra/terraform/edge init -backend=false -input=false
+
+      - name: Validate and test shared-edge root
+        run: |
+          terraform -chdir=infra/terraform/edge validate
+          terraform -chdir=infra/terraform/edge test
+
+      - name: Initialize Cloud Run module test root
+        run: terraform -chdir=infra/terraform/modules/cloud_run_service init -backend=false -input=false
+
+      - name: Test Cloud Run invocation modes
+        run: terraform -chdir=infra/terraform/modules/cloud_run_service test
+
   required:
     name: Required
     if: always()
