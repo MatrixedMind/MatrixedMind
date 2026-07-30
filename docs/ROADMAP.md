@@ -877,7 +877,7 @@ Make the secure Cloud MVP usable through its custom domain and a narrow private 
   unintended direct public path.
 - [ ] When the optional Action API allowlist is enabled, it accepts current ChatGPT integration
   requests and rejects an unapproved source.
-- [ ] The hosted interface offers the corresponding source for its deployed version.
+- [x] The hosted interface offers the corresponding source for its deployed version.
 - [x] Approved HTTPS Markdown images render, while malicious image markup and unsafe URLs are
   removed or neutralized.
 
