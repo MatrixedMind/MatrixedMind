@@ -33,6 +33,37 @@ variable "firestore_spike_service_account_id" {
   default     = "matrixedmind-dev-fs-spike"
 }
 
+variable "enable_observer_service_account" {
+  description = "Create the keyless read-only development observer service account only through an approved operational plan."
+  type        = bool
+  default     = false
+}
+
+variable "observer_service_account_id" {
+  description = "Service account ID for the development read-only observer."
+  type        = string
+  default     = "matrixedmind-dev-observer"
+
+  validation {
+    condition     = can(regex("^[a-z][a-z0-9-]{4,28}[a-z0-9]$", var.observer_service_account_id))
+    error_message = "observer_service_account_id must be a valid Google service-account ID."
+  }
+}
+
+variable "observer_impersonator_member" {
+  description = "User, group, or service-account IAM member permitted to impersonate the development observer without service-account keys."
+  type        = string
+  default     = null
+
+  validation {
+    condition = var.observer_impersonator_member == null || can(regex(
+      "^(user|group|serviceAccount):[^[:space:]]+$",
+      var.observer_impersonator_member,
+    ))
+    error_message = "observer_impersonator_member must be null or an explicit user, group, or serviceAccount IAM member."
+  }
+}
+
 variable "github_repository" {
   description = "GitHub repository allowed to use Workload Identity Federation, in owner/repo form."
   type        = string

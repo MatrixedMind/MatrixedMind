@@ -21,7 +21,13 @@ locals {
     "run.googleapis.com",
     "secretmanager.googleapis.com",
     "sts.googleapis.com",
-  ]), var.enable_operational_alerting || var.enable_billing_budget ? toset(["monitoring.googleapis.com"]) : toset([]), var.enable_billing_budget ? toset(["billingbudgets.googleapis.com"]) : toset([]))
+  ]), var.enable_operational_alerting || var.enable_billing_budget || var.enable_observer_service_account ? toset(["monitoring.googleapis.com"]) : toset([]), var.enable_billing_budget ? toset(["billingbudgets.googleapis.com"]) : toset([]), var.enable_observer_service_account ? toset(["logging.googleapis.com"]) : toset([]))
+
+  observer_read_only_roles = toset([
+    "roles/logging.viewer",
+    "roles/monitoring.viewer",
+    "roles/run.viewer",
+  ])
 
   runtime_secrets = {
     APP_SECRET_KEY = {
@@ -96,6 +102,23 @@ resource "google_service_account" "github_deployer" {
   depends_on = [google_project_service.required]
 }
 
+resource "google_service_account" "observer" {
+  count = var.enable_observer_service_account ? 1 : 0
+
+  project      = var.project_id
+  account_id   = var.observer_service_account_id
+  display_name = "MatrixedMind production read-only observer"
+
+  lifecycle {
+    precondition {
+      condition     = var.observer_impersonator_member != null
+      error_message = "observer_impersonator_member must be set when enable_observer_service_account is true."
+    }
+  }
+
+  depends_on = [google_project_service.required]
+}
+
 module "runtime_secrets" {
   source = "../../modules/runtime_secrets"
 
@@ -110,6 +133,22 @@ resource "google_project_iam_member" "runtime_firestore_user" {
   project = var.project_id
   role    = "roles/datastore.user"
   member  = google_service_account.runtime.member
+}
+
+resource "google_project_iam_member" "observer_read_only" {
+  for_each = var.enable_observer_service_account ? local.observer_read_only_roles : toset([])
+
+  project = var.project_id
+  role    = each.value
+  member  = google_service_account.observer[0].member
+}
+
+resource "google_service_account_iam_member" "observer_impersonator" {
+  count = var.enable_observer_service_account ? 1 : 0
+
+  service_account_id = google_service_account.observer[0].name
+  role               = "roles/iam.serviceAccountTokenCreator"
+  member             = var.observer_impersonator_member
 }
 
 resource "google_project_iam_member" "github_artifact_registry_writer" {

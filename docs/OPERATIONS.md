@@ -310,6 +310,13 @@ time range. The observer must not deploy, change IAM, create credentials, inspec
 mutate Cloud Run or Firestore. Stop when the requested evidence is sufficient rather than polling
 unchanged state.
 
+When explicitly enabled through an audited plan, each environment's Terraform root creates one
+keyless observer service account, grants it only `roles/logging.viewer`, `roles/monitoring.viewer`,
+and `roles/run.viewer` in that environment project, and grants the approved impersonating principal
+`roles/iam.serviceAccountTokenCreator` on that observer account alone. It also enables only the
+Cloud Logging and Cloud Monitoring APIs needed for those read-only tools. The shared-edge project
+remains out of scope.
+
 Terraform declares two optional Cloud Run policies per environment: a 5xx request-rate policy and
 a p99 latency policy. Both policies and budget alerts are disabled by default. When either is
 enabled with an apply-time `operational_notification_email`, Terraform creates the conventional

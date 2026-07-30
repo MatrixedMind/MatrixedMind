@@ -24,6 +24,34 @@ run "operational_defaults_are_disabled" {
   }
 }
 
+run "observer_is_keyless_and_read_only" {
+  command = plan
+
+  variables {
+    enable_observer_service_account = true
+    observer_impersonator_member    = "user:observer@example.test"
+  }
+
+  assert {
+    condition = (
+      length(google_service_account.observer) == 1
+      && length(google_project_iam_member.observer_read_only) == 3
+      && google_service_account_iam_member.observer_impersonator[0].role == "roles/iam.serviceAccountTokenCreator"
+    )
+    error_message = "The enabled observer must have only the approved read-only project roles and a keyless impersonator binding."
+  }
+}
+
+run "observer_requires_an_impersonator" {
+  command = plan
+
+  variables {
+    enable_observer_service_account = true
+  }
+
+  expect_failures = [google_service_account.observer]
+}
+
 run "billing_budget_requires_notification_destination" {
   command = plan
 

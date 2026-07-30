@@ -992,12 +992,13 @@ personal knowledge or sustained use.
 ### Current implementation status
 
 Repository-only operational configuration and procedures are in progress. Alert policies, billing
-budgets, and their conventional Terraform-managed notification channels are disabled by default;
-no project IDs, notification channels, billing accounts, APIs, IAM roles, service accounts, alerts,
-budgets, secret rotations, or restore operations have been created or changed for Milestone 12.
-The single remaining manual blocker is approval of the audited cloud-mutation plan. It asks only
-for the notification destination and development/production budget amounts; it recommends routine
-identifiers, the two proposed observer projects, and the isolated development restore target.
+budgets, conventional Terraform-managed notification channels, and keyless per-environment
+read-only observer identities are disabled by default. The development Milestone 10/11 Cloud Run
+environment-variable reconciliation was applied and verified separately before Milestone 12.
+The fresh development Milestone 12 plan has no destroys or Cloud Run changes; production planning
+is blocked until the authorized Terraform operator can read the production remote-state bucket.
+No Milestone 12 alert, budget, observer, API, secret-rotation, or restore operation has been
+applied. The shared-edge project remains excluded.
 
 ### Done when
 
