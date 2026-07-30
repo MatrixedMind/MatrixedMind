@@ -32,7 +32,7 @@ Firestore Enterprise edition with MongoDB compatibility
 - Multi-user sharing UI.
 - Import/export as a prerequisite for the first cloud MVP.
 - Plugin infrastructure.
-- Custom-domain activation before Milestone 11; the current hosted route remains unverified.
+- Requiring a custom domain for portable self-hosted Cloud MVP deployments.
 - Polished browser UI.
 - Destructive LLM tools.
 - Bulk import through the LLM API.

@@ -280,6 +280,7 @@ module "cloud_run_service" {
     MARKDOWN_IMAGE_SOURCE_ALLOWLIST = var.markdown_image_source_allowlist
     MONGO_URI                       = local.firestore_oidc_uri
     MONGO_ENSURE_INDEXES            = "false"
+    LLM_API_SERVER_URL              = var.llm_api_server_url
     SOURCE_REPOSITORY_URL           = var.source_repository_url
   }
   secret_environment_variables = module.runtime_secrets.secret_env

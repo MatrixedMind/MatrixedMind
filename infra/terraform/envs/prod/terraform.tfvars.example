@@ -13,6 +13,7 @@ markdown_image_source_allowlist = ""
 
 # Public source offered from the hosted interface. The image build embeds the exact Git commit.
 source_repository_url = "https://github.com/MatrixedMind/MatrixedMind"
+llm_api_server_url    = "https://matrixedmind.com"
 
 # Stage privately first. Change to external_load_balancer only after application-level protection,
 # the Invoker IAM-check policy, and the separate edge attachment are approved.

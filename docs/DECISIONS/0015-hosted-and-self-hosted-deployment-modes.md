@@ -53,9 +53,8 @@ operational overhead.
 The three exclusive Terraform invocation modes and their ingress/IAM contracts are implemented and
 locally tested. A separately stateful edge root implements non-disruptive certificate, SNI, routing,
 and proxy preparation plus explicitly confirmed post-migration adoption of the existing backend and
-forwarding rules. The production external-mode plan and edge preparation remain unapplied; this ADR
-does not claim that the load-balancer route, DNS, or hosted Cloud Run ingress path is deployed or
-verified.
+forwarding rules. This ADR defines the durable topology; see `docs/OPERATIONS.md` for the current
+tested deployment and activation status.
 
 ## Consequences
 

@@ -58,10 +58,36 @@ def test_production_settings_accept_managed_runtime_secrets() -> None:
         auth_mode="production",
         app_secret_key="app-secret",
         llm_token_pepper="llm-pepper",
+        llm_api_server_url="https://matrixedmind.example",
     )
 
     assert production.app_secret_key is not None
     assert production.llm_token_pepper is not None
+
+
+def test_production_settings_require_llm_api_server_url() -> None:
+    with pytest.raises(ValueError, match="requires LLM_API_SERVER_URL"):
+        Settings(
+            app_env="production",
+            auth_mode="production",
+            app_secret_key="app-secret",
+            llm_token_pepper="llm-pepper",
+        )
+
+
+@pytest.mark.parametrize(
+    "server_url",
+    [
+        "http://matrixedmind.example",
+        "https://user@matrixedmind.example",
+        "https://matrixedmind.example/openapi-llm.json",
+        "https://matrixedmind.example?source=test",
+        "https://matrixedmind.example#fragment",
+    ],
+)
+def test_settings_reject_invalid_llm_api_server_url(server_url: str) -> None:
+    with pytest.raises(ValueError, match="LLM_API_SERVER_URL"):
+        Settings(llm_api_server_url=server_url)
 
 
 @pytest.mark.parametrize(

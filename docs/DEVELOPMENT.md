@@ -29,6 +29,7 @@ AUTH_MODE=dev
 LLM_REQUEST_BODY_LIMIT_BYTES=65536
 LLM_RATE_LIMIT_REQUESTS=60
 LLM_RATE_LIMIT_WINDOW_SECONDS=60
+LLM_API_SERVER_URL=
 MARKDOWN_IMAGE_SOURCE_ALLOWLIST=
 MONGO_ENSURE_INDEXES=true
 MONGO_URI=mongodb://matrixed_mind:matrixed_mind@localhost:27017/matrixed_mind?authSource=admin
@@ -49,6 +50,10 @@ deployed source revision.
 `APP_SECRET_KEY` and `LLM_TOKEN_PEPPER` are required only when `APP_ENV=production`. The Cloud Run
 service reads them from explicit Secret Manager versions. Do not add real values to `.env`,
 `.env.example`, Terraform variable files, or GitHub configuration.
+
+Production also requires `LLM_API_SERVER_URL`: the canonical public HTTPS origin that
+`/openapi-llm.json` advertises to a Custom GPT Action. Leave it empty locally to derive the current
+local request origin.
 
 Milestone 7 adds an opt-in Firestore MongoDB compatibility suite without changing the local
 `MONGO_URI` path. Passwordless GCP provisioning and the exact test commands are documented in

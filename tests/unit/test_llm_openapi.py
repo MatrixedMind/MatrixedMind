@@ -31,8 +31,9 @@ def test_llm_openapi_advertises_https_behind_production_tls_termination(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(settings, "app_env", "production")
+    monkeypatch.setattr(settings, "llm_api_server_url", "https://matrixedmind.example")
 
-    schema = TestClient(app, base_url="http://matrixedmind.example").get("/openapi-llm.json").json()
+    schema = TestClient(app, base_url="http://attacker.example").get("/openapi-llm.json").json()
 
     assert schema["servers"] == [{"url": "https://matrixedmind.example"}]
 

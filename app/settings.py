@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     llm_request_body_limit_bytes: int = 65_536
     llm_rate_limit_requests: int = 60
     llm_rate_limit_window_seconds: int = 60
+    llm_api_server_url: str | None = None
     llm_token_pepper: SecretStr | None = None
     markdown_image_source_allowlist: str = ""
     mongo_ensure_indexes: bool = True
@@ -33,6 +34,24 @@ class Settings(BaseSettings):
     def validate_markdown_image_source_allowlist(cls, value: str) -> str:
         normalize_image_source_allowlist(value)
         return value
+
+    @field_validator("llm_api_server_url")
+    @classmethod
+    def validate_llm_api_server_url(cls, value: str | None) -> str | None:
+        if value is None or not value.strip():
+            return None
+        parsed = urlsplit(value)
+        if (
+            parsed.scheme != "https"
+            or parsed.hostname is None
+            or parsed.username is not None
+            or parsed.password is not None
+            or parsed.path not in ("", "/")
+            or parsed.query
+            or parsed.fragment
+        ):
+            raise ValueError("LLM_API_SERVER_URL must be a public HTTPS origin")
+        return value.rstrip("/")
 
     @field_validator("source_repository_url")
     @classmethod
@@ -73,6 +92,8 @@ class Settings(BaseSettings):
             secret is None or not secret.get_secret_value().strip() for secret in managed_secrets
         ):
             raise ValueError("production APP_ENV requires managed runtime secrets")
+        if self.app_env == "production" and self.llm_api_server_url is None:
+            raise ValueError("production APP_ENV requires LLM_API_SERVER_URL")
         return self
 
 

@@ -106,6 +106,17 @@ variable "source_repository_url" {
   }
 }
 
+variable "llm_api_server_url" {
+  description = "Canonical public HTTPS origin advertised by the hosted Custom GPT Action schema."
+  type        = string
+  default     = "https://matrixedmind.com"
+
+  validation {
+    condition     = can(regex("^https://[^/?#]+/?$", var.llm_api_server_url))
+    error_message = "llm_api_server_url must be a public HTTPS origin without a path, query, or fragment."
+  }
+}
+
 variable "cloud_run_invocation_mode" {
   description = "Production Cloud Run mode: private staging or the cross-project external-load-balancer backend."
   type        = string
