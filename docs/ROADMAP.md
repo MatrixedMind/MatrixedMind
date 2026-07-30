@@ -848,11 +848,11 @@ Make the secure Cloud MVP usable through its custom domain and a narrow private 
 
 #### AI agent implementation tasks
 
-- [ ] Smoke test create and update through the deployed Cloud Run URL.
-- [ ] Verify deployed reads and writes cannot escape the token's allowed spaces.
-- [ ] Verify the deployed API exposes no delete, publish, sharing, indexing, auth, admin, or bulk
+- [x] Smoke test create and update through the deployed Cloud Run URL.
+- [x] Verify deployed reads and writes cannot escape the token's allowed spaces.
+- [x] Verify the deployed API exposes no delete, publish, sharing, indexing, auth, admin, or bulk
   import capability to the Custom GPT.
-- [ ] Revoke the deployed test token and verify later requests fail.
+- [x] Revoke the deployed test token and verify later requests fail.
 - [ ] Configure the custom-domain load-balancer route and Cloud Run ingress for the selected
   deployment mode. See ADR 0015.
 - [ ] Add the optional OpenAI ChatGPT-integration IP allowlist to the Action API host, with a
@@ -870,8 +870,8 @@ Make the secure Cloud MVP usable through its custom domain and a narrow private 
 - [ ] Custom GPT Action can create or update a private draft record.
 - [ ] Custom GPT Action cannot delete, publish, change sharing, change indexing, change auth, or
   write outside allowed spaces.
-- [ ] LLM token revocation blocks later deployed requests.
-- [ ] Smoke test passes through the deployed Cloud Run URL.
+- [x] LLM token revocation blocks later deployed requests.
+- [x] Smoke test passes through the deployed Cloud Run URL.
 - [ ] The selected custom-domain routing and Cloud Run ingress mode work without exposing an
   unintended direct public path.
 - [ ] The Action API allowlist accepts current ChatGPT integration requests and rejects an
