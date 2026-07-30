@@ -21,13 +21,16 @@ resource "terraform_data" "frontend_adoption_contract" {
 resource "google_compute_backend_service" "existing_site" {
   count = var.manage_migrated_frontend ? 1 : 0
 
-  project               = var.edge_project_id
-  name                  = var.existing_backend_service_name
-  protocol              = "HTTP"
-  load_balancing_scheme = "EXTERNAL_MANAGED"
+  project                         = var.edge_project_id
+  name                            = var.existing_backend_service_name
+  protocol                        = "HTTP"
+  load_balancing_scheme           = "EXTERNAL_MANAGED"
+  connection_draining_timeout_sec = 0
 
   backend {
-    group = var.existing_serverless_neg_self_link
+    group           = var.existing_serverless_neg_self_link
+    balancing_mode  = "UTILIZATION"
+    capacity_scaler = 0
   }
 }
 

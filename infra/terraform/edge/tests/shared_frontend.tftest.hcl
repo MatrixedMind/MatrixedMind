@@ -65,8 +65,13 @@ run "migrated_frontend_adoption" {
     condition = (
       length(google_compute_backend_service.existing_site) == 1
       && google_compute_backend_service.existing_site[0].load_balancing_scheme == "EXTERNAL_MANAGED"
+      && google_compute_backend_service.existing_site[0].connection_draining_timeout_sec == 0
+      && alltrue([
+        for backend in google_compute_backend_service.existing_site[0].backend :
+        backend.balancing_mode == "UTILIZATION" && backend.capacity_scaler == 0
+      ])
     )
-    error_message = "Final adoption must manage the existing backend in EXTERNAL_MANAGED mode."
+    error_message = "Final adoption must preserve the migrated backend's live EXTERNAL_MANAGED settings."
   }
 
   assert {
