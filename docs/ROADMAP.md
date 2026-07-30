@@ -919,6 +919,13 @@ personal knowledge or sustained use.
 #### Human intervention or decision tasks
 
 - [ ] Decide whether static egress or private connectivity is needed for an external dependency.
+- [ ] Select and approve the authentication approach and least-privilege identity for read-only
+  Google Cloud MCP access.
+- [ ] Confirm which development and production projects the observer may inspect.
+- [ ] Decide whether HashiCorp's Terraform MCP server runs as a pinned local binary or pinned
+  container image.
+- [ ] Require explicit approval before enabling Google Cloud MCP services or granting associated
+  IAM roles.
 
 #### AI agent implementation tasks
 
@@ -930,6 +937,30 @@ personal knowledge or sustained use.
 - [ ] Tune rate limits based on deployed LLM API behavior.
 - [ ] Review Firestore document-size and index-write costs.
 - [ ] Document static egress/private connectivity tradeoffs if needed.
+- [ ] Extend `gcp_docs_researcher` with HashiCorp's official Terraform MCP server, pinned to a
+  reviewed version or immutable container digest. Enable only public Terraform Registry
+  documentation tools: `search_providers` and `get_provider_details`; allow
+  `get_latest_provider_version` only when comparison requires it. Keep the repository lock file
+  authoritative for the version in use, inspect `.terraform.lock.hcl`, retrieve locked-version
+  provider documentation whenever possible, and keep credentials out of the repository. Do not
+  enable HCP Terraform, Terraform Enterprise, workspace-management, run-management, or mutation
+  tools.
+- [ ] Add read-only `matrixedmind_gcp_observer` for bounded MatrixedMind health, logs, metrics,
+  alerts, and Cloud Run service-metadata investigations. Require an explicit project, environment,
+  time range, and investigation objective; return concise summaries rather than raw log dumps; do
+  not edit repository files, mutate GCP resources, change IAM, deploy, create credentials, or
+  expose secrets or sensitive log contents.
+- [ ] Scope observer MCP access to Cloud Logging `list_log_entries` and `list_log_names`; Cloud
+  Monitoring `list_timeseries`, `query_range`, `get_alert_policy`, `list_alert_policies`,
+  `get_alert`, `list_alerts`, `list_metric_descriptors`, and optional read-only dashboard tools;
+  and, only if needed, Cloud Run `get_service` and `list_services`. Do not enable Cloud Run
+  deployment, Firestore mutation, Cloud CLI Execution, IAM, or other mutation tools. Use both MCP
+  tool allowlists and least-privilege Google IAM; neither replaces the other.
+- [ ] Keep Terraform documentation and GCP observer MCP servers scoped only to the agents that
+  need them. Use narrow log filters, short time windows, explicit limits, and one project per
+  query; retrieve only sufficient evidence, sanitize examples, and stop rather than repeatedly
+  polling unchanged hosted state. Distinguish supported behavior documented by MCP research from
+  deployed state shown by live read-only MCP results.
 
 ### Verification
 
@@ -938,10 +969,24 @@ personal knowledge or sustained use.
 - [ ] Billing budget alerts are configured.
 - [ ] Secret rotation checklist is tested with a non-production token.
 - [ ] Firestore cost review is documented.
+- [ ] New TOML files parse successfully.
+- [ ] The Terraform MCP exposes only approved public Registry documentation tools, and a
+  version-specific provider lookup matches the repository's locked Google provider version.
+- [ ] The observer exposes only approved read-only tools; mutating Cloud Run, Firestore, Cloud
+  CLI, IAM, deployment, and Terraform workspace tools are absent.
+- [ ] A bounded development-project smoke test reads a known Cloud Run service, a narrow log
+  window, and relevant monitoring metadata without changing hosted state.
+- [ ] Source-controlled files contain no API keys, access tokens, ADC files, OAuth secrets,
+  service-account JSON, or generated credentials.
+- [ ] Any unavailable authentication, API enablement, IAM grant, or live verification is recorded
+  as an exact manual blocker rather than marked complete.
 
 ### Done when
 
-The hosted service has documented, tested operational safeguards for cautious sustained use.
+The hosted service has documented, tested operational safeguards for cautious sustained use,
+authoritative version-aware Terraform provider research, a tested least-privilege read-only
+workflow for diagnosing hosted MatrixedMind state, and proof that mutating MCP tools are
+unavailable to the observer.
 
 </details>
 
