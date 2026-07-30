@@ -868,8 +868,8 @@ Make the secure Cloud MVP usable through its custom domain and a narrow private 
 
 - [x] `/openapi-llm.json` is reachable through the custom domain while sensitive routes still
   require app-level authentication.
-- [ ] Custom GPT Action can create or update a private draft record.
-- [ ] Custom GPT Action cannot delete, publish, change sharing, change indexing, change auth, or
+- [x] Custom GPT Action can create or update a private draft record.
+- [x] Custom GPT Action cannot delete, publish, change sharing, change indexing, change auth, or
   write outside allowed spaces.
 - [x] LLM token revocation blocks later deployed requests.
 - [x] Smoke test passes through the deployed Cloud Run URL.
