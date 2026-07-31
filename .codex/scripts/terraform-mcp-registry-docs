@@ -4,13 +4,14 @@
 # credential, mount, or configuration surface.
 set -eu
 
-readonly expected_args='stdio --tools=search_providers,get_provider_details'
 readonly expected_version='1.1.0'
 readonly expected_platform='linux/arm64'
 readonly expected_image='hashicorp/terraform-mcp-server@sha256:312d63756b5474df384b1844af55b58ca48cbe0996871e1d6c4239bfcd6fcd29'
 readonly expected_child_digest='sha256:2b18f06858bb7b0cd7d0a297344ffb00ad5d6c7d22750f9a78a6d914523d1a9e'
 
-if [ "$*" != "$expected_args" ]; then
+if [ "$#" -ne 2 ] \
+  || [ "$1" != 'stdio' ] \
+  || [ "$2" != '--tools=search_providers,get_provider_details' ]; then
   echo 'Terraform MCP wrapper rejects arguments outside the Registry documentation allowlist.' >&2
   exit 64
 fi

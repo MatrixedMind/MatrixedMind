@@ -25,6 +25,7 @@ assert_failure() {
 }
 
 assert_failure 'rejects arguments outside' /bin/sh "$wrapper" stdio --tools=get_latest_provider_version
+assert_failure 'rejects arguments outside' /bin/sh "$wrapper" 'stdio --tools=search_providers,get_provider_details'
 grep -qx 'docker_bin=/usr/local/bin/docker' .codex/scripts/terraform-mcp-registry-docs
 
 hostile_path="$fixture_dir/hostile-path"
