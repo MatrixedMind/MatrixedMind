@@ -133,13 +133,13 @@ Enterprise can optionally attach a policy that restricts only `/api/llm/*` throu
 ChatGPT-integration address group; scoped bearer-token authentication remains required and is the
 primary security boundary.
 
-Operational access remains separate from runtime access. The planned Google Cloud observer uses
-dedicated keyless, read-only service accounts—preferably one per confirmed application
-environment—through ADC/service-account impersonation. It is limited to the private development
-and production resource projects, excludes the shared-edge project initially, and requires an
-explicit project, environment, narrow time range, and investigation objective. Enabling its APIs
-or granting its IAM roles is a separate owner-approved cloud mutation; repository configuration
-does not create an observer identity or credentials.
+Operational access remains separate from runtime access. Each application environment has a
+dedicated keyless, read-only observer service account accessed through ADC/service-account
+impersonation. The local observer MCP is limited to the private development and production resource
+projects, excludes the shared-edge project, and requires an explicit project, environment, narrow
+time range, and investigation objective. Its tool allowlist and the service accounts' exact
+Logging, Monitoring, and Cloud Run viewer roles form independent read-only boundaries; it has no
+deployment, IAM, secret, Firestore-mutation, or general Cloud CLI tool.
 
 Terraform can declare a conventional per-environment email notification channel, Cloud Run
 health/error alert policies, and project-scoped billing budgets. These are safe-by-default opt-in

@@ -1,0 +1,378 @@
+#!/usr/bin/env python3
+"""A deliberately narrow, read-only stdio MCP server for MatrixedMind GCP.
+
+It uses source Application Default Credentials only to confirm the configured
+human operator, then requests a short-lived impersonated observer token for
+the actual REST request.  Tokens and response payloads never cross the MCP
+boundary.
+"""
+
+from __future__ import annotations
+
+import datetime as dt
+import json
+import os
+import pwd
+import re
+import ssl
+import subprocess
+import sys
+import urllib.error
+import urllib.parse
+import urllib.request
+from typing import Any
+
+SERVER_NAME = "matrixedmind-gcp-observer"
+MAX_RANGE = dt.timedelta(hours=6)
+MAX_LIMIT = 100
+MAX_RESPONSE_BYTES = 5 * 1024 * 1024
+PROJECTS = {"development": "matrixed-mind-dev", "production": "matrixedmind-prod"}
+OBSERVERS = {
+    "matrixed-mind-dev": "matrixedmind-dev-observer@matrixed-mind-dev.iam.gserviceaccount.com",
+    "matrixedmind-prod": "matrixedmind-prod-observer@matrixedmind-prod.iam.gserviceaccount.com",
+}
+GCLOUD_CANDIDATES = ("/opt/homebrew/bin/gcloud", "/usr/local/bin/gcloud", "/usr/bin/gcloud")
+TOOLS = (
+    "list_log_entries", "list_log_names", "list_timeseries", "query_range",
+    "get_alert_policy", "list_alert_policies", "list_metric_descriptors",
+    "get_service", "list_services",
+)
+SENSITIVE_KEY = re.compile(r"(?:authorization|cookie|token|secret|password|payload|body)", re.I)
+SENSITIVE_VALUE = re.compile(r"(?:bearer\s+|ya29\.|eyJ[a-zA-Z0-9_-]{8,}|api[_-]?key)", re.I)
+COMMON_REQUIRED = ("environment", "project_id", "start_time", "end_time", "objective", "limit")
+TOOL_REQUIRED = {
+    "list_timeseries": ("filter",),
+    "query_range": ("query",),
+    "get_alert_policy": ("alert_policy_id",),
+    "get_service": ("service_name",),
+    "list_services": ("location",),
+}
+TOOL_OPTIONAL = {"list_log_entries": ("filter",)}
+
+
+class ObserverError(ValueError):
+    """A safe error that may be returned to the MCP client."""
+
+
+def tool_schema(name: str) -> dict[str, Any]:
+    properties: dict[str, Any] = {
+        "environment": {"type": "string", "enum": list(PROJECTS)},
+        "project_id": {"type": "string", "enum": list(PROJECTS.values())},
+        "start_time": {"type": "string", "description": "UTC RFC3339 timestamp"},
+        "end_time": {"type": "string", "description": "UTC RFC3339 timestamp"},
+        "objective": {"type": "string", "description": "Concrete bounded investigation objective", "minLength": 8, "maxLength": 240},
+        "limit": {"type": "integer", "minimum": 1, "maximum": MAX_LIMIT},
+    }
+    if name in {"list_log_entries", "list_timeseries"}:
+        properties["filter"] = {"type": "string", "maxLength": 1000}
+    if name == "query_range":
+        properties["query"] = {"type": "string", "maxLength": 1000}
+    if name == "get_alert_policy":
+        properties["alert_policy_id"] = {"type": "string", "pattern": "^[A-Za-z0-9_-]{1,128}$"}
+    if name == "get_service":
+        properties["service_name"] = {"type": "string", "maxLength": 256}
+    if name == "list_services":
+        properties["location"] = {"type": "string", "pattern": "^(?:-|[a-z0-9-]{1,63})$"}
+    return {
+        "name": name,
+        "description": "Bounded, sanitized, read-only MatrixedMind GCP observation.",
+        "inputSchema": {"type": "object", "properties": properties,
+                        "required": [*COMMON_REQUIRED, *TOOL_REQUIRED.get(name, ())],
+                        "additionalProperties": False},
+    }
+
+
+def parse_utc(value: Any) -> dt.datetime:
+    if not isinstance(value, str) or not value.endswith("Z"):
+        raise ObserverError("start_time and end_time must be UTC RFC3339 timestamps ending in Z.")
+    try:
+        parsed = dt.datetime.fromisoformat(value[:-1] + "+00:00")
+    except ValueError as exc:
+        raise ObserverError("start_time and end_time must be UTC RFC3339 timestamps.") from exc
+    if parsed.utcoffset() != dt.timedelta(0):
+        raise ObserverError("start_time and end_time must be UTC.")
+    return parsed
+
+
+def validate(name: str, args: Any) -> tuple[str, dt.datetime, dt.datetime, int]:
+    if name not in TOOLS:
+        raise ObserverError("Tool is not in the read-only observer allowlist.")
+    if not isinstance(args, dict):
+        raise ObserverError("Tool arguments must be an object.")
+    required = (*COMMON_REQUIRED, *TOOL_REQUIRED.get(name, ()))
+    if any(key not in args for key in required):
+        raise ObserverError("Required bounded observer arguments are missing.")
+    allowed = set(COMMON_REQUIRED) | set(TOOL_REQUIRED.get(name, ())) | set(TOOL_OPTIONAL.get(name, ()))
+    if set(args) - allowed:
+        raise ObserverError("Unexpected argument is not permitted by this observer tool.")
+    environment, project = args["environment"], args["project_id"]
+    if environment not in PROJECTS or PROJECTS[environment] != project:
+        raise ObserverError("environment and project_id must be the approved matching MatrixedMind pair.")
+    start, end = parse_utc(args["start_time"]), parse_utc(args["end_time"])
+    if start >= end or end - start > MAX_RANGE:
+        raise ObserverError("Time range must be positive and no longer than six hours.")
+    objective = args["objective"]
+    if not isinstance(objective, str) or not 8 <= len(objective.strip()) <= 240:
+        raise ObserverError("objective must be a concrete 8-240 character investigation statement.")
+    limit = args["limit"]
+    if not isinstance(limit, int) or isinstance(limit, bool) or not 1 <= limit <= MAX_LIMIT:
+        raise ObserverError("limit must be an integer from 1 through 100.")
+    for key in ("filter", "query", "alert_policy_id", "service_name", "location"):
+        if key in args and (not isinstance(args[key], str) or len(args[key]) > 1000):
+            raise ObserverError(f"{key} is invalid.")
+    return project, start, end, limit
+
+
+def log_filter(caller_filter: str, start: dt.datetime, end: dt.datetime) -> str:
+    """Ensure the Logging server, not the caller, enforces the requested range."""
+    bounds = f'timestamp >= "{utc(start)}" AND timestamp <= "{utc(end)}"'
+    return f"({caller_filter}) AND {bounds}" if caller_filter else bounds
+
+
+def log_names_url(project: str, limit: int) -> str:
+    """The fixed collection path has no log-name segment or caller page token."""
+    encoded_project = urllib.parse.quote(project, safe="")
+    return f"https://logging.googleapis.com/v2/projects/{encoded_project}/logs?{urllib.parse.urlencode({'pageSize': limit})}"
+
+
+def command_token(arguments: list[str]) -> str:
+    gcloud_bin = next((path for path in GCLOUD_CANDIDATES if os.access(path, os.X_OK)), None)
+    if gcloud_bin is None:
+        raise ObserverError("The approved local gcloud executable is unavailable.")
+    valid = arguments == ["auth", "application-default", "print-access-token"] or (
+        len(arguments) == 4
+        and arguments[:3] == ["auth", "application-default", "print-access-token"]
+        and arguments[3].startswith("--impersonate-service-account=")
+        and arguments[3].removeprefix("--impersonate-service-account=") in OBSERVERS.values()
+    )
+    if not valid:
+        raise ObserverError("Local credential command is outside the observer allowlist.")
+    safe_env = {
+        "HOME": pwd.getpwuid(os.getuid()).pw_dir,
+        "PATH": "/usr/bin:/bin:/usr/sbin:/sbin:/opt/homebrew/bin:/usr/local/bin",
+        "CLOUDSDK_CORE_DISABLE_PROMPTS": "1",
+    }
+    try:
+        result = subprocess.run(
+            [gcloud_bin, *arguments], check=True, capture_output=True, text=True, timeout=20, env=safe_env
+        )
+    except (OSError, subprocess.SubprocessError) as exc:
+        raise ObserverError("Local credential command failed; refusing the observation.") from exc
+    token = result.stdout.strip()
+    if not token:
+        raise ObserverError("Local credential command returned no token; refusing the observation.")
+    return token
+
+
+def fetch_json(url: str, token: str, *, method: str = "GET", body: dict[str, Any] | None = None) -> dict[str, Any]:
+    data = json.dumps(body).encode() if body is not None else None
+    request = urllib.request.Request(url, data=data, method=method, headers={
+        "Authorization": f"Bearer {token}", "Content-Type": "application/json"})
+    try:
+        default_cafile = ssl.get_default_verify_paths().cafile
+        system_cafile = "/private/etc/ssl/cert.pem"
+        cafile = default_cafile if default_cafile and os.path.isfile(default_cafile) else system_cafile
+        context = ssl.create_default_context(cafile=cafile if os.path.isfile(cafile) else None)
+        class NoRedirect(urllib.request.HTTPRedirectHandler):
+            def redirect_request(self, req: Any, fp: Any, code: int, msg: str,
+                                 headers: Any, newurl: str) -> None:
+                return None
+
+        opener = urllib.request.build_opener(
+            urllib.request.ProxyHandler({}),
+            urllib.request.HTTPSHandler(context=context),
+            NoRedirect(),
+        )
+        with opener.open(request, timeout=25) as response:
+            raw = response.read(MAX_RESPONSE_BYTES + 1)
+            if len(raw) > MAX_RESPONSE_BYTES:
+                raise ObserverError("Google Cloud read-only API response exceeded the safe size limit.")
+            result = json.loads(raw)
+    except urllib.error.HTTPError as exc:
+        host = urllib.parse.urlsplit(url).hostname or "Google API"
+        raise ObserverError(f"Read-only request to {host} failed with HTTP {exc.code}.") from exc
+    except urllib.error.URLError as exc:
+        failure_kind = type(exc.reason).__name__
+        raise ObserverError(f"Google Cloud read-only API transport failed ({failure_kind}).") from exc
+    except json.JSONDecodeError as exc:
+        raise ObserverError("Google Cloud read-only API returned invalid JSON.") from exc
+    if not isinstance(result, dict):
+        raise ObserverError("Google Cloud API returned an unexpected response.")
+    return result
+
+
+def observer_token(project: str) -> str:
+    expected = os.environ.get("MATRIXEDMIND_GCP_OPERATOR_EMAIL", "").strip().lower()
+    service_account = OBSERVERS.get(project)
+    if not expected or service_account is None:
+        raise ObserverError("Required local observer operator configuration is missing.")
+    source = command_token(["auth", "application-default", "print-access-token"])
+    identity = fetch_json("https://openidconnect.googleapis.com/v1/userinfo", source)
+    email = identity.get("email")
+    if not isinstance(email, str) or email.lower() != expected:
+        raise ObserverError("Source ADC identity does not match MATRIXEDMIND_GCP_OPERATOR_EMAIL.")
+    return command_token(["auth", "application-default", "print-access-token",
+                          f"--impersonate-service-account={service_account}"])
+
+
+def verify_single_project_metrics_scope(project: str, token: str) -> None:
+    encoded_project = urllib.parse.quote(project, safe="")
+    scope = fetch_json(
+        f"https://monitoring.googleapis.com/v1/locations/global/metricsScopes/{encoded_project}",
+        token,
+    )
+    name = scope.get("name")
+    members = scope.get("monitoredProjects")
+    match = re.fullmatch(r"locations/global/metricsScopes/([0-9]+)", name or "")
+    if not match or not isinstance(members, list) or len(members) != 1:
+        raise ObserverError("Monitoring Metrics Scope is not the approved single-project boundary.")
+    member = members[0]
+    expected_name = f"{name}/projects/{match.group(1)}"
+    if (
+        not isinstance(member, dict)
+        or member.get("name") != expected_name
+        or member.get("isTombstoned", False) is not False
+    ):
+        raise ObserverError("Monitoring Metrics Scope is not the approved single-project boundary.")
+
+
+def utc(value: dt.datetime) -> str:
+    return value.isoformat().replace("+00:00", "Z")
+
+
+def clean(value: Any) -> Any:
+    if isinstance(value, dict):
+        return {str(key): clean(item) for key, item in value.items() if not SENSITIVE_KEY.search(str(key))}
+    if isinstance(value, list):
+        return [clean(item) for item in value]
+    if isinstance(value, str) and SENSITIVE_VALUE.search(value):
+        return "[redacted]"
+    return value
+
+
+def summary(name: str, response: dict[str, Any], limit: int) -> dict[str, Any]:
+    """Return only fields useful to an operator; never raw log/event payloads."""
+    if name == "list_log_entries":
+        rows = [{"timestamp": item.get("timestamp"), "severity": item.get("severity"),
+                 "log_name": item.get("logName"), "resource_type": item.get("resource", {}).get("type")}
+                for item in response.get("entries", []) if isinstance(item, dict)]
+        return {"entry_count": len(rows), "entries": clean(rows)}
+    if name == "list_log_names":
+        logs = response.get("logNames", [])
+        return {"log_count": len(logs), "log_names": clean(logs)}
+    if name == "list_timeseries":
+        series = response.get("timeSeries", [])[:limit]
+        rows = [{"metric_type": item.get("metric", {}).get("type"), "point_count": len(item.get("points", []))}
+                for item in series if isinstance(item, dict)]
+        return {"series_count": len(rows), "series": clean(rows)}
+    if name == "query_range":
+        if response.get("status") != "success":
+            raise ObserverError("Cloud Monitoring query_range returned an unsuccessful response.")
+        data = response.get("data")
+        if not isinstance(data, dict) or not isinstance(data.get("result"), list):
+            raise ObserverError("Cloud Monitoring query_range returned an unexpected response.")
+        all_series = data["result"]
+        series = all_series[:limit]
+        rows = [{"metric_name": item.get("metric", {}).get("__name__"),
+                 "point_count": len(item.get("values", []))}
+                for item in series if isinstance(item, dict)]
+        return {"series_count": len(rows), "truncated": len(all_series) > limit, "series": clean(rows)}
+    if name in {"get_alert_policy", "list_alert_policies"}:
+        policies = response.get("alertPolicies", [response])
+        rows = [{"name": item.get("name"), "display_name": item.get("displayName"), "enabled": item.get("enabled")}
+                for item in policies if isinstance(item, dict)]
+        return {"policy_count": len(rows), "alert_policies": clean(rows)}
+    if name == "list_metric_descriptors":
+        descriptors = response.get("metricDescriptors", [])
+        rows = [{"type": item.get("type"), "metric_kind": item.get("metricKind"), "value_type": item.get("valueType")}
+                for item in descriptors if isinstance(item, dict)]
+        return {"descriptor_count": len(rows), "metric_descriptors": clean(rows)}
+    services = response.get("services", [response])
+    rows = [{"name": item.get("name"), "uri": item.get("uri"), "generation": item.get("generation"),
+             "observed_generation": item.get("observedGeneration"), "latest_ready_revision": item.get("latestReadyRevision")}
+            for item in services if isinstance(item, dict)]
+    return {"service_count": len(rows), "services": clean(rows)}
+
+
+def observe(name: str, args: Any) -> dict[str, Any]:
+    project, start, end, limit = validate(name, args)
+    token = observer_token(project)
+    base = f"projects/{project}"
+    if name in {"list_timeseries", "query_range", "list_metric_descriptors"}:
+        verify_single_project_metrics_scope(project, token)
+    if name == "list_log_entries":
+        response = fetch_json("https://logging.googleapis.com/v2/entries:list", token, method="POST", body={
+            "resourceNames": [base], "filter": log_filter(args.get("filter", ""), start, end),
+            "orderBy": "timestamp desc", "pageSize": limit})
+    elif name == "list_log_names":
+        response = fetch_json(log_names_url(project, limit), token)
+    elif name == "list_timeseries":
+        query = urllib.parse.urlencode({"filter": args.get("filter", ""), "interval.startTime": utc(start),
+                                        "interval.endTime": utc(end), "pageSize": limit})
+        response = fetch_json(f"https://monitoring.googleapis.com/v3/{base}/timeSeries?{query}", token)
+    elif name == "query_range":
+        query = urllib.parse.urlencode({"query": args["query"], "start": utc(start), "end": utc(end),
+                                        "step": "60s", "timeout": "20s"})
+        response = fetch_json(
+            f"https://monitoring.googleapis.com/v1/{base}/location/global/prometheus/api/v1/query_range?{query}",
+            token,
+        )
+    elif name == "get_alert_policy":
+        policy = args.get("alert_policy_id", "")
+        if not re.fullmatch(r"[A-Za-z0-9_-]{1,128}", policy):
+            raise ObserverError("get_alert_policy requires a bounded alert_policy_id.")
+        response = fetch_json(f"https://monitoring.googleapis.com/v3/{base}/alertPolicies/{policy}", token)
+    elif name == "list_alert_policies":
+        response = fetch_json(f"https://monitoring.googleapis.com/v3/{base}/alertPolicies?pageSize={limit}", token)
+    elif name == "list_metric_descriptors":
+        response = fetch_json(f"https://monitoring.googleapis.com/v3/{base}/metricDescriptors?pageSize={limit}", token)
+    elif name == "get_service":
+        service = args.get("service_name", "")
+        if not re.fullmatch(rf"projects/{re.escape(project)}/locations/[a-z0-9-]+/services/[a-z0-9-]+", service):
+            raise ObserverError("get_service requires a service_name in the requested project.")
+        response = fetch_json(f"https://run.googleapis.com/v2/{service}", token)
+    else:
+        location = args["location"]
+        if not re.fullmatch(r"(?:-|[a-z0-9-]{1,63})", location):
+            raise ObserverError("location is invalid.")
+        response = fetch_json(f"https://run.googleapis.com/v2/{base}/locations/{location}/services?pageSize={limit}", token)
+    return {"project_id": project, "environment": args["environment"], "objective": args["objective"],
+            "time_range": {"start_time": utc(start), "end_time": utc(end)}, "result": summary(name, response, limit)}
+
+
+def respond(message: dict[str, Any]) -> None:
+    sys.stdout.write(json.dumps(message, separators=(",", ":")) + "\n")
+    sys.stdout.flush()
+
+
+def main() -> None:
+    for line in sys.stdin:
+        request_id: Any = None
+        try:
+            request = json.loads(line)
+            if not isinstance(request, dict):
+                raise ObserverError("MCP request must be a JSON object.")
+            method, request_id = request.get("method"), request.get("id")
+            if method == "initialize":
+                result: Any = {"protocolVersion": "2024-11-05", "serverInfo": {"name": SERVER_NAME, "version": "1.0.0"}, "capabilities": {"tools": {}}}
+            elif method == "tools/list":
+                result = {"tools": [tool_schema(name) for name in TOOLS]}
+            elif method == "tools/call":
+                params = request.get("params", {})
+                if not isinstance(params, dict):
+                    raise ObserverError("MCP tool parameters must be an object.")
+                name = params.get("name")
+                result = {"content": [{"type": "text", "text": json.dumps(observe(name, params.get("arguments", {})), separators=(",", ":"))}]}
+            elif method == "notifications/initialized":
+                continue
+            else:
+                raise ObserverError("Unsupported MCP method.")
+            if request_id is not None:
+                respond({"jsonrpc": "2.0", "id": request_id, "result": result})
+        except (json.JSONDecodeError, ObserverError) as exc:
+            if "request_id" in locals() and request_id is not None:
+                respond({"jsonrpc": "2.0", "id": request_id, "error": {"code": -32602, "message": str(exc)}})
+
+
+if __name__ == "__main__":
+    main()

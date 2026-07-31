@@ -300,8 +300,8 @@ docker compose logs api
 
 ### Hosted log review
 
-Use the read-only observer only after the development and production project IDs have been
-confirmed by the owner. For each investigation, state one environment, one project, a short UTC
+The approved read-only observer scope is `matrixed-mind-dev` and `matrixedmind-prod`; the shared
+edge project is excluded. For each investigation, state one environment, one project, a short UTC
 time range, and an objective. Start with Cloud Run service metadata and a narrow Cloud Logging
 filter for the named service and severity or status class; use a small result limit and sanitize
 identifiers, token-like values, request bodies, and record content from any report. Correlate an
@@ -310,24 +310,24 @@ time range. The observer must not deploy, change IAM, create credentials, inspec
 mutate Cloud Run or Firestore. Stop when the requested evidence is sufficient rather than polling
 unchanged state.
 
-When explicitly enabled through an audited plan, each environment's Terraform root creates one
-keyless observer service account, grants it only `roles/logging.viewer`, `roles/monitoring.viewer`,
+Each environment's Terraform root now manages one keyless observer service account, grants it only
+`roles/logging.viewer`, `roles/monitoring.viewer`,
 and `roles/run.viewer` in that environment project, and grants the approved impersonating principal
-`roles/iam.serviceAccountTokenCreator` on that observer account alone. It also enables only the
-Cloud Logging and Cloud Monitoring APIs needed for those read-only tools. The shared-edge project
-remains out of scope.
+`roles/iam.serviceAccountTokenCreator` on that observer account alone. No user-managed keys exist.
+The development and production impersonation smokes read Cloud Run metadata, a bounded log window,
+and monitoring metadata successfully without mutation.
 
-Terraform declares two optional Cloud Run policies per environment: a 5xx request-rate policy and
-a p99 latency policy. Both policies and budget alerts are disabled by default. When either is
-enabled with an apply-time `operational_notification_email`, Terraform creates the conventional
-MatrixedMind environment channel and wires its generated resource name directly into the policies
-and budget. Externally managed channel resource names are optional reuse inputs; budget reuse
-must be verified read-only as email channels and may total no more than five. Budgets never fall
-back to unreviewed billing IAM recipients. The recipient is not committed, but Terraform state
-retains it. The initial latency threshold is 10,000 milliseconds; thresholds are not a production
-tuning decision. Tune them only after deployed request-volume, error-rate, and latency data is
-reviewed. A controlled alert test or documented manual check remains required before treating
-either policy as verified.
+Terraform manages two Cloud Run policies per environment: a 5xx request-rate policy and a p99
+latency policy. With the apply-time `operational_notification_email`, Terraform creates the
+conventional MatrixedMind environment channel and wires its generated resource name directly into
+the policies and budget. Externally managed channel resource names are optional reuse inputs;
+budget reuse must be verified read-only as email channels and may total no more than five. Budgets
+never fall back to unreviewed billing IAM recipients. The recipient is not committed, but
+Terraform state retains it. The initial latency threshold is 10,000 milliseconds; thresholds are
+not a production tuning decision. Tune them only after deployed request-volume, error-rate, and
+latency data is reviewed. A documented manual check confirmed that both policies are enabled and
+wired to the generated channel in each environment. It did not force a synthetic incident or
+delivery.
 
 For an existing development budget configuration, treat the new enable flag as an audited
 configuration migration: set `enable_billing_budget = true` alongside the existing billing account,
@@ -361,18 +361,26 @@ After a reviewed cloud-mutation plan is explicitly approved, test rotation in de
 5. Confirm the prior token or secret behavior is understood before disabling its old version;
    record the rollback version and restore it through a reviewed Terraform plan if needed.
 
-No rotation test has been run for Milestone 12. It is blocked by the same live-mutation approval
-gate; secret values, token values, and service-account keys must never be placed in Terraform,
-plans, logs, or this repository.
+No rotation test has been run for Milestone 12. The approved plans intentionally contained no
+Cloud Run or secret changes, so creating a non-production secret version and revision requires a
+separate audited live-mutation plan. Secret values, token values, and service-account keys must
+never be placed in Terraform, plans, logs, or this repository.
 
 ### Cost and connectivity review
 
-Review Firestore cost from deployed metrics and billing data before changing limits: measure
-document sizes, document reads/writes/deletes, index-write amplification, retention, and the
-cost of the Firestore compatibility test job. Keep record bodies and embedded revisions bounded,
-avoid unnecessary composite indexes, and revisit this review after material query, schema, or
-retention changes. This is documentation of a review method, not evidence that current production
-costs have been measured.
+A bounded production review on 2026-07-31 found 67 billable read units, 33 billable write units,
+6,387 bytes of current data-plus-index storage, and no scanned-document or scanned-index-entry
+units over the preceding seven days. Both environments retain five intentional composite indexes.
+All development indexes were ready; production reported three ready and two still creating even
+though their associated operations reported complete, so their readiness should be rechecked
+before relying on those two query paths. Current activity is too small to justify schema or index
+changes; keep record bodies and embedded revisions bounded and repeat the review after material
+traffic, query, schema, or retention growth.
+
+The same seven-day log review found 30 production LLM API requests, no development LLM requests,
+and no 429 responses. Retain the current process-local limit of 60 requests per 60 seconds. Revisit
+the value—and distributed enforcement—when sustained traffic or multi-instance scaling provides
+representative evidence.
 
 No MatrixedMind runtime dependency currently requires fixed-IP allowlisting, static egress, or
 private connectivity. Do not add a NAT, private connector, or related routing cost now. Revisit
@@ -387,15 +395,13 @@ other cloud mutation, present one audited plan and wait for explicit approval. T
 the exact APIs, confirmed project IDs, service-account identities, IAM roles, Terraform diff or
 commands, verification steps, and rollback.
 
-The proposed observer scope is `matrixed-mind-dev` and `matrixedmind-prod`; the shared-edge
-project remains excluded pending approval of this plan. The recommended keyless impersonating
-principal is the discovered active ADC user `user:paul@matrixedmind.com`. The agent chooses the
-routine observer service-account IDs `matrixedmind-dev-observer` and
-`matrixedmind-prod-observer`, and the temporary restore-target naming convention above. The only
-owner decisions still needed for the single plan are the notification destination, development and
-production budget amounts, and approval of the complete live mutation. The plan will include the
-required billing account IDs, APIs, IAM roles, commands, verification, and rollback; none are
-applied until approved.
+The approved observer scope is `matrixed-mind-dev` and `matrixedmind-prod`; the shared-edge project
+remains excluded. Local operations must use the canonical organization-controlled Terraform
+operator, verify gcloud, ADC, provider, backend, and impersonation identities independently, and
+stop on a mismatch. Account-specific identities belong in local configuration and audited plans,
+not committed defaults. The agent chooses routine Terraform identifiers and the temporary
+restore-target naming convention above; the owner decides live destinations, spending limits,
+security boundaries, data-safety actions, and the complete mutation plan.
 
 ## Rollback
 

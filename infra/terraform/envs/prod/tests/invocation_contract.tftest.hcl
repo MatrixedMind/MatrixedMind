@@ -1,8 +1,21 @@
 mock_provider "google" {}
 
 variables {
-  project_id        = "production-example"
-  github_repository = "example/matrixedmind"
+  project_id                                 = "production-example"
+  github_repository                          = "example/matrixedmind"
+  enable_cloud_run_service                   = false
+  cloud_run_invocation_mode                  = "private"
+  enable_observer_service_account            = false
+  observer_impersonator_member               = null
+  enable_operational_alerting                = false
+  enable_billing_budget                      = false
+  billing_account_id                         = ""
+  billing_budget_amount_units                = null
+  operational_notification_email             = null
+  external_operational_notification_channels = []
+  external_budget_notification_channels      = []
+  load_balancer_backend_service_name         = null
+  edge_load_balancer_service_user_members    = []
 }
 
 run "private_foundation" {

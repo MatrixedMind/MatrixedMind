@@ -1,0 +1,13 @@
+#!/bin/sh
+# Launch the observer with only its non-secret operator-identity assertion.
+set -eu
+
+operator_email=${MATRIXEDMIND_GCP_OPERATOR_EMAIL:-}
+if [ -z "$operator_email" ]; then
+  echo 'MATRIXEDMIND_GCP_OPERATOR_EMAIL is required.' >&2
+  exit 64
+fi
+
+exec /usr/bin/env -i \
+  MATRIXEDMIND_GCP_OPERATOR_EMAIL="$operator_email" \
+  /usr/bin/python3 -I -E .codex/scripts/gcp-observer-mcp

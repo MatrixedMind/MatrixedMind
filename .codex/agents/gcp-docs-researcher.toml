@@ -18,8 +18,8 @@ env_http_headers = { "X-Goog-Api-Key" = "GOOGLE_DEVELOPER_KNOWLEDGE_API_KEY" }
 enabled_tools = ["search_documents", "get_documents", "answer_query"]
 
 # Terraform MCP is intentionally limited to public Registry documentation. The
-# checked-in wrapper verifies the external v1.1.0 installation against the
-# approved release archive; see .codex/README.md.
+# checked-in wrapper validates and runs the immutable v1.1.0 linux/arm64 image;
+# see .codex/README.md.
 [mcp_servers.terraform_registry_docs]
 command = "/bin/sh"
 args = [".codex/scripts/terraform-mcp-registry-docs", "stdio", "--tools=search_providers,get_provider_details"]
