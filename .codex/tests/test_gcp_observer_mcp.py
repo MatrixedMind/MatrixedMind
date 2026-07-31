@@ -246,6 +246,28 @@ class ObserverMcpTests(unittest.TestCase):
         with self.assertRaisesRegex(observer.ObserverError, "single-project"):
             observer.observe("list_timeseries", VALID | {"filter": 'metric.type="example"'})
 
+    def test_summaries_safely_normalize_null_nested_api_fields(self) -> None:
+        self.assertEqual(
+            observer.summary("list_log_entries", {"entries": [{"resource": None}]}, 10),
+            {
+                "entry_count": 1,
+                "entries": [
+                    {
+                        "timestamp": None,
+                        "severity": None,
+                        "log_name": None,
+                        "resource_type": None,
+                    }
+                ],
+            },
+        )
+        self.assertEqual(
+            observer.summary(
+                "list_timeseries", {"timeSeries": [{"metric": None, "points": None}]}, 10
+            ),
+            {"series_count": 1, "series": [{"metric_type": None, "point_count": 0}]},
+        )
+
     def test_launcher_ignores_hostile_python_environment(self) -> None:
         launcher = SCRIPT.with_name("gcp-observer-mcp-launcher")
         with tempfile.TemporaryDirectory() as temporary_directory:

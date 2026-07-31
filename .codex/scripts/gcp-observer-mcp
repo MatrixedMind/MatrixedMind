@@ -250,20 +250,41 @@ def clean(value: Any) -> Any:
     return value
 
 
+def object_value(value: Any) -> dict[str, Any]:
+    return value if isinstance(value, dict) else {}
+
+
+def list_value(value: Any) -> list[Any]:
+    return value if isinstance(value, list) else []
+
+
 def summary(name: str, response: dict[str, Any], limit: int) -> dict[str, Any]:
     """Return only fields useful to an operator; never raw log/event payloads."""
     if name == "list_log_entries":
-        rows = [{"timestamp": item.get("timestamp"), "severity": item.get("severity"),
-                 "log_name": item.get("logName"), "resource_type": item.get("resource", {}).get("type")}
-                for item in response.get("entries", []) if isinstance(item, dict)]
+        rows = [
+            {
+                "timestamp": item.get("timestamp"),
+                "severity": item.get("severity"),
+                "log_name": item.get("logName"),
+                "resource_type": object_value(item.get("resource")).get("type"),
+            }
+            for item in list_value(response.get("entries"))
+            if isinstance(item, dict)
+        ]
         return {"entry_count": len(rows), "entries": clean(rows)}
     if name == "list_log_names":
-        logs = response.get("logNames", [])
+        logs = [item for item in list_value(response.get("logNames")) if isinstance(item, str)]
         return {"log_count": len(logs), "log_names": clean(logs)}
     if name == "list_timeseries":
-        series = response.get("timeSeries", [])[:limit]
-        rows = [{"metric_type": item.get("metric", {}).get("type"), "point_count": len(item.get("points", []))}
-                for item in series if isinstance(item, dict)]
+        series = list_value(response.get("timeSeries"))[:limit]
+        rows = [
+            {
+                "metric_type": object_value(item.get("metric")).get("type"),
+                "point_count": len(list_value(item.get("points"))),
+            }
+            for item in series
+            if isinstance(item, dict)
+        ]
         return {"series_count": len(rows), "series": clean(rows)}
     if name == "query_range":
         if response.get("status") != "success":
@@ -273,21 +294,26 @@ def summary(name: str, response: dict[str, Any], limit: int) -> dict[str, Any]:
             raise ObserverError("Cloud Monitoring query_range returned an unexpected response.")
         all_series = data["result"]
         series = all_series[:limit]
-        rows = [{"metric_name": item.get("metric", {}).get("__name__"),
-                 "point_count": len(item.get("values", []))}
-                for item in series if isinstance(item, dict)]
+        rows = [
+            {
+                "metric_name": object_value(item.get("metric")).get("__name__"),
+                "point_count": len(list_value(item.get("values"))),
+            }
+            for item in series
+            if isinstance(item, dict)
+        ]
         return {"series_count": len(rows), "truncated": len(all_series) > limit, "series": clean(rows)}
     if name in {"get_alert_policy", "list_alert_policies"}:
-        policies = response.get("alertPolicies", [response])
+        policies = list_value(response.get("alertPolicies")) if "alertPolicies" in response else [response]
         rows = [{"name": item.get("name"), "display_name": item.get("displayName"), "enabled": item.get("enabled")}
                 for item in policies if isinstance(item, dict)]
         return {"policy_count": len(rows), "alert_policies": clean(rows)}
     if name == "list_metric_descriptors":
-        descriptors = response.get("metricDescriptors", [])
+        descriptors = list_value(response.get("metricDescriptors"))
         rows = [{"type": item.get("type"), "metric_kind": item.get("metricKind"), "value_type": item.get("valueType")}
                 for item in descriptors if isinstance(item, dict)]
         return {"descriptor_count": len(rows), "metric_descriptors": clean(rows)}
-    services = response.get("services", [response])
+    services = list_value(response.get("services")) if "services" in response else [response]
     rows = [{"name": item.get("name"), "uri": item.get("uri"), "generation": item.get("generation"),
              "observed_generation": item.get("observedGeneration"), "latest_ready_revision": item.get("latestReadyRevision")}
             for item in services if isinstance(item, dict)]
