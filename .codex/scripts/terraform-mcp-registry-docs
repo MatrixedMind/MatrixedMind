@@ -16,7 +16,7 @@ if [ "$#" -ne 2 ] \
   exit 64
 fi
 
-script_dir=$(CDPATH= cd -- "$(/usr/bin/dirname -- "$0")" && pwd -P)
+script_dir=$(CDPATH= cd -- "$(/usr/bin/dirname -- "$0")" && /bin/pwd -P)
 codex_dir=$(/usr/bin/dirname -- "$script_dir")
 manifest="$codex_dir/terraform-mcp-registry-docs.manifest.toml"
 if [ ! -r "$manifest" ]; then
