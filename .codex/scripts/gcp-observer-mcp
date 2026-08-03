@@ -48,6 +48,17 @@ TOOL_REQUIRED = {
     "list_services": ("location",),
 }
 TOOL_OPTIONAL = {"list_log_entries": ("filter",)}
+STRING_MAX_LENGTHS = {
+    "filter": 1000,
+    "query": 1000,
+    "alert_policy_id": 128,
+    "service_name": 256,
+    "location": 63,
+}
+STRING_PATTERNS = {
+    "alert_policy_id": r"^[A-Za-z0-9_-]{1,128}$",
+    "location": r"^(?:-|[a-z0-9-]{1,63})$",
+}
 
 
 class ObserverError(ValueError):
@@ -64,15 +75,21 @@ def tool_schema(name: str) -> dict[str, Any]:
         "limit": {"type": "integer", "minimum": 1, "maximum": MAX_LIMIT},
     }
     if name in {"list_log_entries", "list_timeseries"}:
-        properties["filter"] = {"type": "string", "maxLength": 1000}
+        properties["filter"] = {"type": "string", "maxLength": STRING_MAX_LENGTHS["filter"]}
     if name == "query_range":
-        properties["query"] = {"type": "string", "maxLength": 1000}
+        properties["query"] = {"type": "string", "maxLength": STRING_MAX_LENGTHS["query"]}
     if name == "get_alert_policy":
-        properties["alert_policy_id"] = {"type": "string", "pattern": "^[A-Za-z0-9_-]{1,128}$"}
+        properties["alert_policy_id"] = {
+            "type": "string",
+            "pattern": STRING_PATTERNS["alert_policy_id"],
+        }
     if name == "get_service":
-        properties["service_name"] = {"type": "string", "maxLength": 256}
+        properties["service_name"] = {
+            "type": "string",
+            "maxLength": STRING_MAX_LENGTHS["service_name"],
+        }
     if name == "list_services":
-        properties["location"] = {"type": "string", "pattern": "^(?:-|[a-z0-9-]{1,63})$"}
+        properties["location"] = {"type": "string", "pattern": STRING_PATTERNS["location"]}
     return {
         "name": name,
         "description": "Bounded, sanitized, read-only MatrixedMind GCP observation.",
@@ -112,13 +129,16 @@ def validate(name: str, args: Any) -> tuple[str, dt.datetime, dt.datetime, int]:
     if start >= end or end - start > MAX_RANGE:
         raise ObserverError("Time range must be positive and no longer than six hours.")
     objective = args["objective"]
-    if not isinstance(objective, str) or not 8 <= len(objective.strip()) <= 240:
+    if not isinstance(objective, str) or len(objective) > 240 or len(objective.strip()) < 8:
         raise ObserverError("objective must be a concrete 8-240 character investigation statement.")
     limit = args["limit"]
     if not isinstance(limit, int) or isinstance(limit, bool) or not 1 <= limit <= MAX_LIMIT:
         raise ObserverError("limit must be an integer from 1 through 100.")
-    for key in ("filter", "query", "alert_policy_id", "service_name", "location"):
-        if key in args and (not isinstance(args[key], str) or len(args[key]) > 1000):
+    for key, max_length in STRING_MAX_LENGTHS.items():
+        if key in args and (not isinstance(args[key], str) or len(args[key]) > max_length):
+            raise ObserverError(f"{key} is invalid.")
+    for key, pattern in STRING_PATTERNS.items():
+        if key in args and re.fullmatch(pattern, args[key]) is None:
             raise ObserverError(f"{key} is invalid.")
     return project, start, end, limit
 

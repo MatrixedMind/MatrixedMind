@@ -67,6 +67,14 @@ class ObserverMcpTests(unittest.TestCase):
             with self.subTest(bad=bad), self.assertRaises(observer.ObserverError):
                 observer.validate("list_log_entries", VALID | bad)
 
+        observer.validate("list_log_entries", VALID | {"objective": "x" * 240})
+        for objective in ("x" * 7, "Check it" + (" " * 233)):
+            with (
+                self.subTest(objective_length=len(objective)),
+                self.assertRaisesRegex(observer.ObserverError, "objective"),
+            ):
+                observer.validate("list_log_entries", VALID | {"objective": objective})
+
     def test_rejects_missing_tool_specific_or_arbitrary_arguments(self) -> None:
         for name, _argument in (
             ("list_timeseries", "filter"),
@@ -79,6 +87,34 @@ class ObserverMcpTests(unittest.TestCase):
                 observer.validate(name, VALID)
         with self.assertRaisesRegex(observer.ObserverError, "Unexpected"):
             observer.validate("list_log_names", VALID | {"pageToken": "unbounded"})
+
+    def test_runtime_string_validation_matches_advertised_schema(self) -> None:
+        cases = (
+            ("list_log_entries", "filter", "x" * 1000, "x" * 1001),
+            ("list_timeseries", "filter", "x" * 1000, "x" * 1001),
+            ("query_range", "query", "x" * 1000, "x" * 1001),
+            ("get_alert_policy", "alert_policy_id", "a" * 128, "a" * 129),
+            ("get_service", "service_name", "s" * 256, "s" * 257),
+            ("list_services", "location", "a" * 63, "a" * 64),
+        )
+        for name, field, accepted, rejected in cases:
+            with self.subTest(name=name, field=field, value="accepted"):
+                observer.validate(name, VALID | {field: accepted})
+            with (
+                self.subTest(name=name, field=field, value="rejected"),
+                self.assertRaisesRegex(observer.ObserverError, f"{field} is invalid"),
+            ):
+                observer.validate(name, VALID | {field: rejected})
+
+        for name, field, rejected in (
+            ("get_alert_policy", "alert_policy_id", "policy/id"),
+            ("list_services", "location", "US-CENTRAL1"),
+        ):
+            with (
+                self.subTest(name=name, field=field, value="pattern"),
+                self.assertRaisesRegex(observer.ObserverError, f"{field} is invalid"),
+            ):
+                observer.validate(name, VALID | {field: rejected})
 
     @patch.object(observer.os, "access", return_value=True)
     @patch.object(observer.subprocess, "run", return_value=Mock(stdout="short-lived-token"))
