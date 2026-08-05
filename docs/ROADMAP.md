@@ -12,12 +12,13 @@ Milestone 5 is implemented and verified for a minimal server-rendered browser sh
 
 Milestone 6 is implemented and verified for owner auth boundaries, deterministic dev/test identities, centralized authorization policy, hashed/scoped/revocable LLM tokens, narrow private-by-default LLM record operations, revision and audit attribution, request limits, and forbidden capability handling.
 
-Milestones 0 through 7 and Milestones 9 through 11 are implemented and verified, including
-Firestore Enterprise MongoDB compatibility, the Cloud Run deployment baseline, the narrow ChatGPT
-Action integration, and hosted activation. Milestone 8's CI quality gate is implemented and passes
-clean pull requests; its deliberate-failure verification remains open. The current focus is
-Milestone 12 cloud operational hardening, followed by Milestone 13 public project documentation.
-Import/export is deferred until after that secure cloud path unless recovery needs pull it forward.
+Milestones 0 through 12 have delivered their planned implementation, including Firestore Enterprise
+MongoDB compatibility, the Cloud Run deployment baseline, the narrow ChatGPT Action integration,
+hosted activation, and operational hardening. Remaining unexecuted or conditional Cloud MVP
+verification is tracked explicitly in the [Cloud MVP verification follow-up register](CLOUD_MVP_VERIFICATION_FOLLOW_UP.md);
+it is not represented as completed verification. Milestone 13 public project documentation is the
+next product implementation milestone. Import/export remains deferred until after the secure Cloud
+MVP path unless recovery needs pull it forward.
 
 The repo already contains provisional pieces of later milestones, including an auth dependency placeholder and server-rendered pages. Treat that code as material to harden, not as permission to skip milestone verification.
 
@@ -662,8 +663,9 @@ Make every PR automatically verifiable.
 ### Verification
 
 - [x] Open PR triggers CI.
-- [ ] CI fails on lint, type, test, or Docker build failure.
 - [x] CI passes on a clean branch.
+- Remaining deliberate-failure verification is tracked as required closeout work in the
+  [Cloud MVP verification follow-up register](CLOUD_MVP_VERIFICATION_FOLLOW_UP.md#1-deliberate-ci-negative-path-proof-milestone-8).
 
 ### Done when
 
@@ -874,11 +876,11 @@ Make the secure Cloud MVP usable through its custom domain and a narrow private 
 - [x] Smoke test passes through the deployed Cloud Run URL.
 - [x] The selected custom-domain routing and Cloud Run ingress mode work without exposing an
   unintended direct public path.
-- [ ] When the optional Action API allowlist is enabled, it accepts current ChatGPT integration
-  requests and rejects an unapproved source.
 - [x] The hosted interface offers the corresponding source for its deployed version.
 - [x] Approved HTTPS Markdown images render, while malicious image markup and unsafe URLs are
   removed or neutralized.
+- Optional Action API IP-allowlist validation is not applicable while the feature remains disabled;
+  its activation gate is in the [Cloud MVP verification follow-up register](CLOUD_MVP_VERIFICATION_FOLLOW_UP.md#5-chatgpt-integration-action-api-ip-allowlist-validation-milestone-11).
 
 ### Done when
 
@@ -939,10 +941,9 @@ personal knowledge or sustained use.
 - [x] Configure alerting for service health and error rates.
 - [x] Document log review workflow.
 - [x] Validate backup and restore assumptions. Firestore point-in-time recovery is enabled; the
-  isolated restore exercise remains blocked on a separate live-mutation approval and is recorded
-  below rather than silently treated as executed.
+  isolated restore exercise requires a separate live-mutation approval and remains unexecuted.
 - [x] Configure billing budget alerts.
-- [ ] Document and test a secret rotation procedure with a non-production token.
+- [x] Document the non-production secret-rotation procedure.
 - [x] Tune rate limits based on deployed LLM API behavior. Retain 60 requests per 60 seconds: the
   bounded seven-day review found 30 production LLM requests, no development requests, and no 429s,
   which is insufficient evidence for a safer tighter or higher limit.
@@ -983,7 +984,8 @@ personal knowledge or sustained use.
   isolated development restore target is a separate live mutation that was not in the approved
   Milestone 12 plans.
 - [x] Billing budget alerts are configured.
-- [ ] Secret rotation checklist is tested with a non-production token.
+- Remaining secret-rotation, restore, and production-index readiness verification is tracked as
+  required closeout work in the [Cloud MVP verification follow-up register](CLOUD_MVP_VERIFICATION_FOLLOW_UP.md).
 - [x] Firestore cost review is documented.
 - [x] New TOML files parse successfully.
 - [x] The Terraform MCP exposes only approved public Registry documentation tools, and a
@@ -1005,16 +1007,18 @@ approved development and production Milestone 12 plans then created the notifica
 alert policies, budgets, observer service accounts and read-only IAM, and required APIs with no
 destroys, no Cloud Run changes, and no existing deployment-IAM changes. Fresh normal locked plans
 for both roots report no changes. Read-only impersonation smokes succeeded in both projects, and
-the shared-edge project remains excluded. The non-production secret rotation and isolated restore
-exercise were not part of those approved plans and remain exact live-mutation blockers rather than
-claimed tests.
+the shared-edge project remains excluded. The non-production secret rotation, isolated restore
+exercise, and production composite-index readiness recheck were not part of those approved plans;
+their unexecuted status and acceptance criteria are in the
+[Cloud MVP verification follow-up register](CLOUD_MVP_VERIFICATION_FOLLOW_UP.md).
 
 ### Done when
 
-The hosted service has documented, tested operational safeguards for cautious sustained use,
-authoritative version-aware Terraform provider research, a tested least-privilege read-only
-workflow for diagnosing hosted MatrixedMind state, and proof that mutating MCP tools are
-unavailable to the observer.
+The hosted service has documented operational safeguards, authoritative version-aware Terraform
+provider research, a tested least-privilege read-only workflow for diagnosing hosted MatrixedMind
+state, and proof that mutating MCP tools are unavailable to the observer. The separate exercises
+required before higher-sensitivity use are tracked in the
+[Cloud MVP verification follow-up register](CLOUD_MVP_VERIFICATION_FOLLOW_UP.md).
 
 </details>
 

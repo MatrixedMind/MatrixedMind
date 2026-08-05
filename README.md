@@ -36,11 +36,15 @@ MatrixedMind is still an early, pre-MVP project, but its core is taking shape. T
   allowlists and no upload or object-storage coupling.
 - Show an AGPLv3 source offer whose deployment build can link to the exact corresponding Git commit.
 - Run locally with MongoDB.
-- Run as a private Cloud Run service backed by Google Cloud's hosted Firestore database using
-  MongoDB compatibility, managed secrets, and automated deployment checks.
+- Run through its selected Cloud Run deployment mode, backed by Google Cloud's hosted Firestore
+  database using MongoDB compatibility, managed secrets, and automated deployment checks.
 
 The interface is currently functional rather than polished, and production sign-in is not finished.
 This is not yet a service intended for general use or sensitive personal data.
+
+Milestone 13, public project documentation, is the next product implementation step. Remaining
+Cloud MVP verification work is explicit in the
+[Cloud MVP verification follow-up register](docs/CLOUD_MVP_VERIFICATION_FOLLOW_UP.md).
 
 ## Where is it going?
 
@@ -71,5 +75,6 @@ boundary, Docker-based local development, and Terraform infrastructure for Googl
 - [Cloud MVP](docs/CLOUD_MVP.md)
 - [ChatGPT Action setup](docs/CHATGPT_ACTION.md)
 - [Testing](docs/TESTING.md)
+- [Cloud MVP verification follow-up register](docs/CLOUD_MVP_VERIFICATION_FOLLOW_UP.md)
 
 The roadmap is the source of truth for what is implemented, provisional, or still planned.

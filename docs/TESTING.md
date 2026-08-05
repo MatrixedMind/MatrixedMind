@@ -84,10 +84,9 @@ A live plan or apply must not be used as a substitute for the cloud-mutation app
 approved development and production applies were followed by fresh normal locked no-change plans.
 A documented manual check verified each enabled alert policy and generated notification channel,
 and keyless observer impersonation read bounded Cloud Run, Logging, and Monitoring state in both
-environments. A non-production secret rotation and isolated restore exercise remain unperformed:
-neither live mutation was present in the approved plans, so each requires a separate audited plan
-before execution. The restore blocker satisfies the milestone's explicit “validated or exact
-blocker” criterion; the secret-rotation test remains open.
+environments. The remaining non-production secret rotation, isolated restore exercise, and
+production composite-index readiness recheck are tracked with acceptance criteria and evidence
+requirements in the [Cloud MVP verification follow-up register](CLOUD_MVP_VERIFICATION_FOLLOW_UP.md).
 
 The Cloud Run module has offline mocked Terraform tests for its exclusive `private`, `direct`, and
 `external_load_balancer` invocation modes, application-project backend ownership, explicit
@@ -144,7 +143,8 @@ terraform -chdir=infra/terraform/envs/dev validate
 ```
 
 A local pass verifies the commands and workflow structure, but not GitHub's trigger or status
-reporting. Those require a pull request run before Milestone 8 can be marked fully verified.
+reporting. The remaining deliberate negative-path proof is tracked in the
+[Cloud MVP verification follow-up register](CLOUD_MVP_VERIFICATION_FOLLOW_UP.md#1-deliberate-ci-negative-path-proof-milestone-8).
 
 ## Test data
 
