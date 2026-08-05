@@ -40,6 +40,21 @@ descriptive task title instead, such as `Documentation update - hosted activatio
 9. Run the verification commands listed in the milestone.
 10. Report failures exactly, including IDE, type, lint, test, Docker, and Terraform errors.
 
+## Decision triage
+
+Ask the owner only for choices that materially affect product behavior, human notification
+destinations, spending limits, security or IAM boundaries, data safety or recovery, irreversible
+actions, or live external mutations. Clearly distinguish an owner decision from an implementation
+choice that the agent makes and discloses.
+
+Do not ask the owner to invent Terraform logical names, display names, filenames, service-account
+account IDs, temporary resource names, provider-generated IDs, or other routine implementation
+identifiers. Choose them from existing MatrixedMind conventions and common sense. Use read-only
+discovery before asking for an identifier that can be safely found.
+
+When an input is needed only for a live apply, include a recommended value in the single audited
+mutation plan and request approval once. Do not interrupt separately for each routine input.
+
 ## Documentation sync
 
 - Keep `docs/ROADMAP.md` aligned with actual milestone status and implemented-but-provisional code.

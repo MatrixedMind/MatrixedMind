@@ -10,9 +10,8 @@ data "google_project" "current" {
 }
 
 locals {
-  required_services = toset([
+  required_services = setunion(toset([
     "artifactregistry.googleapis.com",
-    "billingbudgets.googleapis.com",
     "cloudbuild.googleapis.com",
     "cloudresourcemanager.googleapis.com",
     "firestore.googleapis.com",
@@ -21,6 +20,12 @@ locals {
     "run.googleapis.com",
     "secretmanager.googleapis.com",
     "sts.googleapis.com",
+  ]), var.enable_operational_alerting || var.enable_billing_budget || var.enable_observer_service_account ? toset(["monitoring.googleapis.com"]) : toset([]), var.enable_billing_budget ? toset(["billingbudgets.googleapis.com"]) : toset([]), var.enable_observer_service_account ? toset(["logging.googleapis.com"]) : toset([]))
+
+  observer_read_only_roles = toset([
+    "roles/logging.viewer",
+    "roles/monitoring.viewer",
+    "roles/run.viewer",
   ])
 
   runtime_secrets = {
@@ -38,6 +43,15 @@ locals {
   # This service remains IAM-private. Its Cloud Run HTTPS URL is a stable canonical
   # origin for the schema setting required by the production runtime configuration.
   cloud_run_service_url = "https://${var.cloud_run_service_name}-${data.google_project.current.number}.${var.region}.run.app"
+
+  operational_notification_channels = setunion(
+    toset(google_monitoring_notification_channel.operational[*].name),
+    var.external_operational_notification_channels,
+  )
+  budget_notification_channels = setunion(
+    toset(google_monitoring_notification_channel.operational[*].name),
+    var.external_budget_notification_channels,
+  )
 }
 
 resource "google_project_service" "required" {
@@ -83,6 +97,23 @@ resource "google_service_account" "firestore_spike" {
   depends_on = [google_project_service.required]
 }
 
+resource "google_service_account" "observer" {
+  count = var.enable_observer_service_account ? 1 : 0
+
+  project      = var.project_id
+  account_id   = var.observer_service_account_id
+  display_name = "MatrixedMind dev read-only observer"
+
+  lifecycle {
+    precondition {
+      condition     = var.observer_impersonator_member != null
+      error_message = "observer_impersonator_member must be set when enable_observer_service_account is true."
+    }
+  }
+
+  depends_on = [google_project_service.required]
+}
+
 module "runtime_secrets" {
   source = "../../modules/runtime_secrets"
 
@@ -105,6 +136,22 @@ resource "google_project_iam_member" "firestore_spike_user" {
   member  = google_service_account.firestore_spike.member
 }
 
+resource "google_project_iam_member" "observer_read_only" {
+  for_each = var.enable_observer_service_account ? local.observer_read_only_roles : toset([])
+
+  project = var.project_id
+  role    = each.value
+  member  = google_service_account.observer[0].member
+}
+
+resource "google_service_account_iam_member" "observer_impersonator" {
+  count = var.enable_observer_service_account ? 1 : 0
+
+  service_account_id = google_service_account.observer[0].name
+  role               = "roles/iam.serviceAccountTokenCreator"
+  member             = var.observer_impersonator_member
+}
+
 resource "google_project_iam_member" "github_artifact_registry_writer" {
   project = var.project_id
   role    = "roles/artifactregistry.writer"
@@ -120,6 +167,15 @@ resource "google_project_iam_member" "github_run_admin" {
 resource "google_service_account_iam_member" "github_can_act_as_runtime" {
   service_account_id = google_service_account.runtime.name
   role               = "roles/iam.serviceAccountUser"
+  member             = google_service_account.github_deployer.member
+}
+
+# The pinned deploy workflow mints an ID token as this deployer account for its
+# authenticated Cloud Run health and readiness checks. Preserve this binding
+# until that workflow's token-minting path is separately verified and changed.
+resource "google_service_account_iam_member" "github_can_mint_identity_token" {
+  service_account_id = google_service_account.github_deployer.name
+  role               = "roles/iam.serviceAccountTokenCreator"
   member             = google_service_account.github_deployer.member
 }
 
@@ -340,8 +396,24 @@ resource "google_cloud_run_v2_job" "firestore_spike" {
   ]
 }
 
+resource "google_monitoring_notification_channel" "operational" {
+  count = (var.enable_operational_alerting || var.enable_billing_budget) && nonsensitive(var.operational_notification_email != null) ? 1 : 0
+
+  project      = var.project_id
+  display_name = "MatrixedMind development operations"
+  type         = "email"
+  labels = {
+    email_address = var.operational_notification_email
+  }
+
+  # Do not force-delete a channel that may still be used outside this root.
+  force_delete = false
+
+  depends_on = [google_project_service.required]
+}
+
 resource "google_billing_budget" "dev" {
-  count = var.billing_account_id != "" && var.billing_budget_amount_units != null ? 1 : 0
+  count = var.enable_billing_budget ? 1 : 0
 
   billing_account = var.billing_account_id
   display_name    = "MatrixedMind dev"
@@ -367,6 +439,66 @@ resource "google_billing_budget" "dev" {
 
   threshold_rules {
     threshold_percent = 1.0
+  }
+
+  all_updates_rule {
+    disable_default_iam_recipients   = true
+    monitoring_notification_channels = local.budget_notification_channels
+  }
+
+  depends_on = [google_project_service.required]
+}
+
+resource "google_monitoring_alert_policy" "cloud_run_error_rate" {
+  count = var.enable_operational_alerting ? 1 : 0
+
+  project               = var.project_id
+  display_name          = "MatrixedMind dev Cloud Run 5xx error rate"
+  combiner              = "OR"
+  notification_channels = local.operational_notification_channels
+
+  conditions {
+    display_name = "Cloud Run 5xx requests exceed the configured rate"
+
+    condition_threshold {
+      filter          = "metric.type=\"run.googleapis.com/request_count\" AND resource.type=\"cloud_run_revision\" AND resource.label.\"service_name\"=\"${var.cloud_run_service_name}\" AND metric.label.\"response_code_class\"=\"5xx\""
+      duration        = "300s"
+      comparison      = "COMPARISON_GT"
+      threshold_value = var.cloud_run_error_rate_threshold
+
+      aggregations {
+        alignment_period     = "60s"
+        per_series_aligner   = "ALIGN_RATE"
+        cross_series_reducer = "REDUCE_SUM"
+      }
+    }
+  }
+
+  depends_on = [google_project_service.required]
+}
+
+resource "google_monitoring_alert_policy" "cloud_run_latency" {
+  count = var.enable_operational_alerting ? 1 : 0
+
+  project               = var.project_id
+  display_name          = "MatrixedMind dev Cloud Run p99 request latency"
+  combiner              = "OR"
+  notification_channels = local.operational_notification_channels
+
+  conditions {
+    display_name = "Cloud Run p99 request latency exceeds the configured threshold"
+
+    condition_threshold {
+      filter          = "metric.type=\"run.googleapis.com/request_latencies\" AND resource.type=\"cloud_run_revision\" AND resource.label.\"service_name\"=\"${var.cloud_run_service_name}\""
+      duration        = "300s"
+      comparison      = "COMPARISON_GT"
+      threshold_value = var.cloud_run_latency_threshold_milliseconds
+
+      aggregations {
+        alignment_period   = "60s"
+        per_series_aligner = "ALIGN_PERCENTILE_99"
+      }
+    }
   }
 
   depends_on = [google_project_service.required]

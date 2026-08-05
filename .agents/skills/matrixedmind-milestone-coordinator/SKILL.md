@@ -12,6 +12,19 @@ description: Coordinate implementation or verification of one MatrixedMind roadm
 3. Establish requirements, acceptance criteria, dependencies, file ownership, and relevant verification.
 4. Keep the coordinator focused on integration, decisions, dependencies, and concise results. Keep raw logs, broad file dumps, and repeated context out of the coordinator task.
 
+## Triage owner decisions
+
+- Ask the owner only about choices that materially affect product behavior, human notification
+  destinations, spending limits, security or IAM boundaries, data safety or recovery,
+  irreversible actions, or live external mutations.
+- Clearly label each item as either **owner must decide** or **agent chooses and discloses**.
+- Do not ask the owner to invent Terraform logical names, display names, filenames, service-account
+  account IDs, temporary resource names, provider-generated IDs, or other routine implementation
+  identifiers. Choose them using repository conventions and common sense.
+- Use read-only discovery before requesting an identifier that can be found safely.
+- When an input is needed only for a live apply, recommend a value in one audited mutation plan and
+  request approval once; do not interrupt separately for each routine input.
+
 ## Delegate bounded work
 
 - Delegate only bounded, independently useful work. Use no more than two concurrent subagents by default and keep delegation one level deep unless a genuinely independent subproblem requires otherwise.

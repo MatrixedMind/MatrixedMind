@@ -133,6 +133,24 @@ Enterprise can optionally attach a policy that restricts only `/api/llm/*` throu
 ChatGPT-integration address group; scoped bearer-token authentication remains required and is the
 primary security boundary.
 
+Operational access remains separate from runtime access. Each application environment has a
+dedicated keyless, read-only observer service account accessed through ADC/service-account
+impersonation. The local observer MCP is limited to the private development and production resource
+projects, excludes the shared-edge project, and requires an explicit project, environment, narrow
+time range, and investigation objective. Its tool allowlist and the service accounts' exact
+Logging, Monitoring, and Cloud Run viewer roles form independent read-only boundaries; it has no
+deployment, IAM, secret, Firestore-mutation, or general Cloud CLI tool.
+
+Terraform can declare a conventional per-environment email notification channel, Cloud Run
+health/error alert policies, and project-scoped billing budgets. These are safe-by-default opt-in
+settings: the actual delivery destination is an apply-time input and must not be committed, though
+Terraform state retains it. Generated channel resource names are wired directly to alerts and
+budgets; separately managed channel resource names remain an optional reuse path. Budgets require
+a billing account and amount, and every live change requires an explicitly approved plan.
+No static egress, NAT, or private connector is part of the current architecture because no known
+runtime dependency needs fixed-IP allowlisting or private connectivity. Reassess that boundary if
+a future dependency introduces either requirement.
+
 ## Local development strategy
 
 Local development should work without GCP credentials for core features. Docker Compose provides backing services, including MongoDB. The FastAPI app can also run directly with `uv run uvicorn app.main:app --reload`.

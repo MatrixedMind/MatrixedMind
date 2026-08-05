@@ -27,3 +27,19 @@ load_balancer_backend_service_name      = null
 # Optional defense in depth. Keep null until Cloud Armor Enterprise cost, the published range feed,
 # and its refresh procedure have been reviewed. Scoped bearer tokens remain mandatory.
 openai_action_address_group_name = null
+
+# Operational email is an apply-time input: use TF_VAR_operational_notification_email or an
+# ignored tfvars file. It creates the conventional MatrixedMind production channel when either
+# alerting or the budget is enabled. The recipient is retained in Terraform state.
+operational_notification_email              = null
+external_operational_notification_channels  = [] # Optional full resource names to reuse.
+external_budget_notification_channels       = [] # Optional verified email-channel resource names.
+
+# Disabled until the single audited cloud-mutation plan is approved. Do not commit the recipient,
+# billing account, or spending limit. Tune alert thresholds only from deployed metrics.
+enable_billing_budget                    = false
+billing_account_id                       = ""
+billing_budget_amount_units              = null
+enable_operational_alerting              = false
+cloud_run_error_rate_threshold           = 0.05
+cloud_run_latency_threshold_milliseconds = 10000

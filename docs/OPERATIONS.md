@@ -298,9 +298,110 @@ Use Cloud Run logs for request and application errors. Local development should 
 docker compose logs api
 ```
 
+### Hosted log review
+
+The approved read-only observer scope is `matrixed-mind-dev` and `matrixedmind-prod`; the shared
+edge project is excluded. For each investigation, state one environment, one project, a short UTC
+time range, and an objective. Start with Cloud Run service metadata and a narrow Cloud Logging
+filter for the named service and severity or status class; use a small result limit and sanitize
+identifiers, token-like values, request bodies, and record content from any report. Correlate an
+error with Cloud Monitoring request-count, latency, and alert-policy metadata before widening the
+time range. The observer must not deploy, change IAM, create credentials, inspect secrets, or
+mutate Cloud Run or Firestore. Stop when the requested evidence is sufficient rather than polling
+unchanged state.
+
+Each environment's Terraform root now manages one keyless observer service account, grants it only
+`roles/logging.viewer`, `roles/monitoring.viewer`,
+and `roles/run.viewer` in that environment project, and grants the approved impersonating principal
+`roles/iam.serviceAccountTokenCreator` on that observer account alone. No user-managed keys exist.
+The development and production impersonation smokes read Cloud Run metadata, a bounded log window,
+and monitoring metadata successfully without mutation.
+
+Terraform manages two Cloud Run policies per environment: a 5xx request-rate policy and a p99
+latency policy. With the apply-time `operational_notification_email`, Terraform creates the
+conventional MatrixedMind environment channel and wires its generated resource name directly into
+the policies and budget. Externally managed channel resource names are optional reuse inputs;
+budget reuse must be verified read-only as email channels and may total no more than five. Budgets
+never fall back to unreviewed billing IAM recipients. The recipient is not committed, but
+Terraform state retains it. The initial latency threshold is 10,000 milliseconds; thresholds are
+not a production tuning decision. Tune them only after deployed request-volume, error-rate, and
+latency data is reviewed. A documented manual check confirmed that both policies are enabled and
+wired to the generated channel in each environment. It did not force a synthetic incident or
+delivery.
+
+For an existing development budget configuration, treat the new enable flag as an audited
+configuration migration: set `enable_billing_budget = true` alongside the existing billing account,
+amount, and an apply-time notification destination (or verified external email channel) before
+running any plan or apply. Leaving the flag false while budget inputs are populated is intentionally
+invalid, preventing an unreviewed plan from silently destroying the budget. Do not add literal
+billing IDs or recipient identities to version-controlled example files.
+
 ## Backup and recovery
 
 Import/export remains important for portability and recovery, but it is now deferred until after the secure Cloud MVP path unless recovery requirements pull it forward. Before MatrixedMind is treated as durable personal infrastructure, either import/export or another validated backup/restore path must exist and be tested.
+
+Firestore point-in-time recovery is enabled in the Terraform database definitions, but that is an
+assumption, not a validated MatrixedMind restore procedure. The proposed isolated development
+target is `matrixedmind-dev-restore-validation-<UTC-date>` in `matrixed-mind-dev`; it must contain
+only approved test data. The exercise identifies the source timestamp, restores into that target,
+runs repository contract/readiness checks, records results, then deletes the temporary target only
+after evidence is captured. If validation fails, stop access, preserve the target for diagnosis,
+and leave the source database untouched. The remaining blocker is approval of the single audited
+live-mutation plan, not a request for the owner to invent a target name.
+
+### Non-production secret-rotation test
+
+After a reviewed cloud-mutation plan is explicitly approved, test rotation in development only:
+
+1. Create a new value outside the repository and add it as a new Secret Manager version.
+2. Change only the matching explicit numeric Terraform version input; never use `latest`.
+3. Review the plan, apply it, and confirm the resulting Cloud Run revision uses that number.
+4. Run the authenticated `/health` and `/ready` checks and one scoped LLM-token request using a
+   deliberately non-production token.
+5. Confirm the prior token or secret behavior is understood before disabling its old version;
+   record the rollback version and restore it through a reviewed Terraform plan if needed.
+
+No rotation test has been run for Milestone 12. The approved plans intentionally contained no
+Cloud Run or secret changes, so creating a non-production secret version and revision requires a
+separate audited live-mutation plan. Secret values, token values, and service-account keys must
+never be placed in Terraform, plans, logs, or this repository.
+
+### Cost and connectivity review
+
+A bounded production review on 2026-07-31 found 67 billable read units, 33 billable write units,
+6,387 bytes of current data-plus-index storage, and no scanned-document or scanned-index-entry
+units over the preceding seven days. Both environments retain five intentional composite indexes.
+All development indexes were ready; production reported three ready and two still creating even
+though their associated operations reported complete, so their readiness should be rechecked
+before relying on those two query paths. Current activity is too small to justify schema or index
+changes; keep record bodies and embedded revisions bounded and repeat the review after material
+traffic, query, schema, or retention growth.
+
+The same seven-day log review found 30 production LLM API requests, no development LLM requests,
+and no 429 responses. Retain the current process-local limit of 60 requests per 60 seconds. Revisit
+the value—and distributed enforcement—when sustained traffic or multi-instance scaling provides
+representative evidence.
+
+No MatrixedMind runtime dependency currently requires fixed-IP allowlisting, static egress, or
+private connectivity. Do not add a NAT, private connector, or related routing cost now. Revisit
+the decision before onboarding a dependency that requires source-IP allowlisting, private-only
+addressing, VPC access, or an equivalent network boundary.
+
+### Cloud mutation approval gate
+
+Repository configuration and read-only discovery are approved. Before any live API enablement,
+IAM grant, service-account creation, alert/budget creation, secret rotation, restore test, or
+other cloud mutation, present one audited plan and wait for explicit approval. That plan must name
+the exact APIs, confirmed project IDs, service-account identities, IAM roles, Terraform diff or
+commands, verification steps, and rollback.
+
+The approved observer scope is `matrixed-mind-dev` and `matrixedmind-prod`; the shared-edge project
+remains excluded. Local operations must use the canonical organization-controlled Terraform
+operator, verify gcloud, ADC, provider, backend, and impersonation identities independently, and
+stop on a mismatch. Account-specific identities belong in local configuration and audited plans,
+not committed defaults. The agent chooses routine Terraform identifiers and the temporary
+restore-target naming convention above; the owner decides live destinations, spending limits,
+security boundaries, data-safety actions, and the complete mutation plan.
 
 ## Rollback
 

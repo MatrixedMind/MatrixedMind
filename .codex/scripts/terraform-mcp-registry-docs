@@ -1,0 +1,63 @@
+#!/bin/sh
+# Run HashiCorp's public Registry documentation MCP server in the reviewed,
+# immutable v1.1.0 container.  This wrapper deliberately has no download,
+# credential, mount, or configuration surface.
+set -eu
+
+readonly expected_version='1.1.0'
+readonly expected_platform='linux/arm64'
+readonly expected_image='hashicorp/terraform-mcp-server@sha256:312d63756b5474df384b1844af55b58ca48cbe0996871e1d6c4239bfcd6fcd29'
+readonly expected_child_digest='sha256:2b18f06858bb7b0cd7d0a297344ffb00ad5d6c7d22750f9a78a6d914523d1a9e'
+
+if [ "$#" -ne 2 ] \
+  || [ "$1" != 'stdio' ] \
+  || [ "$2" != '--tools=search_providers,get_provider_details' ]; then
+  echo 'Terraform MCP wrapper rejects arguments outside the Registry documentation allowlist.' >&2
+  exit 64
+fi
+
+script_dir=$(CDPATH= cd -- "$(/usr/bin/dirname -- "$0")" && /bin/pwd -P)
+codex_dir=$(/usr/bin/dirname -- "$script_dir")
+manifest="$codex_dir/terraform-mcp-registry-docs.manifest.toml"
+if [ ! -r "$manifest" ]; then
+  echo 'Terraform MCP wrapper manifest is unavailable.' >&2
+  exit 66
+fi
+
+manifest_value() {
+  key=$1
+  /usr/bin/awk -F ' = ' -v key="$key" '$1 == key { gsub(/"/, "", $2); print $2 }' "$manifest"
+}
+if [ "$(manifest_value version)" != "$expected_version" ] \
+  || [ "$(manifest_value platform)" != "$expected_platform" ] \
+  || [ "$(manifest_value image)" != "$expected_image" ] \
+  || [ "$(manifest_value linux_arm64_digest)" != "$expected_child_digest" ]; then
+  echo 'Terraform MCP wrapper manifest does not match the approved container metadata.' >&2
+  exit 77
+fi
+
+docker_bin=/usr/local/bin/docker
+if [ ! -x "$docker_bin" ]; then
+  echo 'Terraform MCP wrapper requires Docker at /usr/local/bin/docker.' >&2
+  exit 79
+fi
+
+# Clear the Docker client environment and use a private empty Docker config so
+# the public-image pull cannot consult a host credential helper. The container
+# receives neither --env nor a host mount and has no writable filesystem; the
+# server does not require a writable temporary directory.
+docker_config=$(/usr/bin/mktemp -d "${TMPDIR:-/tmp}/matrixedmind-terraform-mcp-docker.XXXXXX")
+cleanup() { /bin/rm -rf "$docker_config"; }
+trap cleanup EXIT HUP INT TERM
+set +e
+/usr/bin/env -i PATH='/usr/bin:/bin:/usr/sbin:/sbin' DOCKER_CONFIG="$docker_config" "$docker_bin" run --rm \
+  -i \
+  --platform "$expected_platform" \
+  --cap-drop ALL \
+  --security-opt no-new-privileges:true \
+  --read-only \
+  "$expected_image" \
+  stdio --tools=search_providers,get_provider_details
+status=$?
+set -e
+exit "$status"

@@ -1,0 +1,7 @@
+# HashiCorp's public Terraform MCP container metadata. Do not add credentials,
+# private Registry data, mutable image tags, or alternate platforms.
+version = "1.1.0"
+platform = "linux/arm64"
+image = "hashicorp/terraform-mcp-server@sha256:312d63756b5474df384b1844af55b58ca48cbe0996871e1d6c4239bfcd6fcd29"
+linux_arm64_digest = "sha256:2b18f06858bb7b0cd7d0a297344ffb00ad5d6c7d22750f9a78a6d914523d1a9e"
+source = "https://hub.docker.com/r/hashicorp/terraform-mcp-server"

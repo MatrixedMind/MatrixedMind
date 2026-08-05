@@ -12,13 +12,12 @@ Milestone 5 is implemented and verified for a minimal server-rendered browser sh
 
 Milestone 6 is implemented and verified for owner auth boundaries, deterministic dev/test identities, centralized authorization policy, hashed/scoped/revocable LLM tokens, narrow private-by-default LLM record operations, revision and audit attribution, request limits, and forbidden capability handling.
 
-Milestones 0 through 7 and Milestones 9 and 10 are implemented and verified, including Firestore
-Enterprise MongoDB compatibility, the Cloud Run deployment baseline, and the narrow ChatGPT Action
-integration. Milestone 8's CI quality gate is
-implemented and passes clean pull requests; its deliberate-failure verification remains open. The
-current focus is Milestone 11 hosted activation, followed by Milestone 12 cloud operational
-hardening and Milestone 13 public project documentation. Import/export is deferred until after that
-secure cloud path unless recovery needs pull it forward.
+Milestones 0 through 7 and Milestones 9 through 11 are implemented and verified, including
+Firestore Enterprise MongoDB compatibility, the Cloud Run deployment baseline, the narrow ChatGPT
+Action integration, and hosted activation. Milestone 8's CI quality gate is implemented and passes
+clean pull requests; its deliberate-failure verification remains open. The current focus is
+Milestone 12 cloud operational hardening, followed by Milestone 13 public project documentation.
+Import/export is deferred until after that secure cloud path unless recovery needs pull it forward.
 
 The repo already contains provisional pieces of later milestones, including an auth dependency placeholder and server-rendered pages. Treat that code as material to harden, not as permission to skip milestone verification.
 
@@ -918,26 +917,38 @@ personal knowledge or sustained use.
 
 #### Human intervention or decision tasks
 
-- [ ] Decide whether static egress or private connectivity is needed for an external dependency.
-- [ ] Select and approve the authentication approach and least-privilege identity for read-only
-  Google Cloud MCP access.
-- [ ] Confirm which development and production projects the observer may inspect.
-- [ ] Decide whether HashiCorp's Terraform MCP server runs as a pinned local binary or pinned
-  container image.
-- [ ] Require explicit approval before enabling Google Cloud MCP services or granting associated
-  IAM roles.
+- [x] Decide whether static egress or private connectivity is needed for an external dependency.
+  None is currently needed; revisit when a dependency requires fixed-IP allowlisting or private
+  networking.
+- [x] Select and approve the authentication approach for read-only Google Cloud MCP access.
+  Dedicated keyless, read-only observer service accounts are managed one per environment and used
+  through ADC/service-account impersonation.
+- [x] Confirm which development and production projects the observer may inspect.
+  The approved scope is `matrixed-mind-dev` and `matrixedmind-prod`; the shared-edge project remains
+  excluded.
+- [x] Decide whether HashiCorp's Terraform MCP server runs as a pinned local binary or pinned
+  container image. Use a pinned, checksum-verified local binary unless HashiCorp has no supported
+  local artifact. Version 1.1.0 has no supported macOS ARM64 artifact, so the implementation pins
+  HashiCorp's immutable multi-platform image digest and its reviewed Linux ARM64 child digest.
+- [x] Require explicit approval before enabling Google Cloud MCP services or granting associated
+  IAM roles. Approval is required before every live cloud mutation; repository configuration and
+  read-only discovery are authorized now.
 
 #### AI agent implementation tasks
 
-- [ ] Configure alerting for service health and error rates.
-- [ ] Document log review workflow.
-- [ ] Validate backup and restore assumptions.
-- [ ] Configure billing budget alerts.
+- [x] Configure alerting for service health and error rates.
+- [x] Document log review workflow.
+- [x] Validate backup and restore assumptions. Firestore point-in-time recovery is enabled; the
+  isolated restore exercise remains blocked on a separate live-mutation approval and is recorded
+  below rather than silently treated as executed.
+- [x] Configure billing budget alerts.
 - [ ] Document and test a secret rotation procedure with a non-production token.
-- [ ] Tune rate limits based on deployed LLM API behavior.
-- [ ] Review Firestore document-size and index-write costs.
-- [ ] Document static egress/private connectivity tradeoffs if needed.
-- [ ] Extend `gcp_docs_researcher` with HashiCorp's official Terraform MCP server, pinned to a
+- [x] Tune rate limits based on deployed LLM API behavior. Retain 60 requests per 60 seconds: the
+  bounded seven-day review found 30 production LLM requests, no development requests, and no 429s,
+  which is insufficient evidence for a safer tighter or higher limit.
+- [x] Review Firestore document-size and index-write costs.
+- [x] Document static egress/private connectivity tradeoffs if needed.
+- [x] Extend `gcp_docs_researcher` with HashiCorp's official Terraform MCP server, pinned to a
   reviewed version or immutable container digest. Enable only public Terraform Registry
   documentation tools: `search_providers` and `get_provider_details`; allow
   `get_latest_provider_version` only when comparison requires it. Keep the repository lock file
@@ -945,18 +956,19 @@ personal knowledge or sustained use.
   provider documentation whenever possible, and keep credentials out of the repository. Do not
   enable HCP Terraform, Terraform Enterprise, workspace-management, run-management, or mutation
   tools.
-- [ ] Add read-only `matrixedmind_gcp_observer` for bounded MatrixedMind health, logs, metrics,
+- [x] Add read-only `matrixedmind_gcp_observer` for bounded MatrixedMind health, logs, metrics,
   alerts, and Cloud Run service-metadata investigations. Require an explicit project, environment,
   time range, and investigation objective; return concise summaries rather than raw log dumps; do
   not edit repository files, mutate GCP resources, change IAM, deploy, create credentials, or
   expose secrets or sensitive log contents.
-- [ ] Scope observer MCP access to Cloud Logging `list_log_entries` and `list_log_names`; Cloud
-  Monitoring `list_timeseries`, `query_range`, `get_alert_policy`, `list_alert_policies`,
-  `get_alert`, `list_alerts`, `list_metric_descriptors`, and optional read-only dashboard tools;
-  and, only if needed, Cloud Run `get_service` and `list_services`. Do not enable Cloud Run
+- [x] Scope observer MCP access to Cloud Logging `list_log_entries` and `list_log_names`; Cloud
+  Monitoring `list_timeseries`, `query_range`, `get_alert_policy`, `list_alert_policies`, and
+  `list_metric_descriptors`; and, only if needed, Cloud Run `get_service` and `list_services`.
+  Google Cloud does not expose a supported public incident API for `get_alert` or `list_alerts`, so
+  those tools are omitted rather than simulated. Do not enable Cloud Run
   deployment, Firestore mutation, Cloud CLI Execution, IAM, or other mutation tools. Use both MCP
   tool allowlists and least-privilege Google IAM; neither replaces the other.
-- [ ] Keep Terraform documentation and GCP observer MCP servers scoped only to the agents that
+- [x] Keep Terraform documentation and GCP observer MCP servers scoped only to the agents that
   need them. Use narrow log filters, short time windows, explicit limits, and one project per
   query; retrieve only sufficient evidence, sanitize examples, and stop rather than repeatedly
   polling unchanged hosted state. Distinguish supported behavior documented by MCP research from
@@ -964,22 +976,38 @@ personal knowledge or sustained use.
 
 ### Verification
 
-- [ ] Alerts fire in a controlled test or documented manual check.
-- [ ] Restore procedure is validated or exact blocker is recorded.
-- [ ] Billing budget alerts are configured.
+- [x] Alerts fire in a controlled test or documented manual check. The documented manual check
+  confirmed both enabled policies, their filters, and their generated notification channel in each
+  environment without forcing a synthetic incident.
+- [x] Restore procedure is validated or exact blocker is recorded. Creating and deleting the
+  isolated development restore target is a separate live mutation that was not in the approved
+  Milestone 12 plans.
+- [x] Billing budget alerts are configured.
 - [ ] Secret rotation checklist is tested with a non-production token.
-- [ ] Firestore cost review is documented.
-- [ ] New TOML files parse successfully.
-- [ ] The Terraform MCP exposes only approved public Registry documentation tools, and a
+- [x] Firestore cost review is documented.
+- [x] New TOML files parse successfully.
+- [x] The Terraform MCP exposes only approved public Registry documentation tools, and a
   version-specific provider lookup matches the repository's locked Google provider version.
-- [ ] The observer exposes only approved read-only tools; mutating Cloud Run, Firestore, Cloud
+- [x] The observer exposes only approved read-only tools; mutating Cloud Run, Firestore, Cloud
   CLI, IAM, deployment, and Terraform workspace tools are absent.
-- [ ] A bounded development-project smoke test reads a known Cloud Run service, a narrow log
+- [x] A bounded development-project smoke test reads a known Cloud Run service, a narrow log
   window, and relevant monitoring metadata without changing hosted state.
-- [ ] Source-controlled files contain no API keys, access tokens, ADC files, OAuth secrets,
+- [x] Source-controlled files contain no API keys, access tokens, ADC files, OAuth secrets,
   service-account JSON, or generated credentials.
-- [ ] Any unavailable authentication, API enablement, IAM grant, or live verification is recorded
+- [x] Any unavailable authentication, API enablement, IAM grant, or live verification is recorded
   as an exact manual blocker rather than marked complete.
+
+### Current implementation status
+
+The development Milestone 10/11 Cloud Run environment-variable reconciliation and production
+metadata-only reconciliation were applied and verified separately before Milestone 12. The
+approved development and production Milestone 12 plans then created the notification channels,
+alert policies, budgets, observer service accounts and read-only IAM, and required APIs with no
+destroys, no Cloud Run changes, and no existing deployment-IAM changes. Fresh normal locked plans
+for both roots report no changes. Read-only impersonation smokes succeeded in both projects, and
+the shared-edge project remains excluded. The non-production secret rotation and isolated restore
+exercise were not part of those approved plans and remain exact live-mutation blockers rather than
+claimed tests.
 
 ### Done when
 

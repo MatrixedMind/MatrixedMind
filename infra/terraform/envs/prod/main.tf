@@ -5,8 +5,12 @@ provider "google" {
   user_project_override = true
 }
 
+data "google_project" "current" {
+  project_id = var.project_id
+}
+
 locals {
-  required_services = toset([
+  required_services = setunion(toset([
     "artifactregistry.googleapis.com",
     "cloudbuild.googleapis.com",
     "cloudresourcemanager.googleapis.com",
@@ -17,6 +21,12 @@ locals {
     "run.googleapis.com",
     "secretmanager.googleapis.com",
     "sts.googleapis.com",
+  ]), var.enable_operational_alerting || var.enable_billing_budget || var.enable_observer_service_account ? toset(["monitoring.googleapis.com"]) : toset([]), var.enable_billing_budget ? toset(["billingbudgets.googleapis.com"]) : toset([]), var.enable_observer_service_account ? toset(["logging.googleapis.com"]) : toset([]))
+
+  observer_read_only_roles = toset([
+    "roles/logging.viewer",
+    "roles/monitoring.viewer",
+    "roles/run.viewer",
   ])
 
   runtime_secrets = {
@@ -31,6 +41,15 @@ locals {
   }
 
   firestore_oidc_uri = "mongodb://${google_firestore_database.mongo_compatible.uid}.${google_firestore_database.mongo_compatible.location_id}.firestore.goog:443/${google_firestore_database.mongo_compatible.name}?loadBalanced=true&tls=true&retryWrites=false&authMechanism=MONGODB-OIDC&authMechanismProperties=ENVIRONMENT:gcp,TOKEN_RESOURCE:FIRESTORE"
+
+  operational_notification_channels = setunion(
+    toset(google_monitoring_notification_channel.operational[*].name),
+    var.external_operational_notification_channels,
+  )
+  budget_notification_channels = setunion(
+    toset(google_monitoring_notification_channel.operational[*].name),
+    var.external_budget_notification_channels,
+  )
 }
 
 resource "terraform_data" "invocation_contract" {
@@ -83,6 +102,23 @@ resource "google_service_account" "github_deployer" {
   depends_on = [google_project_service.required]
 }
 
+resource "google_service_account" "observer" {
+  count = var.enable_observer_service_account ? 1 : 0
+
+  project      = var.project_id
+  account_id   = var.observer_service_account_id
+  display_name = "MatrixedMind production read-only observer"
+
+  lifecycle {
+    precondition {
+      condition     = var.observer_impersonator_member != null
+      error_message = "observer_impersonator_member must be set when enable_observer_service_account is true."
+    }
+  }
+
+  depends_on = [google_project_service.required]
+}
+
 module "runtime_secrets" {
   source = "../../modules/runtime_secrets"
 
@@ -97,6 +133,22 @@ resource "google_project_iam_member" "runtime_firestore_user" {
   project = var.project_id
   role    = "roles/datastore.user"
   member  = google_service_account.runtime.member
+}
+
+resource "google_project_iam_member" "observer_read_only" {
+  for_each = var.enable_observer_service_account ? local.observer_read_only_roles : toset([])
+
+  project = var.project_id
+  role    = each.value
+  member  = google_service_account.observer[0].member
+}
+
+resource "google_service_account_iam_member" "observer_impersonator" {
+  count = var.enable_observer_service_account ? 1 : 0
+
+  service_account_id = google_service_account.observer[0].name
+  role               = "roles/iam.serviceAccountTokenCreator"
+  member             = var.observer_impersonator_member
 }
 
 resource "google_project_iam_member" "github_artifact_registry_writer" {
@@ -296,4 +348,112 @@ module "cloud_run_service" {
     module.runtime_secrets,
     google_project_iam_member.runtime_firestore_user,
   ]
+}
+
+resource "google_monitoring_notification_channel" "operational" {
+  count = (var.enable_operational_alerting || var.enable_billing_budget) && nonsensitive(var.operational_notification_email != null) ? 1 : 0
+
+  project      = var.project_id
+  display_name = "MatrixedMind production operations"
+  type         = "email"
+  labels = {
+    email_address = var.operational_notification_email
+  }
+
+  # Do not force-delete a channel that may still be used outside this root.
+  force_delete = false
+
+  depends_on = [google_project_service.required]
+}
+
+resource "google_billing_budget" "prod" {
+  count = var.enable_billing_budget ? 1 : 0
+
+  billing_account = var.billing_account_id
+  display_name    = "MatrixedMind production"
+
+  budget_filter {
+    projects = ["projects/${data.google_project.current.number}"]
+  }
+
+  amount {
+    specified_amount {
+      currency_code = "USD"
+      units         = tostring(var.billing_budget_amount_units)
+    }
+  }
+
+  threshold_rules {
+    threshold_percent = 0.5
+  }
+
+  threshold_rules {
+    threshold_percent = 0.9
+  }
+
+  threshold_rules {
+    threshold_percent = 1.0
+  }
+
+  all_updates_rule {
+    disable_default_iam_recipients   = true
+    monitoring_notification_channels = local.budget_notification_channels
+  }
+
+  depends_on = [google_project_service.required]
+}
+
+resource "google_monitoring_alert_policy" "cloud_run_error_rate" {
+  count = var.enable_operational_alerting ? 1 : 0
+
+  project               = var.project_id
+  display_name          = "MatrixedMind production Cloud Run 5xx error rate"
+  combiner              = "OR"
+  notification_channels = local.operational_notification_channels
+
+  conditions {
+    display_name = "Cloud Run 5xx requests exceed the configured rate"
+
+    condition_threshold {
+      filter          = "metric.type=\"run.googleapis.com/request_count\" AND resource.type=\"cloud_run_revision\" AND resource.label.\"service_name\"=\"${var.cloud_run_service_name}\" AND metric.label.\"response_code_class\"=\"5xx\""
+      duration        = "300s"
+      comparison      = "COMPARISON_GT"
+      threshold_value = var.cloud_run_error_rate_threshold
+
+      aggregations {
+        alignment_period     = "60s"
+        per_series_aligner   = "ALIGN_RATE"
+        cross_series_reducer = "REDUCE_SUM"
+      }
+    }
+  }
+
+  depends_on = [google_project_service.required]
+}
+
+resource "google_monitoring_alert_policy" "cloud_run_latency" {
+  count = var.enable_operational_alerting ? 1 : 0
+
+  project               = var.project_id
+  display_name          = "MatrixedMind production Cloud Run p99 request latency"
+  combiner              = "OR"
+  notification_channels = local.operational_notification_channels
+
+  conditions {
+    display_name = "Cloud Run p99 request latency exceeds the configured threshold"
+
+    condition_threshold {
+      filter          = "metric.type=\"run.googleapis.com/request_latencies\" AND resource.type=\"cloud_run_revision\" AND resource.label.\"service_name\"=\"${var.cloud_run_service_name}\""
+      duration        = "300s"
+      comparison      = "COMPARISON_GT"
+      threshold_value = var.cloud_run_latency_threshold_milliseconds
+
+      aggregations {
+        alignment_period   = "60s"
+        per_series_aligner = "ALIGN_PERCENTILE_99"
+      }
+    }
+  }
+
+  depends_on = [google_project_service.required]
 }
