@@ -1,0 +1,557 @@
+#!/usr/bin/env python3
+"""Fail-closed Terraform JSON plan scope guard for MatrixedMind."""
+
+from __future__ import annotations
+
+import argparse
+import json
+import sys
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any
+
+ACTION_ORDER = ("create", "update", "delete", "replace", "import", "state-move")
+ACTION_RANK = {action: index for index, action in enumerate(ACTION_ORDER)}
+BASE_ACTIONS: dict[tuple[str, ...], tuple[str, ...]] = {
+    ("no-op",): (),
+    ("read",): (),
+    ("create",): ("create",),
+    ("update",): ("update",),
+    ("delete",): ("delete",),
+    ("delete", "create"): ("replace",),
+    ("create", "delete"): ("replace",),
+}
+
+
+class GuardInputError(ValueError):
+    """Raised when the plan or scope cannot be checked safely."""
+
+
+@dataclass(frozen=True)
+class ExpectedChange:
+    address: str
+    actions: tuple[str, ...]
+    previous_address: str | None
+    allow_unknown: bool
+    allow_sensitive: bool
+
+
+@dataclass(frozen=True)
+class ObservedChange:
+    address: str
+    actions: tuple[str, ...]
+    previous_address: str | None
+    has_unknown: bool
+    has_sensitive: bool
+    domains: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class ExpectedOutput:
+    name: str
+    actions: tuple[str, ...]
+    allow_unknown: bool
+    allow_sensitive: bool
+    allow_sensitive_downgrade: bool
+
+
+@dataclass(frozen=True)
+class ObservedOutput:
+    name: str
+    actions: tuple[str, ...]
+    has_unknown: bool
+    has_sensitive: bool
+    sensitive_downgrade: bool
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Compare terraform show -json output with an exact approved scope."
+    )
+    parser.add_argument("plan_json", type=Path, help="JSON emitted from a saved Terraform plan")
+    parser.add_argument("--scope", required=True, type=Path, help="exact allowed scope JSON")
+    return parser.parse_args()
+
+
+def load_json(path: Path, label: str) -> dict[str, Any]:
+    def reject_duplicate_keys(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+        result: dict[str, Any] = {}
+        for key, value in pairs:
+            if key in result:
+                raise GuardInputError(f"{label} JSON contains duplicate object keys")
+            result[key] = value
+        return result
+
+    def reject_non_finite_number(_: str) -> Any:
+        raise GuardInputError(f"{label} JSON contains a non-finite number")
+
+    try:
+        with path.open("r", encoding="utf-8") as handle:
+            value = json.load(
+                handle,
+                object_pairs_hook=reject_duplicate_keys,
+                parse_constant=reject_non_finite_number,
+            )
+    except (OSError, UnicodeError, json.JSONDecodeError, RecursionError) as exc:
+        raise GuardInputError(f"cannot read valid {label} JSON: {exc}") from exc
+    if not isinstance(value, dict):
+        raise GuardInputError(f"{label} JSON must be an object")
+    return value
+
+
+def require_string(value: Any, label: str) -> str:
+    if (
+        not isinstance(value, str)
+        or not value.strip()
+        or any(ord(character) < 32 or ord(character) == 127 for character in value)
+    ):
+        raise GuardInputError(f"{label} must be a non-empty string without control characters")
+    return value
+
+
+def canonical_actions(value: Any, label: str) -> tuple[str, ...]:
+    if not isinstance(value, list) or not value:
+        raise GuardInputError(f"{label} must be a non-empty action list")
+    if any(not isinstance(action, str) for action in value):
+        raise GuardInputError(f"{label} contains a non-string action")
+    actions = tuple(value)
+    if len(set(actions)) != len(actions):
+        raise GuardInputError(f"{label} contains duplicate actions")
+    unsupported = sorted(set(actions) - set(ACTION_ORDER))
+    if unsupported:
+        raise GuardInputError(f"{label} contains unsupported actions")
+    return tuple(sorted(actions, key=ACTION_RANK.__getitem__))
+
+
+def parse_expected_entries(value: Any, label: str) -> dict[str, ExpectedChange]:
+    if not isinstance(value, list):
+        raise GuardInputError(f"{label} must be a list")
+    result: dict[str, ExpectedChange] = {}
+    allowed_keys = {
+        "address",
+        "actions",
+        "previous_address",
+        "allow_unknown",
+        "allow_sensitive",
+    }
+    for index, raw in enumerate(value):
+        entry_label = f"{label}[{index}]"
+        if not isinstance(raw, dict):
+            raise GuardInputError(f"{entry_label} must be an object")
+        extra = sorted(set(raw) - allowed_keys)
+        if extra:
+            raise GuardInputError(f"{entry_label} has unsupported keys")
+        address = require_string(raw.get("address"), f"{entry_label}.address")
+        if address in result:
+            raise GuardInputError(f"{label} repeats address {address}")
+        actions = canonical_actions(raw.get("actions"), f"{entry_label}.actions")
+        previous = raw.get("previous_address")
+        if previous is not None:
+            previous = require_string(previous, f"{entry_label}.previous_address")
+        if "state-move" in actions and previous is None:
+            raise GuardInputError(f"{entry_label} state-move requires previous_address")
+        if "state-move" not in actions and previous is not None:
+            raise GuardInputError(f"{entry_label} previous_address requires state-move")
+        allow_unknown = raw.get("allow_unknown", False)
+        allow_sensitive = raw.get("allow_sensitive", False)
+        if not isinstance(allow_unknown, bool) or not isinstance(allow_sensitive, bool):
+            raise GuardInputError(f"{entry_label} allow flags must be booleans")
+        result[address] = ExpectedChange(
+            address=address,
+            actions=actions,
+            previous_address=previous,
+            allow_unknown=allow_unknown,
+            allow_sensitive=allow_sensitive,
+        )
+    return result
+
+
+def parse_expected_outputs(value: Any) -> dict[str, ExpectedOutput]:
+    if not isinstance(value, list):
+        raise GuardInputError("allowed_outputs must be a list")
+    result: dict[str, ExpectedOutput] = {}
+    allowed_keys = {
+        "name",
+        "actions",
+        "allow_unknown",
+        "allow_sensitive",
+        "allow_sensitive_downgrade",
+    }
+    for index, raw in enumerate(value):
+        label = f"allowed_outputs[{index}]"
+        if not isinstance(raw, dict):
+            raise GuardInputError(f"{label} must be an object")
+        extra = sorted(set(raw) - allowed_keys)
+        if extra:
+            raise GuardInputError(f"{label} has unsupported keys")
+        name = require_string(raw.get("name"), f"{label}.name")
+        if name in result:
+            raise GuardInputError(f"allowed_outputs repeats name {name}")
+        actions = canonical_actions(raw.get("actions"), f"{label}.actions")
+        if set(actions) & {"import", "state-move"}:
+            raise GuardInputError(f"{label} contains resource-only actions")
+        allow_unknown = raw.get("allow_unknown", False)
+        allow_sensitive = raw.get("allow_sensitive", False)
+        allow_sensitive_downgrade = raw.get("allow_sensitive_downgrade", False)
+        if not all(
+            isinstance(flag, bool)
+            for flag in (allow_unknown, allow_sensitive, allow_sensitive_downgrade)
+        ):
+            raise GuardInputError(f"{label} allow flags must be booleans")
+        result[name] = ExpectedOutput(
+            name=name,
+            actions=actions,
+            allow_unknown=allow_unknown,
+            allow_sensitive=allow_sensitive,
+            allow_sensitive_downgrade=allow_sensitive_downgrade,
+        )
+    return result
+
+
+def parse_scope(
+    scope: dict[str, Any],
+) -> tuple[
+    dict[str, ExpectedChange], dict[str, ExpectedChange], dict[str, ExpectedOutput]
+]:
+    if set(scope) != {
+        "scope_version",
+        "allowed_changes",
+        "allowed_drift",
+        "allowed_outputs",
+    }:
+        raise GuardInputError(
+            "scope must contain exactly scope_version, allowed_changes, allowed_drift, "
+            "and allowed_outputs"
+        )
+    if type(scope["scope_version"]) is not int or scope["scope_version"] != 1:
+        raise GuardInputError("unsupported scope_version; expected 1")
+    allowed = parse_expected_entries(scope["allowed_changes"], "allowed_changes")
+    drift = parse_expected_entries(scope["allowed_drift"], "allowed_drift")
+    outputs = parse_expected_outputs(scope["allowed_outputs"])
+    return allowed, drift, outputs
+
+
+def marker_contains_true(value: Any, label: str) -> bool:
+    if value is True:
+        return True
+    if value is False:
+        return False
+    if isinstance(value, list):
+        return any(marker_contains_true(item, label) for item in value)
+    if isinstance(value, dict):
+        return any(marker_contains_true(item, label) for item in value.values())
+    raise GuardInputError(f"{label} contains an unsupported marker value")
+
+
+def risk_domains(resource_type: str, address: str) -> tuple[str, ...]:
+    haystack = f"{resource_type} {address}".lower()
+    rules = {
+        "cloud-run": ("cloud_run", "cloudrun", "run_service", "run_job"),
+        "iam": (
+            "_iam_",
+            "iam_binding",
+            "iam_member",
+            "iam_policy",
+            "service_account",
+            "workload_identity",
+        ),
+        "secret": ("secret_manager", "secret_version", ".secret", "_secret"),
+        "database": ("firestore", "database", "mongodb", "google_sql"),
+        "budget": ("billing_budget", ".budget", "_budget"),
+        "alert": ("alert_policy", "notification_channel", "uptime_check"),
+        "edge": (
+            "forwarding_rule",
+            "global_address",
+            "url_map",
+            "target_http_proxy",
+            "target_https_proxy",
+            "ssl_certificate",
+            "ssl_policy",
+            "certificate_manager",
+            "certificate_map",
+            "dns_",
+            "backend_service",
+            "network_endpoint_group",
+            "security_policy",
+            "address_group",
+        ),
+        "deployment": ("artifact_registry", "cloudbuild", "deploy", "container_image"),
+        "api": ("project_service", "service_usage", "serviceusage"),
+    }
+    return tuple(
+        name for name, needles in rules.items() if any(item in haystack for item in needles)
+    )
+
+
+def classify_change(raw: Any, label: str) -> ObservedChange | None:
+    if not isinstance(raw, dict):
+        raise GuardInputError(f"{label} must be an object")
+    if raw.get("deposed") is not None:
+        raise GuardInputError(f"{label} uses an unsupported deposed instance")
+    address = require_string(raw.get("address"), f"{label}.address")
+    mode = raw.get("mode")
+    if not isinstance(mode, str) or mode not in {"managed", "data"}:
+        raise GuardInputError(f"{label}.mode must be managed or data")
+    resource_type = require_string(raw.get("type"), f"{label}.type")
+    change = raw.get("change")
+    if not isinstance(change, dict):
+        raise GuardInputError(f"{label}.change must be an object")
+    raw_actions = change.get("actions")
+    if not isinstance(raw_actions, list) or any(not isinstance(item, str) for item in raw_actions):
+        raise GuardInputError(f"{label}.change.actions must be a string list")
+    action_key = tuple(raw_actions)
+    if action_key not in BASE_ACTIONS:
+        raise GuardInputError(f"{label}.change.actions has an unsupported Terraform action vector")
+    base_actions = list(BASE_ACTIONS[action_key])
+    if mode == "data" and base_actions:
+        raise GuardInputError(f"{label} has a mutating action for a data resource")
+
+    previous = raw.get("previous_address")
+    if previous is not None:
+        previous = require_string(previous, f"{label}.previous_address")
+        base_actions.append("state-move")
+
+    importing = change.get("importing")
+    if importing is not None:
+        if not isinstance(importing, dict) or not importing:
+            raise GuardInputError(f"{label}.change.importing must be a non-empty object")
+        if mode != "managed":
+            raise GuardInputError(f"{label} cannot import a data resource")
+        base_actions.append("import")
+
+    if not base_actions:
+        return None
+    actions = tuple(sorted(set(base_actions), key=ACTION_RANK.__getitem__))
+    return ObservedChange(
+        address=address,
+        actions=actions,
+        previous_address=previous,
+        has_unknown=marker_contains_true(
+            change.get("after_unknown", False), f"{label}.change.after_unknown"
+        ),
+        has_sensitive=marker_contains_true(
+            change.get("before_sensitive", False), f"{label}.change.before_sensitive"
+        )
+        or marker_contains_true(
+            change.get("after_sensitive", False), f"{label}.change.after_sensitive"
+        ),
+        domains=risk_domains(resource_type, address),
+    )
+
+
+def parse_observed_list(value: Any, label: str) -> dict[str, ObservedChange]:
+    if value is None:
+        return {}
+    if not isinstance(value, list):
+        raise GuardInputError(f"{label} must be a list when present")
+    result: dict[str, ObservedChange] = {}
+    for index, raw in enumerate(value):
+        observed = classify_change(raw, f"{label}[{index}]")
+        if observed is None:
+            continue
+        if observed.address in result:
+            raise GuardInputError(f"{label} repeats changed address {observed.address}")
+        result[observed.address] = observed
+    return result
+
+
+def parse_output_changes(value: Any) -> dict[str, ObservedOutput]:
+    if value is None:
+        return {}
+    if not isinstance(value, dict):
+        raise GuardInputError("output_changes must be an object when present")
+    result: dict[str, ObservedOutput] = {}
+    for raw_name, raw_change in value.items():
+        name = require_string(raw_name, "output_changes name")
+        label = f"output_changes[{name}]"
+        if not isinstance(raw_change, dict):
+            raise GuardInputError(f"{label} must be an object")
+        raw_actions = raw_change.get("actions")
+        if not isinstance(raw_actions, list) or any(
+            not isinstance(item, str) for item in raw_actions
+        ):
+            raise GuardInputError(f"{label}.actions must be a string list")
+        action_key = tuple(raw_actions)
+        if action_key not in BASE_ACTIONS:
+            raise GuardInputError(f"{label}.actions has an unsupported Terraform action vector")
+        actions = BASE_ACTIONS[action_key]
+        before_sensitive = marker_contains_true(
+            raw_change.get("before_sensitive", False), f"{label}.before_sensitive"
+        )
+        after_sensitive = marker_contains_true(
+            raw_change.get("after_sensitive", False), f"{label}.after_sensitive"
+        )
+        sensitive_downgrade = (
+            before_sensitive and not after_sensitive and actions != ("delete",)
+        )
+        has_unknown = marker_contains_true(
+            raw_change.get("after_unknown", False), f"{label}.after_unknown"
+        )
+        if not actions:
+            if sensitive_downgrade or has_unknown:
+                raise GuardInputError(f"{label} changes markers without a Terraform action")
+            continue
+        result[name] = ObservedOutput(
+            name=name,
+            actions=actions,
+            has_unknown=has_unknown,
+            has_sensitive=before_sensitive or after_sensitive,
+            sensitive_downgrade=sensitive_downgrade,
+        )
+    return result
+
+
+def parse_plan(
+    plan: dict[str, Any],
+) -> tuple[
+    dict[str, ObservedChange], dict[str, ObservedChange], dict[str, ObservedOutput]
+]:
+    version = plan.get("format_version")
+    if not isinstance(version, str):
+        raise GuardInputError("plan format_version must be a string")
+    version_parts = version.split(".")
+    if len(version_parts) != 2 or any(not part.isdigit() for part in version_parts):
+        raise GuardInputError("plan format_version is malformed")
+    major = int(version_parts[0])
+    if major != 1:
+        raise GuardInputError(f"unsupported Terraform plan JSON format major {major}")
+    for field in ("applyable", "complete", "errored"):
+        if not isinstance(plan.get(field), bool):
+            raise GuardInputError(f"plan {field} must be a boolean")
+    if plan["errored"]:
+        raise GuardInputError("Terraform reports that the plan errored")
+    if not plan["complete"]:
+        raise GuardInputError("Terraform reports an incomplete plan")
+    deferred = plan.get("deferred_changes")
+    if deferred not in (None, []):
+        raise GuardInputError("deferred_changes are unsupported")
+    changes = parse_observed_list(plan.get("resource_changes"), "resource_changes")
+    drift = parse_observed_list(plan.get("resource_drift"), "resource_drift")
+    outputs = parse_output_changes(plan.get("output_changes"))
+    if (changes or outputs) and not plan["applyable"]:
+        raise GuardInputError("Terraform reports a non-applyable plan with scoped changes")
+    return changes, drift, outputs
+
+
+def compare(
+    expected: dict[str, ExpectedChange],
+    observed: dict[str, ObservedChange],
+    label: str,
+) -> list[str]:
+    issues: list[str] = []
+    for address in sorted(set(observed) - set(expected)):
+        change = observed[address]
+        domain = f" [{','.join(change.domains)}]" if change.domains else ""
+        issues.append(f"unexpected {label} {address}: {','.join(change.actions)}{domain}")
+    for address in sorted(set(expected) - set(observed)):
+        issues.append(f"allowed {label} missing from plan: {address}")
+    for address in sorted(set(expected) & set(observed)):
+        wanted = expected[address]
+        actual = observed[address]
+        if wanted.actions != actual.actions:
+            issues.append(
+                f"{label} action mismatch for {address}: expected {','.join(wanted.actions)}; "
+                f"observed {','.join(actual.actions)}"
+            )
+        if wanted.previous_address != actual.previous_address:
+            issues.append(f"{label} previous_address mismatch for {address}")
+        if actual.has_unknown and not wanted.allow_unknown:
+            issues.append(f"unapproved unknown values for {label} {address}")
+        if actual.has_sensitive and not wanted.allow_sensitive:
+            issues.append(f"unapproved sensitive values for {label} {address}")
+    return issues
+
+
+def compare_outputs(
+    expected: dict[str, ExpectedOutput], observed: dict[str, ObservedOutput]
+) -> list[str]:
+    issues: list[str] = []
+    for name in sorted(set(observed) - set(expected)):
+        issues.append(f"unexpected output {name}: {','.join(observed[name].actions)}")
+    for name in sorted(set(expected) - set(observed)):
+        issues.append(f"allowed output missing from plan: {name}")
+    for name in sorted(set(expected) & set(observed)):
+        wanted = expected[name]
+        actual = observed[name]
+        if wanted.actions != actual.actions:
+            issues.append(
+                f"output action mismatch for {name}: expected {','.join(wanted.actions)}; "
+                f"observed {','.join(actual.actions)}"
+            )
+        if actual.has_unknown and not wanted.allow_unknown:
+            issues.append(f"unapproved unknown values for output {name}")
+        if actual.has_sensitive and not wanted.allow_sensitive:
+            issues.append(f"unapproved sensitive values for output {name}")
+        if actual.sensitive_downgrade and not wanted.allow_sensitive_downgrade:
+            issues.append(f"unapproved sensitive downgrade for output {name}")
+    return issues
+
+
+def summary(
+    changes: dict[str, ObservedChange],
+    drift: dict[str, ObservedChange],
+    outputs: dict[str, ObservedOutput],
+) -> str:
+    action_counts = {action: 0 for action in ACTION_ORDER}
+    change_domains: set[str] = set()
+    change_unknown = 0
+    change_sensitive = 0
+    for item in changes.values():
+        for action in item.actions:
+            action_counts[action] += 1
+        change_domains.update(item.domains)
+        change_unknown += int(item.has_unknown)
+        change_sensitive += int(item.has_sensitive)
+    drift_domains: set[str] = set()
+    drift_unknown = 0
+    drift_sensitive = 0
+    for item in drift.values():
+        drift_domains.update(item.domains)
+        drift_unknown += int(item.has_unknown)
+        drift_sensitive += int(item.has_sensitive)
+    output_unknown = sum(int(item.has_unknown) for item in outputs.values())
+    output_sensitive = sum(int(item.has_sensitive) for item in outputs.values())
+    output_sensitive_downgrade = sum(
+        int(item.sensitive_downgrade) for item in outputs.values()
+    )
+    counts = ", ".join(f"{key}={value}" for key, value in action_counts.items())
+    change_domain_text = ",".join(sorted(change_domains)) if change_domains else "none"
+    drift_domain_text = ",".join(sorted(drift_domains)) if drift_domains else "none"
+    return (
+        f"changes={len(changes)} drift={len(drift)} outputs={len(outputs)} {counts} "
+        f"change_unknown={change_unknown} change_sensitive={change_sensitive} "
+        f"change_risk_domains={change_domain_text} drift_unknown={drift_unknown} "
+        f"drift_sensitive={drift_sensitive} drift_risk_domains={drift_domain_text} "
+        f"output_unknown={output_unknown} output_sensitive={output_sensitive} "
+        f"output_sensitive_downgrade={output_sensitive_downgrade}"
+    )
+
+
+def main() -> int:
+    args = parse_args()
+    try:
+        scope = load_json(args.scope, "scope")
+        plan = load_json(args.plan_json, "plan")
+        expected, expected_drift, expected_outputs = parse_scope(scope)
+        observed, observed_drift, observed_outputs = parse_plan(plan)
+        issues = compare(expected, observed, "change")
+        issues.extend(compare(expected_drift, observed_drift, "drift"))
+        issues.extend(compare_outputs(expected_outputs, observed_outputs))
+    except GuardInputError as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 2
+
+    plan_summary = summary(observed, observed_drift, observed_outputs)
+    if issues:
+        print(
+            f"FAIL: Terraform plan is outside the allowed scope ({plan_summary})", file=sys.stderr
+        )
+        for issue in issues:
+            print(f"- {issue}", file=sys.stderr)
+        return 1
+    print(f"PASS: Terraform plan matches the allowed scope ({plan_summary})")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

@@ -1,4 +1,4 @@
 interface:
   display_name: "MatrixedMind Milestone Coordinator"
-  short_description: "Coordinate one MatrixedMind milestone"
-  default_prompt: "Use $matrixedmind-milestone-coordinator to coordinate this MatrixedMind milestone deliverable."
+  short_description: "Route delivery, escalation, and process evidence"
+  default_prompt: "Use $matrixedmind-milestone-coordinator to coordinate this MatrixedMind deliverable with risk-based routing, bounded escalation, and process-event capture."

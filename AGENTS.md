@@ -77,8 +77,17 @@ mutation plan and request approval once. Do not interrupt separately for each ro
 
 - Require `matrixedmind-milestone-coordinator` for milestone implementation, milestone
   verification, and other coordinated multi-agent deliverables.
+- Require `matrixedmind-cloud-change-control` for Terraform plan or apply review, drift
+  reconciliation, IAM or resource mutation, imports or state moves, identity transitions,
+  recovery exercises, and secret rotation. Its explicit approval gate applies before any live
+  mutation; do not duplicate its procedure here.
 - Require `matrixedmind-copilot-review-loop` after a milestone PR is pushed or when Copilot
   review feedback must be addressed.
+- Invoke `matrixedmind-improve-process` at coordinator closeout only for a nonempty process-event
+  ledger, a recurring review theme, unresolved process debt, or an owner process-improvement
+  request. The skill recommends changes and issue candidates but performs no repository or GitHub
+  write. GitHub issue creation requires explicit approval unless the owner later grants narrow
+  standing authorization.
 - After a milestone is complete, validated, and ready for review, publish its intended commits,
   push its branch, and create or convert its PR against the default branch as ready for review;
   verify it is non-draft before the Copilot loop. These publication steps are standing
@@ -96,7 +105,7 @@ mutation plan and request approval once. Do not interrupt separately for each ro
 - Begin coordinator work in the project default `read-only` sandbox with untrusted-command
   approvals. Do not delegate from or elevate a broad-access parent turn unless the access is
   explicitly required and approved; parent runtime overrides take precedence over agent defaults.
-- Use no more than two concurrent subagents by default. Delegate version-sensitive or
+- Use no more than two concurrent subagents and keep delegation one level deep. Delegate version-sensitive or
   provider-sensitive GCP, Firebase, Google AI, Gemini CLI, Terraform-on-GCP, and Google API
   research to `gcp_docs_researcher`; its Developer Knowledge MCP server is scoped to that agent
   only and requires local `GOOGLE_DEVELOPER_KNOWLEDGE_API_KEY`. Enabling the service and

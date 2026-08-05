@@ -1,0 +1,4 @@
+interface:
+  display_name: "MatrixedMind Cloud Change Control"
+  short_description: "Audit Terraform and GCP mutation scope safely"
+  default_prompt: "Use $matrixedmind-cloud-change-control to audit this MatrixedMind Terraform or GCP change before any live mutation."

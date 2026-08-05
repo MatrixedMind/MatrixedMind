@@ -15,8 +15,15 @@ description: Run the bounded post-push GitHub Copilot review loop for a Matrixed
    inspect the effective sandbox and network restrictions. Treat restricted-sandbox results as
    inconclusive; use at most one narrowly elevated network-capable verification before declaring
    a blocker, without printing credentials.
-4. Use event-driven or non-model waiting where available. Do not spend repeated model turns polling unchanged GitHub state; if polling is unavoidable, use a coarse cadence and retrieve only deltas.
-5. Stop with an exact blocker if authentication or required permissions fail, Copilot is not configured, the PR closes or merges, or a bounded timeout expires. If the same external-state failure recurs after one verified retry, stop with evidence and the next action rather than polling, broad web searches, repeated login instructions, or additional model turns.
+4. Use event-driven or non-model waiting where available. Do not spend repeated model turns polling
+   unchanged GitHub state. When a thread-heartbeat monitor is necessary, make its first check about
+   two minutes after each push and subsequent checks every minute, retrieve only deltas, and keep one
+   bounded timeout.
+5. Stop the monitor automatically when a Copilot review tied to the current head reports no new
+   actionable comments, the PR closes or merges, or the bounded timeout expires. Stop with an exact
+   blocker if authentication or required permissions fail or Copilot is not configured. If the same
+   external-state failure recurs after one verified retry, stop with evidence and the next action
+   rather than polling, broad web searches, repeated login instructions, or additional model turns.
 
 ## Read and classify feedback
 
