@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -100,7 +101,7 @@ class TerraformPlanScopeGuardTests(unittest.TestCase):
             plan_path.write_text(json.dumps(plan_value), encoding="utf-8")
             scope_path.write_text(json.dumps(scope_value), encoding="utf-8")
             return subprocess.run(
-                [str(GUARD), str(plan_path), "--scope", str(scope_path)],
+                [sys.executable, str(GUARD), str(plan_path), "--scope", str(scope_path)],
                 check=False,
                 capture_output=True,
                 text=True,
