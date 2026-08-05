@@ -361,10 +361,12 @@ After a reviewed cloud-mutation plan is explicitly approved, test rotation in de
 5. Confirm the prior token or secret behavior is understood before disabling its old version;
    record the rollback version and restore it through a reviewed Terraform plan if needed.
 
-No rotation test has been run for Milestone 12. The approved plans intentionally contained no
-Cloud Run or secret changes, so creating a non-production secret version and revision requires a
-separate audited live-mutation plan. Secret values, token values, and service-account keys must
-never be placed in Terraform, plans, logs, or this repository.
+No rotation test has been run. The approved plans intentionally contained no Cloud Run or secret
+changes, so creating a non-production secret version and revision requires a separate audited
+live-mutation plan. Its completion status and evidence requirements are tracked in the
+[Cloud MVP verification follow-up register](CLOUD_MVP_VERIFICATION_FOLLOW_UP.md). Secret values,
+token values, and service-account keys must never be placed in Terraform, plans, logs, or this
+repository.
 
 ### Cost and connectivity review
 
@@ -372,10 +374,11 @@ A bounded production review on 2026-07-31 found 67 billable read units, 33 billa
 6,387 bytes of current data-plus-index storage, and no scanned-document or scanned-index-entry
 units over the preceding seven days. Both environments retain five intentional composite indexes.
 All development indexes were ready; production reported three ready and two still creating even
-though their associated operations reported complete, so their readiness should be rechecked
-before relying on those two query paths. Current activity is too small to justify schema or index
-changes; keep record bodies and embedded revisions bounded and repeat the review after material
-traffic, query, schema, or retention growth.
+though their associated operations reported complete, so their readiness must be rechecked before
+relying on those two query paths. The status check and evidence requirements are tracked in the
+[Cloud MVP verification follow-up register](CLOUD_MVP_VERIFICATION_FOLLOW_UP.md). Current activity
+is too small to justify schema or index changes; keep record bodies and embedded revisions bounded
+and repeat the review after material traffic, query, schema, or retention growth.
 
 The same seven-day log review found 30 production LLM API requests, no development LLM requests,
 and no 429 responses. Retain the current process-local limit of 60 requests per 60 seconds. Revisit
