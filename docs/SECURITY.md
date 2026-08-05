@@ -124,7 +124,7 @@ MatrixedMind stores personal knowledge content. Treat record bodies, revisions, 
 
 Import/export features must avoid writing outside intended directories and should document the export format clearly.
 
-Do not store high-sensitivity data until cloud persistence, app-level auth, backups and restore,
+Do not store high-sensitivity data until cloud persistence, app-level auth, backup and restore,
 audit logging, token revocation, and Firestore Enterprise MongoDB compatibility are implemented and
 verified. The remaining non-production rotation and isolated restore exercises are tracked in the
 [Cloud MVP verification follow-up register](CLOUD_MVP_VERIFICATION_FOLLOW_UP.md). Until those
