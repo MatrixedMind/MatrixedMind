@@ -1,0 +1,4 @@
+interface:
+  display_name: "MatrixedMind Improve Process"
+  short_description: "Turn delivery evidence into prevention actions"
+  default_prompt: "Use $matrixedmind-improve-process to recommend the smallest evidence-backed MatrixedMind process improvements."

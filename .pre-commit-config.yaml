@@ -31,3 +31,10 @@ repos:
         language: system
         files: \.tf$
         pass_filenames: false
+
+      - id: terraform-plan-scope-guard-tests
+        name: Terraform plan scope guard tests
+        entry: uv run python .codex/tests/test_terraform_plan_scope_guard.py
+        language: system
+        files: ^\.codex/(scripts/terraform-plan-scope-guard|tests/test_terraform_plan_scope_guard\.py)$
+        pass_filenames: false

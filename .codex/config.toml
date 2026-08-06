@@ -3,6 +3,10 @@ sandbox_mode = "read-only"
 
 [agents]
 enabled = true
+# Keep the primary plus at most two subagent threads. The coordinator skill also
+# prevents those subagents from delegating further.
 max_concurrent_threads_per_session = 2
+# Worker and ordinary-reviewer agent files intentionally inherit these defaults
+# so the coordinator can explicitly select Sol high for a justified risk route.
 default_subagent_model = "gpt-5.6-terra"
 default_subagent_reasoning_effort = "medium"

@@ -1,5 +1,27 @@
 # Codex agent integrations
 
+## Coordinator routing and bounded escalation
+
+`.codex/config.toml` keeps the coordinator read-only with untrusted-command approvals and caps the
+session at two concurrent subagent threads, excluding the primary. Terra medium is the default
+spawned-agent route. `matrixedmind_explorer` and `matrixedmind_validator` pin Terra low for
+discovery and mechanical checks; `matrixedmind_worker` and `matrixedmind_reviewer` inherit the
+default so the coordinator can explicitly select Sol high for architecture or other high-risk
+work; and `matrixedmind_security_reviewer` pins Sol high for read-only security review.
+
+The coordinator owns all routing and permits one replacement or model elevation only after a
+repeated materially unchanged blocker and a changed hypothesis. A replacement receives a curated
+failure packet rather than the full transcript or deliverable restart. Model elevation never
+changes file ownership, tools, sandbox, approval policy, or mutation authority. Custom-agent
+sandbox values are defaults rather than a boundary against live parent runtime overrides, so the
+parent must begin in the narrowest authorized mode and preserve it across replacement.
+
+The coordinator records only material process events in a lightweight ledger and invokes
+`matrixedmind-improve-process` at closeout only when its trigger conditions are met. Terraform and
+GCP change reasoning routes through `matrixedmind-cloud-change-control`; its offline plan guard is
+evidence for exact resource scope, not approval or proof of live identity, backend, locking, or
+provider behavior.
+
 ## Terraform Registry documentation MCP
 
 `gcp_docs_researcher` may use only HashiCorp's public Terraform MCP Server
