@@ -23,9 +23,7 @@ MARKER_PATTERN = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.-]{0,127}")
 VALID_MODES = frozenset({"seed", "verify-and-test", "cleanup"})
 SOURCE_DATABASE = "matrixedmind-spike"
 TARGET_DATABASE_PREFIX = "matrixedmind-dev-restore-validation-"
-TARGET_DATABASE_PATTERN = re.compile(
-    rf"{re.escape(TARGET_DATABASE_PREFIX)}[0-9]{{8}}-[0-9]{{4}}"
-)
+TARGET_DATABASE_PATTERN = re.compile(rf"{re.escape(TARGET_DATABASE_PREFIX)}[0-9]{{8}}-[0-9]{{4}}")
 REQUIRED_URI_OPTIONS = {
     "loadBalanced": ["true"],
     "tls": ["true"],
