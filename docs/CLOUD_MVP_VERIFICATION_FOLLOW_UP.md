@@ -22,10 +22,9 @@ location; never record secret, token, or credential values.
 
 ### 1. Deliberate CI negative-path proof (Milestone 8)
 
-**Status:** Not executed.
+**Status:** Completed on 2026-08-12.
 
-**Blocks:** Full Milestone 8 CI verification and Cloud MVP verification closeout. It does not block
-Milestone 13 or higher-sensitivity data use by itself.
+**Blocks:** Nothing. The deliberate negative path and clean recovery are verified.
 
 **Acceptance criteria:** In an isolated disposable change or branch, deliberately cause one required
 CI component (lint, type check, test, or Docker build) to fail; confirm `CI / Required` fails and
@@ -35,6 +34,16 @@ failed run and the clean recovery run. Do not merge the deliberate-failure chang
 **Approval and evidence:** A GitHub workflow/PR run is required. It is not a cloud mutation, but the
 evidence must identify sanitized run URLs or identifiers, the intentionally failed component, the
 required-check result, and the clean recovery result. See [TESTING.md](TESTING.md#ci-verification).
+
+**Evidence:** Disposable PR
+[`#29`](https://github.com/MatrixedMind/MatrixedMind/pull/29) introduced only an intentional Ruff
+failure and was closed without merge. Workflow run
+[`31622297572`](https://github.com/MatrixedMind/MatrixedMind/actions/runs/31622297572) reported
+`Python quality` and `CI / Required` as failed while Docker and Terraform passed; GitHub reported
+the pull request as blocked. After the probe was removed on the same branch, workflow run
+[`31622432621`](https://github.com/MatrixedMind/MatrixedMind/actions/runs/31622432621) reported the
+Python, Docker, Terraform, and aggregate `CI / Required` checks as successful. The optional
+credential-gated Firestore lane skipped in both runs as designed.
 
 ### 2. Non-production secret-rotation exercise (Milestone 12)
 
@@ -66,9 +75,11 @@ isolated development target, run repository-contract and readiness checks, prese
 delete the temporary target only after the checks pass. On failure, stop access, preserve the
 target for diagnosis, and leave the source database untouched.
 
-**Approval and evidence:** Requires one separately approved audited live-mutation plan covering
-the restore and cleanup. Record the source timestamp, target, test-data approval, check results,
-cleanup result or retained-target reason, and rollback/containment outcome. See
+**Approval and evidence:** Requires an approved audited creation-and-validation mutation plan.
+After successful validation and current target rediscovery, destructive cleanup requires a second
+exact plan and explicit approval; clone approval never implies deletion approval. Record the source
+timestamp, target, test-data approval, check results, cleanup result or retained-target reason, and
+rollback/containment outcome. See
 [OPERATIONS.md](OPERATIONS.md#backup-and-recovery).
 
 ### 4. Production Firestore composite-index readiness recheck (Milestone 12)
