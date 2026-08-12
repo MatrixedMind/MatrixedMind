@@ -47,10 +47,9 @@ credential-gated Firestore lane skipped in both runs as designed.
 
 ### 2. Non-production secret-rotation exercise (Milestone 12)
 
-**Status:** Not executed.
+**Status:** Completed in development on 2026-08-12.
 
-**Blocks:** Higher-sensitivity data use and Cloud MVP verification closeout. It does not block
-Milestone 13.
+**Blocks:** Nothing. The development rotation requirement is verified.
 
 **Acceptance criteria:** Complete the development-only rotation procedure: create a new secret
 version outside the repository, update only the matching explicit numeric Terraform version,
@@ -63,9 +62,22 @@ environment, numeric versions (not values), revision identifier, sanitized endpo
 request results, rollback readiness, and whether the prior version was retained or disabled. See
 [OPERATIONS.md](OPERATIONS.md#non-production-secret-rotation-test).
 
+**Evidence:** Secret `matrixedmind-dev-app-secret-key` version 2 is active on ready revision
+`matrixedmind-dev-00013-br6`; rollback version 1 remains enabled. The first version-2 revision,
+`matrixedmind-dev-00012-4cc`, exceeded its 512 MiB memory limit while `uv run` attempted a runtime
+development-dependency sync and received no traffic. Commit `f69a78f` changed the production
+container command to `uv run --no-sync`; the corrected amd64 image was deployed by immutable
+digest, became ready, and serves 100% of development traffic. Authenticated `/health` and `/ready`
+checks returned `200`, startup logs contained no dependency synchronization or memory-limit event,
+and the fresh locked Terraform reconciliation plan reported zero managed changes. Cloud Run Job
+execution `matrixedmind-closeout-source-h6t4h` then passed token save, metadata identity-token,
+health, readiness, scoped LLM record access, exact token revocation, and post-revocation rejection.
+No prior secret version was disabled.
+
 ### 3. Isolated development restore exercise (Milestone 12)
 
-**Status:** Not executed; the exact approval blocker was previously recorded.
+**Status:** Source marker seeded and restore timestamp selected on 2026-08-12; isolated clone and
+target validation await separate approval.
 
 **Blocks:** Higher-sensitivity data use, treating MatrixedMind as durable personal infrastructure,
 and Cloud MVP verification closeout. It does not block Milestone 13.
@@ -81,6 +93,15 @@ exact plan and explicit approval; clone approval never implies deletion approval
 timestamp, target, test-data approval, check results, cleanup result or retained-target reason, and
 rollback/containment outcome. See
 [OPERATIONS.md](OPERATIONS.md#backup-and-recovery).
+
+**Evidence so far:** Temporary source identity `mm-dev-closeout-source` is conditioned to database
+`matrixedmind-spike`, and the pinned source job has invoker access only to `matrixedmind-dev`.
+Execution `matrixedmind-closeout-source-8jdjt` seeded marker
+`cloud-mvp-closeout-20260812` at `2026-08-12T21:17:13.802056Z`. The selected whole-minute source
+timestamp is `2026-08-12T21:18:00Z`; at `2026-08-12T21:18:22Z` it was in the past, PITR was enabled,
+and the source `earliestVersionTime` was `2026-08-05T21:19:00Z`. The source marker, temporary
+identity, IAM bindings, and job are intentionally retained for the separately approved clone and
+validation phase. No clone, target IAM, target job, deletion, or cleanup has occurred.
 
 ### 4. Production Firestore composite-index readiness recheck (Milestone 12)
 

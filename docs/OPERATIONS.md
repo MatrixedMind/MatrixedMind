@@ -258,7 +258,9 @@ runs after successful CI on `main` and can also be dispatched manually from `mai
 5. Calls `/health` and `/ready` with the deployer service account's Cloud Run identity token.
 
 Terraform remains authoritative for environment variables, secret versions, probes, IAM, scaling,
-and exposure. Run and apply a reviewed Terraform plan for those changes.
+and exposure. The deploy workflow owns the immutable image revision, while Cloud Run's `client`
+and `client_version` fields are operational deploy metadata and are ignored by Terraform. Run and
+apply a reviewed Terraform plan for the Terraform-owned changes.
 
 ### Manual verification
 
@@ -389,6 +391,12 @@ declarative PITR clone operation, so the exact clone and cleanup commands requir
 approval even though they are not Terraform state actions. Clone approval never implies cleanup
 approval.
 
+On 2026-08-12, the approved source phase seeded marker `cloud-mvp-closeout-20260812` in development
+and selected `2026-08-12T21:18:00Z` as the safe whole-minute source timestamp. PITR was enabled and
+the timestamp was later than `earliestVersionTime`. The isolated clone and target validation have
+not run; the source marker and temporary source-only job/identity remain in place pending their
+separate audited approval.
+
 ### Non-production secret-rotation test
 
 After a reviewed cloud-mutation plan is explicitly approved, test rotation in development only:
@@ -419,9 +427,12 @@ revision wiring, startup, authenticated health/readiness, persistence, and the i
 LLM boundary; it does not prove secret-dependent session semantics. Do not claim more until a
 production identity/session implementation consumes this setting.
 
-No rotation test has been run. The approved plans intentionally contained no Cloud Run or secret
-changes, so creating a non-production secret version and revision requires a separate audited
-live-mutation plan. Its completion status and evidence requirements are tracked in the
+The development rotation exercise completed on 2026-08-12. Secret version 2 is active on ready
+revision `matrixedmind-dev-00013-br6`, rollback version 1 remains enabled, authenticated health and
+readiness passed, and the bounded LLM smoke proved scoped access, exact revocation, and rejection
+after revocation. The initial version-2 revision failed closed with no traffic because its startup
+command attempted a runtime dependency sync and exceeded 512 MiB; the corrected production image
+uses `uv run --no-sync`. Full sanitized evidence is in the
 [Cloud MVP verification follow-up register](CLOUD_MVP_VERIFICATION_FOLLOW_UP.md). Secret values,
 token values, and service-account keys must never be placed in Terraform, plans, logs, or this
 repository.

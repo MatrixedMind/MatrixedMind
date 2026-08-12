@@ -14,8 +14,10 @@ Milestone 6 is implemented and verified for owner auth boundaries, deterministic
 
 Milestones 0 through 12 have delivered their planned implementation, including Firestore Enterprise
 MongoDB compatibility, the Cloud Run deployment baseline, the narrow ChatGPT Action integration,
-hosted activation, and operational hardening. Remaining unexecuted or conditional Cloud MVP
-verification is tracked explicitly in the [Cloud MVP verification follow-up register](CLOUD_MVP_VERIFICATION_FOLLOW_UP.md);
+hosted activation, and operational hardening. The development secret-rotation exercise is now
+verified, and the restore source marker and safe PITR timestamp are prepared. Remaining unexecuted
+or conditional Cloud MVP verification is tracked explicitly in the
+[Cloud MVP verification follow-up register](CLOUD_MVP_VERIFICATION_FOLLOW_UP.md);
 it is not represented as completed verification. Milestone 13 public project documentation is the
 next product implementation milestone. Import/export remains deferred until after the secure Cloud
 MVP path unless recovery needs pull it forward.
@@ -984,8 +986,9 @@ personal knowledge or sustained use.
   isolated development restore target is a separate live mutation that was not in the approved
   Milestone 12 plans.
 - [x] Billing budget alerts are configured.
-- Remaining secret-rotation, restore, and production-index readiness verification is tracked as
-  required closeout work in the [Cloud MVP verification follow-up register](CLOUD_MVP_VERIFICATION_FOLLOW_UP.md).
+- The development secret-rotation exercise is verified. The isolated restore clone/validation and
+  production-index readiness recheck remain required closeout work in the
+  [Cloud MVP verification follow-up register](CLOUD_MVP_VERIFICATION_FOLLOW_UP.md).
 - [x] Firestore cost review is documented.
 - [x] New TOML files parse successfully.
 - [x] The Terraform MCP exposes only approved public Registry documentation tools, and a
@@ -1007,9 +1010,12 @@ approved development and production Milestone 12 plans then created the notifica
 alert policies, budgets, observer service accounts and read-only IAM, and required APIs with no
 destroys, no Cloud Run changes, and no existing deployment-IAM changes. Fresh normal locked plans
 for both roots report no changes. Read-only impersonation smokes succeeded in both projects, and
-the shared-edge project remains excluded. The non-production secret rotation, isolated restore
-exercise, and production composite-index readiness recheck were not part of those approved plans;
-their unexecuted status and acceptance criteria are in the
+the shared-edge project remains excluded. A separately approved 2026-08-12 closeout phase rotated
+the development app secret to numeric version 2, deployed and verified ready revision
+`matrixedmind-dev-00013-br6`, passed the bounded scoped-LLM smoke, seeded the restore marker, and
+selected safe source timestamp `2026-08-12T21:18:00Z`. The isolated restore clone/validation and
+production composite-index readiness recheck remain incomplete; their status and acceptance
+criteria are in the
 [Cloud MVP verification follow-up register](CLOUD_MVP_VERIFICATION_FOLLOW_UP.md).
 
 ### Done when
