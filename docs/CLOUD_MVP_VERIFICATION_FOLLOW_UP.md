@@ -121,6 +121,13 @@ exited 1 at `2026-08-12T23:35:56.228796Z`. The binding was immediately removed a
 absent. No further retry or permission broadening is authorized; diagnosis now requires a reviewed
 plan that can distinguish OIDC authorization, endpoint selection, and driver/server failures
 without exposing the URI, token, or credential material.
+The follow-up harness now emits only a fixed operation stage and fixed exception category, such as
+`marker-read/authorization-failure` or `marker-read/server-selection-timeout`; it never renders the
+underlying exception text. Unit tests cover every emitted category and explicit URI/token
+non-disclosure. Repository-contract test output is discarded and represented only as
+`repository-contract/test-failure`; client teardown cannot mask an earlier classified failure.
+This repository change is not live evidence: a newly built immutable image, job
+update, target-access regrant, and diagnostic execution still require a separate audited approval.
 
 ### 4. Production Firestore composite-index readiness recheck (Milestone 12)
 

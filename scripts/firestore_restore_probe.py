@@ -16,6 +16,14 @@ from typing import Any
 from urllib.parse import parse_qs, urlparse
 
 from pymongo import MongoClient
+from pymongo.errors import (
+    ConfigurationError,
+    ConnectionFailure,
+    NetworkTimeout,
+    OperationFailure,
+    PyMongoError,
+    ServerSelectionTimeoutError,
+)
 
 FIRESTORE_MONGO_URI_ENV = "FIRESTORE_MONGO_URI"
 COLLECTION_NAME = "restore_validation"
@@ -35,6 +43,42 @@ REQUIRED_URI_OPTIONS = {
 
 class ProbeValidationError(ValueError):
     """Raised when input cannot safely identify the one probe record."""
+
+
+class ProbeRuntimeError(RuntimeError):
+    """Report only a fixed operation stage and sanitized driver category."""
+
+    def __init__(self, stage: str, category: str) -> None:
+        self.stage = stage
+        self.category = category
+        super().__init__(f"{stage}/{category}")
+
+
+def classify_database_error(error: Exception) -> str:
+    """Classify a database exception without rendering its potentially sensitive message."""
+    if isinstance(error, ServerSelectionTimeoutError):
+        return "server-selection-timeout"
+    if isinstance(error, NetworkTimeout):
+        return "network-timeout"
+    if isinstance(error, ConfigurationError):
+        return "configuration-error"
+    if isinstance(error, OperationFailure):
+        if error.code in {13, 18}:
+            return "authorization-failure"
+        return "operation-failure"
+    if isinstance(error, ConnectionFailure):
+        return "connection-failure"
+    if isinstance(error, PyMongoError):
+        return "driver-error"
+    return "unexpected-error"
+
+
+def run_database_step(stage: str, operation: Callable[[], Any]) -> Any:
+    """Run one database operation and discard all exception text on failure."""
+    try:
+        return operation()
+    except Exception as error:
+        raise ProbeRuntimeError(stage, classify_database_error(error)) from None
 
 
 def marker_payload(marker_id: str) -> dict[str, object]:
@@ -92,6 +136,8 @@ def run_firestore_tests() -> int:
     completed = subprocess.run(
         [sys.executable, "-m", "pytest", "tests/firestore", "-rs"],
         check=False,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
     )
     return completed.returncode
 
@@ -109,28 +155,49 @@ def run_restore_probe(
 
     validated_marker_id = validate_marker_id(marker_id)
     uri, database_name = firestore_uri_and_database(mode)
-    client = client_factory(uri)
+    client = run_database_step("client-create", lambda: client_factory(uri))
+    primary_error: Exception | None = None
     try:
         collection = client[database_name][COLLECTION_NAME]
         expected_payload = marker_payload(validated_marker_id)
 
         if mode == "seed":
-            collection.replace_one({"_id": validated_marker_id}, expected_payload, upsert=True)
+            run_database_step(
+                "marker-write",
+                lambda: collection.replace_one(
+                    {"_id": validated_marker_id}, expected_payload, upsert=True
+                ),
+            )
             print("restore validation marker seeded")
             return 0
 
         if mode == "cleanup":
-            deleted_count = collection.delete_one({"_id": validated_marker_id}).deleted_count
+            result = run_database_step(
+                "marker-delete",
+                lambda: collection.delete_one({"_id": validated_marker_id}),
+            )
+            deleted_count = result.deleted_count
             print(f"restore validation marker cleanup deleted: {deleted_count}")
             return 0
 
-        document = collection.find_one({"_id": validated_marker_id})
+        document = run_database_step(
+            "marker-read", lambda: collection.find_one({"_id": validated_marker_id})
+        )
         if document != expected_payload:
             raise ProbeValidationError("restore validation marker is missing or does not match")
-        client.admin.command("ping")
-        return pytest_runner()
+        run_database_step("database-ping", lambda: client.admin.command("ping"))
+        if pytest_runner() != 0:
+            raise ProbeRuntimeError("repository-contract", "test-failure")
+        return 0
+    except Exception as error:
+        primary_error = error
+        raise
     finally:
-        client.close()
+        try:
+            client.close()
+        except Exception as error:
+            if primary_error is None:
+                raise ProbeRuntimeError("client-close", classify_database_error(error)) from None
 
 
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
@@ -147,9 +214,12 @@ def main(argv: Sequence[str] | None = None) -> int:
     except ProbeValidationError as error:
         print(f"restore probe failed: {error}", file=sys.stderr)
         return 2
+    except ProbeRuntimeError as error:
+        print(f"restore probe failed: {error}", file=sys.stderr)
+        return 1
     except Exception:
-        # Driver errors can include connection details, so intentionally do not print them.
-        print("restore probe failed: database operation could not be completed", file=sys.stderr)
+        # Unexpected errors can also include connection details, so print only a fixed category.
+        print("restore probe failed: unexpected-error", file=sys.stderr)
         return 1
 
 

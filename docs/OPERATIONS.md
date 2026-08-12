@@ -406,6 +406,14 @@ verified absent. A native `databases ping` was inconclusive because it also did 
 known-good source from the same operator environment. Do not retry unchanged or broaden IAM. The
 next diagnostic must safely classify OIDC authorization, endpoint selection, and driver/server
 errors without emitting the database URI, tokens, or credentials.
+The restore harness implements that boundary with fixed stages (`client-create`, marker operation,
+and `database-ping`) and fixed categories for server selection, network timeout, configuration,
+authorization, other operations, connection, driver, and unexpected errors. It discards exception
+messages before printing. It also discards repository-contract subprocess output, emits only a
+fixed test-failure category, and preserves a primary operation error across best-effort client
+teardown. Treat a new image build or passing unit test as offline evidence only;
+updating or executing the preserved job and restoring target access remain separately approved
+cloud mutations.
 
 ### Non-production secret-rotation test
 
