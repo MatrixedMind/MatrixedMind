@@ -1023,7 +1023,8 @@ The separately approved one-time target retry reproduced the same sanitized data
 failure, so target access was removed again and unchanged retries are stopped pending a safer,
 more diagnostic execution plan.
 The harness now has tested fixed stage/category diagnostics with explicit secret-text
-non-disclosure; no new image or live diagnostic execution has yet been approved.
+non-disclosure, and its linux/amd64 image passes locally; no registry publication, job update, or
+live diagnostic execution has yet been approved.
 
 ### Done when
 

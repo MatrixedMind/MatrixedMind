@@ -126,8 +126,9 @@ The follow-up harness now emits only a fixed operation stage and fixed exception
 underlying exception text. Unit tests cover every emitted category and explicit URI/token
 non-disclosure. Repository-contract test output is discarded and represented only as
 `repository-contract/test-failure`; client teardown cannot mask an earlier classified failure.
-This repository change is not live evidence: a newly built immutable image, job
-update, target-access regrant, and diagnostic execution still require a separate audited approval.
+The linux/amd64 image tagged `a0f4c35` was built and passed its 27 focused tests locally. This is
+not live evidence: publishing that immutable image, updating the job, regranting target access, and
+executing the diagnostic still require a separate audited approval.
 
 ### 4. Production Firestore composite-index readiness recheck (Milestone 12)
 
