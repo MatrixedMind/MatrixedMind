@@ -400,6 +400,12 @@ the marker or repository contract could be verified. The target-conditioned data
 binding was removed immediately. The delete-protected clone, target job, and target identity are
 preserved without database access for diagnosis; source resources and the marker remain intact.
 Any diagnostic regrant or retry and all destructive cleanup require separately reviewed approval.
+The approved one-time retry later reproduced the identical sanitized database-operation failure in
+execution `matrixedmind-closeout-target-th7hv`; the exact conditional binding was removed again and
+verified absent. A native `databases ping` was inconclusive because it also did not return for the
+known-good source from the same operator environment. Do not retry unchanged or broaden IAM. The
+next diagnostic must safely classify OIDC authorization, endpoint selection, and driver/server
+errors without emitting the database URI, tokens, or credentials.
 
 ### Non-production secret-rotation test
 

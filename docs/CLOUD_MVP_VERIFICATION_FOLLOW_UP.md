@@ -110,6 +110,17 @@ not be completed`, so neither the cloned marker nor the repository contract is v
 target-conditioned `roles/datastore.user` binding was removed. The delete-protected clone, target
 job, and target service account are preserved without database access for diagnosis; the source
 marker and source-only resources remain intact. No database deletion or other cleanup occurred.
+An explicitly approved one-time diagnostic retry reconfirmed the completed clone, all five ready
+indexes, exact private target URI, pinned image digest, job identity and arguments, and absent
+target access. Google's native MongoDB-compatible `databases ping` did not return within 60 seconds
+for either the target or the known-good source under the same operator environment, so it could
+not distinguish clone readiness. No IAM denial for the validator was visible to the read-only
+observer. After the exact conditional binding was restored, execution
+`matrixedmind-closeout-target-th7hv` reproduced the same sanitized database-operation failure and
+exited 1 at `2026-08-12T23:35:56.228796Z`. The binding was immediately removed again and verified
+absent. No further retry or permission broadening is authorized; diagnosis now requires a reviewed
+plan that can distinguish OIDC authorization, endpoint selection, and driver/server failures
+without exposing the URI, token, or credential material.
 
 ### 4. Production Firestore composite-index readiness recheck (Milestone 12)
 

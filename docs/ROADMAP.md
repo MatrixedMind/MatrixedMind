@@ -1019,6 +1019,9 @@ repository-contract proof; target database access was removed and the delete-pro
 preserved. Restore validation and the production composite-index readiness recheck remain
 incomplete; their status and acceptance criteria are in the
 [Cloud MVP verification follow-up register](CLOUD_MVP_VERIFICATION_FOLLOW_UP.md).
+The separately approved one-time target retry reproduced the same sanitized database-operation
+failure, so target access was removed again and unchanged retries are stopped pending a safer,
+more diagnostic execution plan.
 
 ### Done when
 
