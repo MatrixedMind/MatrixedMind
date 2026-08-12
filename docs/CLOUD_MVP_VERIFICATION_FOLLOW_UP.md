@@ -76,8 +76,8 @@ No prior secret version was disabled.
 
 ### 3. Isolated development restore exercise (Milestone 12)
 
-**Status:** Source marker seeded and restore timestamp selected on 2026-08-12; isolated clone and
-target validation await separate approval.
+**Status:** Isolated clone completed on 2026-08-12, but target validation failed before the marker
+and repository contract could be verified. Target access is removed and the clone is preserved.
 
 **Blocks:** Higher-sensitivity data use, treating MatrixedMind as durable personal infrastructure,
 and Cloud MVP verification closeout. It does not block Milestone 13.
@@ -94,14 +94,22 @@ timestamp, target, test-data approval, check results, cleanup result or retained
 rollback/containment outcome. See
 [OPERATIONS.md](OPERATIONS.md#backup-and-recovery).
 
-**Evidence so far:** Temporary source identity `mm-dev-closeout-source` is conditioned to database
+**Evidence:** Temporary source identity `mm-dev-closeout-source` is conditioned to database
 `matrixedmind-spike`, and the pinned source job has invoker access only to `matrixedmind-dev`.
 Execution `matrixedmind-closeout-source-8jdjt` seeded marker
 `cloud-mvp-closeout-20260812` at `2026-08-12T21:17:13.802056Z`. The selected whole-minute source
 timestamp is `2026-08-12T21:18:00Z`; at `2026-08-12T21:18:22Z` it was in the past, PITR was enabled,
-and the source `earliestVersionTime` was `2026-08-05T21:19:00Z`. The source marker, temporary
-identity, IAM bindings, and job are intentionally retained for the separately approved clone and
-validation phase. No clone, target IAM, target job, deletion, or cleanup has occurred.
+and the source `earliestVersionTime` was `2026-08-05T21:19:00Z`. Clone operation
+`h8Dhdvjun4hPSGKfMGUxhRAqMXRzZXctc3UIIgwQHho` completed successfully at
+`2026-08-12T22:55:31.924744Z`, creating delete-protected target
+`matrixedmind-dev-restore-validation-20260812-2118` from that exact snapshot. The target is
+Enterprise, MongoDB-compatible, and all five cloned MongoDB-compatible composite indexes reported
+`READY`; PITR was not inherited. Execution `matrixedmind-closeout-target-dxxdb` then exited 1 at
+`2026-08-12T23:08:43.824392Z` with the intentionally sanitized blocker `database operation could
+not be completed`, so neither the cloned marker nor the repository contract is verified. The exact
+target-conditioned `roles/datastore.user` binding was removed. The delete-protected clone, target
+job, and target service account are preserved without database access for diagnosis; the source
+marker and source-only resources remain intact. No database deletion or other cleanup occurred.
 
 ### 4. Production Firestore composite-index readiness recheck (Milestone 12)
 

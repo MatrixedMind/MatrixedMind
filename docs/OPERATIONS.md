@@ -393,9 +393,13 @@ approval.
 
 On 2026-08-12, the approved source phase seeded marker `cloud-mvp-closeout-20260812` in development
 and selected `2026-08-12T21:18:00Z` as the safe whole-minute source timestamp. PITR was enabled and
-the timestamp was later than `earliestVersionTime`. The isolated clone and target validation have
-not run; the source marker and temporary source-only job/identity remain in place pending their
-separate audited approval.
+the timestamp was later than `earliestVersionTime`. The isolated clone completed successfully and
+all five cloned MongoDB-compatible indexes reported `READY`, but target execution
+`matrixedmind-closeout-target-dxxdb` failed with the sanitized database-operation blocker before
+the marker or repository contract could be verified. The target-conditioned database-access
+binding was removed immediately. The delete-protected clone, target job, and target identity are
+preserved without database access for diagnosis; source resources and the marker remain intact.
+Any diagnostic regrant or retry and all destructive cleanup require separately reviewed approval.
 
 ### Non-production secret-rotation test
 

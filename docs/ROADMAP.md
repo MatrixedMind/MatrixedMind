@@ -1013,9 +1013,11 @@ for both roots report no changes. Read-only impersonation smokes succeeded in bo
 the shared-edge project remains excluded. A separately approved 2026-08-12 closeout phase rotated
 the development app secret to numeric version 2, deployed and verified ready revision
 `matrixedmind-dev-00013-br6`, passed the bounded scoped-LLM smoke, seeded the restore marker, and
-selected safe source timestamp `2026-08-12T21:18:00Z`. The isolated restore clone/validation and
-production composite-index readiness recheck remain incomplete; their status and acceptance
-criteria are in the
+selected safe source timestamp `2026-08-12T21:18:00Z`. The isolated restore clone completed and
+its five indexes are ready, but the contained target-validation job failed before marker or
+repository-contract proof; target database access was removed and the delete-protected clone was
+preserved. Restore validation and the production composite-index readiness recheck remain
+incomplete; their status and acceptance criteria are in the
 [Cloud MVP verification follow-up register](CLOUD_MVP_VERIFICATION_FOLLOW_UP.md).
 
 ### Done when
