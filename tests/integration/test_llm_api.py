@@ -228,13 +228,16 @@ def test_llm_rejects_missing_invalid_and_revoked_tokens(
         ToggleAuditEventRepository,
     ],
 ) -> None:
-    assert client.get("/api/llm/records?space=personal").status_code == 401
-    assert (
-        client.get("/api/llm/records?space=personal", headers=auth_headers("wrong")).status_code
-        == 401
-    )
+    missing = client.get("/api/llm/records?space=personal")
+    assert missing.status_code == 401
+    assert missing.json()["detail"] == "Personal access token required"
+    invalid = client.get("/api/llm/records?space=personal", headers=auth_headers("wrong"))
+    assert invalid.status_code == 401
+    assert invalid.json()["detail"] == "Invalid personal access token"
     repos[1].revoke("token-1")
-    assert client.get("/api/llm/records?space=personal", headers=auth_headers()).status_code == 401
+    revoked = client.get("/api/llm/records?space=personal", headers=auth_headers())
+    assert revoked.status_code == 401
+    assert revoked.json()["detail"] == "Invalid personal access token"
 
 
 def test_llm_enforces_token_scope(

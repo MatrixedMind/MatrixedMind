@@ -1,7 +1,15 @@
-import pytest
+from datetime import UTC, datetime, timedelta
 
-from app.auth.dependencies import hash_personal_access_token, issue_personal_access_token
-from app.settings import Settings
+import pytest
+from starlette.requests import Request
+
+import app.auth.dependencies as auth_dependencies
+from app.auth.dependencies import (
+    hash_personal_access_token,
+    issue_personal_access_token,
+    require_browser_csrf,
+)
+from app.settings import Settings, settings
 
 
 def test_local_auth_is_the_default() -> None:
@@ -117,3 +125,21 @@ def test_issued_personal_access_token_is_only_represented_by_hash() -> None:
     token_hash = hash_personal_access_token(raw_token)
     assert raw_token != token_hash
     assert len(token_hash) == 64
+
+
+def test_test_identity_csrf_bypass_handles_leap_day(monkeypatch: pytest.MonkeyPatch) -> None:
+    leap_day = datetime(2028, 2, 29, tzinfo=UTC)
+    monkeypatch.setattr(settings, "auth_mode", "test")
+    monkeypatch.setattr(auth_dependencies, "utc_now", lambda: leap_day)
+    request = Request(
+        {
+            "type": "http",
+            "method": "POST",
+            "path": "/api/records/",
+            "headers": [(b"x-test-user-id", b"owner")],
+        }
+    )
+
+    session = require_browser_csrf(request, None)
+
+    assert session.absolute_expires_at == leap_day + timedelta(days=365)

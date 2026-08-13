@@ -5,6 +5,7 @@ import hmac
 import secrets
 import time
 from collections import defaultdict, deque
+from datetime import timedelta
 from functools import lru_cache
 from typing import Annotated
 
@@ -132,7 +133,7 @@ def require_browser_csrf(request: Request, form_token: str | None) -> BrowserSes
             created_at=now,
             last_seen_at=now,
             rotated_at=now,
-            absolute_expires_at=now.replace(year=now.year + 1),
+            absolute_expires_at=now + timedelta(days=365),
         )
     session = getattr(request.state, "browser_session", None)
     if not isinstance(session, BrowserSession) or not valid_csrf(
@@ -175,7 +176,10 @@ def bearer_token_from_request(request: Request) -> str:
     authorization = request.headers.get("authorization", "")
     scheme, _, value = authorization.partition(" ")
     if scheme.lower() != "bearer" or not value:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="LLM token required")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Personal access token required",
+        )
     return value
 
 
@@ -207,7 +211,10 @@ def authenticate_personal_access_token(
     raw_token = bearer_token_from_request(request)
     token = token_repo.get_by_hash(hash_personal_access_token(raw_token))
     if token is None or token.is_revoked:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid LLM token")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid personal access token",
+        )
     if required_scope not in token.scopes:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Token scope denied")
     personal_access_token_rate_limiter.check(token.id)
