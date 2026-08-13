@@ -93,8 +93,13 @@ resource "google_cloud_run_v2_service" "this" {
   }
 
   lifecycle {
-    # Terraform owns service configuration; the deploy workflow owns immutable image revisions.
-    ignore_changes = [template[0].containers[0].image]
+    # Terraform owns service configuration; the deploy workflow owns immutable image revisions
+    # and Cloud Run records the deploying client as operational metadata.
+    ignore_changes = [
+      client,
+      client_version,
+      template[0].containers[0].image,
+    ]
   }
 }
 

@@ -57,6 +57,18 @@ result-recording requirements.
 The milestone 7 GCP execution passed all six Firestore compatibility tests on 2026-07-28 using the
 Terraform-managed Cloud Run Job in `us-west1`.
 
+The isolated-restore harness validates the exact source or target database before connecting. Its
+database failures expose only a fixed operation stage and fixed driver category; tests must prove
+that exception messages containing URI, endpoint, token, or credential-like text never reach
+stderr. Repository-contract subprocess output must remain fully suppressed, and client teardown
+must not mask the primary classified failure. A passing harness unit test does not replace an
+approved execution against an isolated restore target. On 2026-08-13, execution
+`matrixedmind-closeout-target-fvwcg` passed the exact cloned-marker read, database ping, and full
+Firestore repository-contract suite after the database-specific IAM grant received the documented
+five-minute propagation interval. The grant was removed immediately afterward. Separately approved
+cleanup then removed the exact source marker, temporary jobs/IAM/identities, and isolated target;
+the source database and normal development service remained intact.
+
 ## API tests
 
 Use FastAPI `TestClient` or `httpx` tests for route behavior. Cover success responses, validation errors, duplicate/conflict errors, not-found responses, and repository dependency overrides.
@@ -84,9 +96,9 @@ A live plan or apply must not be used as a substitute for the cloud-mutation app
 approved development and production applies were followed by fresh normal locked no-change plans.
 A documented manual check verified each enabled alert policy and generated notification channel,
 and keyless observer impersonation read bounded Cloud Run, Logging, and Monitoring state in both
-environments. The remaining non-production secret rotation, isolated restore exercise, and
-production composite-index readiness recheck are tracked with acceptance criteria and evidence
-requirements in the [Cloud MVP verification follow-up register](CLOUD_MVP_VERIFICATION_FOLLOW_UP.md).
+environments. The non-production secret rotation, isolated restore validation and cleanup, and
+production composite-index readiness recheck are complete, with evidence in the
+[Cloud MVP verification follow-up register](CLOUD_MVP_VERIFICATION_FOLLOW_UP.md).
 
 The Cloud Run module has offline mocked Terraform tests for its exclusive `private`, `direct`, and
 `external_load_balancer` invocation modes, application-project backend ownership, explicit

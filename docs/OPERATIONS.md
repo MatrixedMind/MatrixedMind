@@ -258,7 +258,9 @@ runs after successful CI on `main` and can also be dispatched manually from `mai
 5. Calls `/health` and `/ready` with the deployer service account's Cloud Run identity token.
 
 Terraform remains authoritative for environment variables, secret versions, probes, IAM, scaling,
-and exposure. Run and apply a reviewed Terraform plan for those changes.
+and exposure. The deploy workflow owns the immutable image revision, while Cloud Run's `client`
+and `client_version` fields are operational deploy metadata and are ignored by Terraform. Run and
+apply a reviewed Terraform plan for the Terraform-owned changes.
 
 ### Manual verification
 
@@ -340,14 +342,81 @@ billing IDs or recipient identities to version-controlled example files.
 
 Import/export remains important for portability and recovery, but it is now deferred until after the secure Cloud MVP path unless recovery requirements pull it forward. Before MatrixedMind is treated as durable personal infrastructure, either import/export or another validated backup/restore path must exist and be tested.
 
-Firestore point-in-time recovery is enabled in the Terraform database definitions, but that is an
-assumption, not a validated MatrixedMind restore procedure. The proposed isolated development
-target is `matrixedmind-dev-restore-validation-<UTC-date>` in `matrixed-mind-dev`; it must contain
-only approved test data. The exercise identifies the source timestamp, restores into that target,
-runs repository contract/readiness checks, records results, then deletes the temporary target only
-after evidence is captured. If validation fails, stop access, preserve the target for diagnosis,
-and leave the source database untouched. The remaining blocker is approval of the single audited
-live-mutation plan, not a request for the owner to invent a target name.
+Firestore point-in-time recovery is enabled in the Terraform database definitions. For an
+Enterprise database with MongoDB compatibility, the supported PITR exercise is a
+[`gcloud firestore databases clone`](https://cloud.google.com/sdk/gcloud/reference/firestore/databases/clone)
+operation into a new database, not a scheduled-backup restore. Cloning and PITR are Preview
+features; recheck the current Google Cloud contract before each exercise.
+
+Use an isolated development target named
+`matrixedmind-dev-restore-validation-<UTC-date-time>` in `matrixed-mind-dev`, containing only
+owner-approved test data. Before requesting mutation approval, describe the source database and
+record its location, edition, MongoDB data-access mode, PITR state, and `earliestVersionTime`
+without recording its UID. Select a whole-minute RFC 3339 snapshot time that is in the past and
+within the available PITR window. The audited clone command has this shape:
+
+```bash
+gcloud firestore databases clone \
+  --project=matrixed-mind-dev \
+  --source-database=projects/matrixed-mind-dev/databases/matrixedmind-spike \
+  --snapshot-time=<approved-whole-minute-UTC-timestamp> \
+  --destination-database=<approved-isolated-target>
+```
+
+Wait for the clone operation to complete; the target is not usable while the operation is in
+progress. Then describe the target and verify its location, edition, MongoDB access mode, PITR and
+delete-protection state, and cloned index readiness rather than assuming every source setting was
+inherited. Do not change the normal development Cloud Run service or its `MONGO_URI`.
+
+Use separate short-lived identities: a source-marker service account with `roles/datastore.user`
+conditioned only to `matrixedmind-spike`, and a target-validator service account with the same role
+conditioned only to the exact restore target. The source identity seeds one fixed, non-sensitive
+marker in a dedicated `restore_validation` collection before the selected source timestamp and
+removes that exact marker only after successful evidence collection. Against the completed clone,
+the target identity proves the exact marker and payload are present, runs a database ping and the
+Firestore repository-contract suite, and preserves sanitized results. The harness rejects any
+database other than the exact development source or a correctly prefixed isolated restore target,
+and it requires Firestore's TLS/OIDC connection options. Never point the suite at production; it
+deletes its test documents from the `records` collection.
+
+After successful validation, stop and present a separate destructive-cleanup plan for approval.
+That plan removes the target-only IAM binding and validation job, describes the target again,
+verifies its exact name and delete-protection state, captures its current ETag, and uses
+[`gcloud firestore databases delete`](https://cloud.google.com/sdk/gcloud/reference/firestore/databases/delete)
+with `--etag=<current-target-etag>` so cleanup fails closed on concurrent change. If target delete
+protection is enabled, disabling it is a separately reviewed mutation. If validation or cleanup
+preconditions fail, stop access, preserve the target for diagnosis, and leave the source database
+untouched except for the explicitly approved test marker. Terraform does not currently expose a
+declarative PITR clone operation, so the exact clone and cleanup commands require explicit audited
+approval even though they are not Terraform state actions. Clone approval never implies cleanup
+approval.
+
+On 2026-08-12, the approved source phase seeded marker `cloud-mvp-closeout-20260812` in development
+and selected `2026-08-12T21:18:00Z` as the safe whole-minute source timestamp. PITR was enabled and
+the timestamp was later than `earliestVersionTime`. The isolated clone completed successfully and
+all five cloned MongoDB-compatible indexes reported `READY`. Two early target runs returned only
+sanitized database-operation failures, so access was removed and the target was preserved.
+
+The follow-up diagnostic image emits only fixed stages and categories, suppresses repository-test
+output, and preserves a primary operation error across best-effort client teardown. Execution
+`matrixedmind-closeout-target-q4sgm` classified the failure as
+`marker-read/authorization-failure`. The prior executions had waited only 20 seconds after adding
+the database-specific IAM grant; Firestore IAM changes can remain cached for up to five minutes.
+The next bounded attempt used the same narrow grant, waited the full 300 seconds, and execution
+`matrixedmind-closeout-target-fvwcg` completed successfully at
+`2026-08-13T00:29:38.223107Z`. It proved the exact cloned marker and payload, database ping, and the
+Firestore repository-contract suite without emitting a URI, token, credential, exception message,
+or repository-test output. The target binding was removed immediately and verified absent.
+
+The separately approved cleanup completed on 2026-08-13. Execution
+`matrixedmind-closeout-source-dhldm` deleted exactly the one source marker. Both temporary jobs,
+their exact IAM bindings, and both temporary service accounts were removed and verified absent.
+The isolated target was deleted at `2026-08-13T01:02:34.067558Z`, and the deleted-database record
+preserves its expected previous ID.
+The source database remains present and delete-protected; the normal development service remains on
+ready revision `matrixedmind-dev-00013-br6` with 100% traffic. Production still reports all five
+MongoDB-compatible composite indexes ready. A fresh normal locked development plan reported zero
+managed or output changes, and Terraform state remained at serial 18.
 
 ### Non-production secret-rotation test
 
@@ -361,9 +430,30 @@ After a reviewed cloud-mutation plan is explicitly approved, test rotation in de
 5. Confirm the prior token or secret behavior is understood before disabling its old version;
    record the rollback version and restore it through a reviewed Terraform plan if needed.
 
-No rotation test has been run. The approved plans intentionally contained no Cloud Run or secret
-changes, so creating a non-production secret version and revision requires a separate audited
-live-mutation plan. Its completion status and evidence requirements are tracked in the
+For the bounded smoke, use a one-off Cloud Run Job with the source-marker service account, which has
+`roles/datastore.user` conditioned to the development database and `roles/run.invoker` on only the
+development service. Run `scripts/dev_secret_rotation_smoke.py` from the reviewed Firestore test
+image. It creates a uniquely named read-only token for the `closeout-smoke` space, stores only its
+SHA-256 hash, obtains a Cloud Run identity token from the metadata server, and keeps the platform
+token in `X-Serverless-Authorization` so the app-level LLM token remains in `Authorization`. It
+checks authenticated health and readiness, performs the scoped LLM list request, revokes the exact
+test token, and proves the same request then returns `401`. The harness never prints either token,
+the database URI, response bodies, or authorization headers. Remove the temporary job and IAM
+bindings after evidence is captured; retain the revoked token record as the non-production audit
+artifact.
+
+The current `APP_SECRET_KEY` setting is a required nonblank production secret but does not yet
+drive user-session behavior. Rotating it validates numeric Secret Manager versioning, Cloud Run
+revision wiring, startup, authenticated health/readiness, persistence, and the independent scoped
+LLM boundary; it does not prove secret-dependent session semantics. Do not claim more until a
+production identity/session implementation consumes this setting.
+
+The development rotation exercise completed on 2026-08-12. Secret version 2 is active on ready
+revision `matrixedmind-dev-00013-br6`, rollback version 1 remains enabled, authenticated health and
+readiness passed, and the bounded LLM smoke proved scoped access, exact revocation, and rejection
+after revocation. The initial version-2 revision failed closed with no traffic because its startup
+command attempted a runtime dependency sync and exceeded 512 MiB; the corrected production image
+uses `uv run --no-sync`. Full sanitized evidence is in the
 [Cloud MVP verification follow-up register](CLOUD_MVP_VERIFICATION_FOLLOW_UP.md). Secret values,
 token values, and service-account keys must never be placed in Terraform, plans, logs, or this
 repository.
@@ -373,9 +463,10 @@ repository.
 A bounded production review on 2026-07-31 found 67 billable read units, 33 billable write units,
 6,387 bytes of current data-plus-index storage, and no scanned-document or scanned-index-entry
 units over the preceding seven days. Both environments retain five intentional composite indexes.
-All development indexes were ready; production reported three ready and two still creating even
-though their associated operations reported complete, so their readiness must be rechecked before
-relying on those two query paths. The status check and evidence requirements are tracked in the
+All development indexes were ready; production initially reported three ready and two still
+creating even though their associated operations reported complete. A bounded read-only recheck at
+`2026-08-13T00:32:14Z` reported all five production MongoDB-compatible composite indexes `READY`,
+with no production mutation. Full evidence is tracked in the
 [Cloud MVP verification follow-up register](CLOUD_MVP_VERIFICATION_FOLLOW_UP.md). Current activity
 is too small to justify schema or index changes; keep record bodies and embedded revisions bounded
 and repeat the review after material traffic, query, schema, or retention growth.
