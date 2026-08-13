@@ -2,7 +2,7 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from app.adapters.memory.auth import InMemoryOwnerAuthRepository
+from app.adapters.memory.auth import InMemoryTestOwnerAuthRepository
 from app.auth.service import (
     authentication_attempt_limiter,
     hash_opaque_secret,
@@ -45,7 +45,7 @@ def test_argon2id_hash_is_verifiable_and_contains_no_password() -> None:
 
 def test_bootstrap_is_one_time_atomic_and_expiring() -> None:
     configured = Settings(operator_credential_ttl_seconds=60)
-    repo = InMemoryOwnerAuthRepository()
+    repo = InMemoryTestOwnerAuthRepository()
     raw_token = issue_operator_credential(repo, "bootstrap", configured, now=NOW)
     owner = OwnerCredential(
         owner_id="owner", display_name="Owner", password_hash=hash_password(PASSWORD)
@@ -56,7 +56,7 @@ def test_bootstrap_is_one_time_atomic_and_expiring() -> None:
         owner, hash_opaque_secret(raw_token), NOW + timedelta(seconds=59)
     )
 
-    expired_repo = InMemoryOwnerAuthRepository()
+    expired_repo = InMemoryTestOwnerAuthRepository()
     expired = issue_operator_credential(expired_repo, "bootstrap", configured, now=NOW)
     assert not expired_repo.bootstrap_owner(
         owner, hash_opaque_secret(expired), NOW + timedelta(seconds=60)
@@ -66,7 +66,7 @@ def test_bootstrap_is_one_time_atomic_and_expiring() -> None:
 
 def test_recovery_atomically_changes_password_and_revokes_sessions() -> None:
     configured = Settings(operator_credential_ttl_seconds=60)
-    repo = InMemoryOwnerAuthRepository()
+    repo = InMemoryTestOwnerAuthRepository()
     bootstrap = issue_operator_credential(repo, "bootstrap", configured, now=NOW)
     owner = OwnerCredential(
         owner_id="owner", display_name="Owner", password_hash=hash_password(PASSWORD)
@@ -93,7 +93,7 @@ def test_recovery_atomically_changes_password_and_revokes_sessions() -> None:
 
 def test_invalid_recovery_does_not_change_owner_or_sessions() -> None:
     configured = Settings()
-    repo = InMemoryOwnerAuthRepository()
+    repo = InMemoryTestOwnerAuthRepository()
     bootstrap = issue_operator_credential(repo, "bootstrap", configured, now=NOW)
     owner = OwnerCredential(
         owner_id="owner", display_name="Owner", password_hash=hash_password(PASSWORD)
@@ -110,7 +110,7 @@ def test_invalid_recovery_does_not_change_owner_or_sessions() -> None:
 
 def test_recovery_wins_over_stale_password_change() -> None:
     configured = Settings()
-    repo = InMemoryOwnerAuthRepository()
+    repo = InMemoryTestOwnerAuthRepository()
     bootstrap = issue_operator_credential(repo, "bootstrap", configured, now=NOW)
     owner = OwnerCredential(
         owner_id="owner", display_name="Owner", password_hash=hash_password(PASSWORD)
@@ -138,7 +138,7 @@ def test_recovery_wins_over_stale_password_change() -> None:
 
 def test_password_change_requires_expected_hash_and_active_session() -> None:
     configured = Settings()
-    repo = InMemoryOwnerAuthRepository()
+    repo = InMemoryTestOwnerAuthRepository()
     bootstrap = issue_operator_credential(repo, "bootstrap", configured, now=NOW)
     owner = OwnerCredential(
         owner_id="owner", display_name="Owner", password_hash=hash_password(PASSWORD)
@@ -228,7 +228,7 @@ def test_attempt_limiter_is_bounded_and_resettable() -> None:
 
 def test_stale_session_save_cannot_clear_revocation() -> None:
     configured = Settings()
-    repo = InMemoryOwnerAuthRepository()
+    repo = InMemoryTestOwnerAuthRepository()
     issued = issue_session("owner", configured, now=NOW)
     stale = issued.session.model_copy(deep=True)
     repo.save_session(issued.session)
@@ -241,7 +241,7 @@ def test_stale_session_save_cannot_clear_revocation() -> None:
 
 def test_stale_session_refresh_cannot_overwrite_rotated_credential() -> None:
     configured = Settings(session_rotation_seconds=10)
-    repo = InMemoryOwnerAuthRepository()
+    repo = InMemoryTestOwnerAuthRepository()
     issued = issue_session("owner", configured, now=NOW)
     repo.save_session(issued.session)
     stale = issued.session.model_copy(update={"last_seen_at": NOW + timedelta(seconds=1)})
@@ -263,7 +263,7 @@ def test_stale_session_refresh_cannot_overwrite_rotated_credential() -> None:
 
 def test_revoked_session_cannot_be_refreshed_with_same_token_hash() -> None:
     configured = Settings()
-    repo = InMemoryOwnerAuthRepository()
+    repo = InMemoryTestOwnerAuthRepository()
     issued = issue_session("owner", configured, now=NOW)
     repo.save_session(issued.session)
     repo.revoke_session(issued.session.id, NOW + timedelta(seconds=1))

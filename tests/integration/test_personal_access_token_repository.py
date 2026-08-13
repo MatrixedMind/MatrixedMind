@@ -21,11 +21,11 @@ def repo() -> Iterator[MongoPersonalAccessTokenRepository]:
         serverSelectionTimeoutMS=2000,
     )
     db = client.matrixed_mind_test
-    db.llm_api_tokens.drop()
+    db.personal_access_tokens.drop()
     try:
         yield MongoPersonalAccessTokenRepository(db)
     finally:
-        db.llm_api_tokens.drop()
+        db.personal_access_tokens.drop()
         client.close()
 
 

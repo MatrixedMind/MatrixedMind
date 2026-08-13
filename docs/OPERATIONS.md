@@ -127,8 +127,8 @@ terraform plan
 
 The dev root can apply foundational infrastructure before the app is deployable. It always passes
 the module's `private` invocation mode and never creates load-balancer integration resources. Keep
-`enable_cloud_run_service = false` until the application image and both numbered runtime secret
-versions exist. Keep
+`enable_cloud_run_service = false` until the application image and numbered runtime secret version
+exist. Keep
 `enable_firestore_spike_job = false` until the dedicated test image exists.
 
 The module accepts exactly one invocation mode:
@@ -181,20 +181,20 @@ terraform -chdir=infra/terraform/envs/dev init \
   -backend-config="bucket=<your-gcp-project-id>-tf-state"
 ```
 
-Apply the foundation with `enable_cloud_run_service = false`, then add the two secret payloads
-without printing or committing them:
+Apply the foundation with `enable_cloud_run_service = false`, then add the secret payload without
+printing or committing it:
 
 ```bash
 terraform -chdir=infra/terraform/envs/dev plan -var-file=terraform.tfvars -out=foundation.tfplan
 terraform -chdir=infra/terraform/envs/dev apply foundation.tfplan
 gcloud secrets versions add matrixedmind-dev-app-secret-key --data-file=-
-gcloud secrets versions add matrixedmind-dev-llm-token-pepper --data-file=-
 ```
 
-`LLM_TOKEN_PEPPER` is retained here only because the currently deployed Terraform contract still
-provisions and injects it. The application no longer consumes it: personal access tokens are
-high-entropy random credentials stored by one-way hash. Removing the secret, IAM binding, version
-input, and Cloud Run environment reference is a separate reviewed infrastructure migration.
+Milestone 13 deliberately replaces the pre-use PAT collection and index instead of supporting the
+old names. A future approved Terraform apply will create the `personal_access_tokens` index and
+remove the obsolete token index and unused pepper secret/IAM/runtime wiring. Existing PAT records
+are not migrated; reset the pre-use database or reissue them. Because that apply deletes managed
+resources, it requires a fresh saved plan, scope audit, and explicit cloud-change approval.
 
 Build and push the first immutable image:
 
@@ -219,8 +219,8 @@ The visible AGPL source offer combines that immutable revision with the configur
 The explicit platform is required when building from Apple Silicon because Cloud Run requires an
 image manifest with Linux AMD64 support. GitHub's Ubuntu deployment runner already builds AMD64.
 
-Set `container_image` to that URI, set the two secret-version variables to the numbered versions
-that were created, and set `enable_cloud_run_service = true`. The development root remains private.
+Set `container_image` to that URI, set the secret-version variable to the numbered version that was
+created, and set `enable_cloud_run_service = true`. The development root remains private.
 Review and apply the service plan:
 
 ```bash
@@ -430,8 +430,8 @@ After a reviewed cloud-mutation plan is explicitly approved, test rotation in de
 1. Create a new value outside the repository and add it as a new Secret Manager version.
 2. Change only the matching explicit numeric Terraform version input; never use `latest`.
 3. Review the plan, apply it, and confirm the resulting Cloud Run revision uses that number.
-4. Run the authenticated `/health` and `/ready` checks and one scoped LLM-token request using a
-   deliberately non-production token.
+4. Run the authenticated `/health` and `/ready` checks and one PAT-authenticated request using a
+   deliberately non-production personal access token.
 5. Confirm the prior token or secret behavior is understood before disabling its old version;
    record the rollback version and restore it through a reviewed Terraform plan if needed.
 
@@ -440,7 +440,7 @@ For the bounded smoke, use a one-off Cloud Run Job with the source-marker servic
 development service. Run `scripts/dev_secret_rotation_smoke.py` from the reviewed Firestore test
 image. It creates a uniquely named read-only token for the `closeout-smoke` space, stores only its
 SHA-256 hash, obtains a Cloud Run identity token from the metadata server, and keeps the platform
-token in `X-Serverless-Authorization` so the app-level LLM token remains in `Authorization`. It
+token in `X-Serverless-Authorization` so the app-level PAT remains in `Authorization`. It
 checks authenticated health and readiness, performs the scoped LLM list request, revokes the exact
 test token, and proves the same request then returns `401`. The harness never prints either token,
 the database URI, response bodies, or authorization headers. Remove the temporary job and IAM

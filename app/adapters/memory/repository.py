@@ -1,3 +1,10 @@
+"""Non-durable repository doubles used by tests and contract verification.
+
+These adapters deliberately favor simple, inspectable state over production storage behavior.
+They are not selectable by MatrixedMind runtime configuration and are not a supported persistence
+backend for local or hosted Instances.
+"""
+
 from datetime import UTC, datetime
 from uuid import uuid4
 
@@ -10,7 +17,9 @@ from app.domain.ports import (
 )
 
 
-class InMemoryRecordRepository(RecordRepository):
+class InMemoryTestRecordRepository(RecordRepository):
+    """Linear, process-local RecordRepository test double; never a production backend."""
+
     def __init__(self) -> None:
         self.records: list[Record] = []
 
@@ -68,7 +77,9 @@ class InMemoryRecordRepository(RecordRepository):
         raise KeyError(f"record not found: {record_id}")
 
 
-class InMemoryPersonalAccessTokenRepository(PersonalAccessTokenRepository):
+class InMemoryTestPersonalAccessTokenRepository(PersonalAccessTokenRepository):
+    """Process-local personal-access-token repository for tests and contracts only."""
+
     def __init__(self) -> None:
         self.tokens_by_id: dict[str, PersonalAccessToken] = {}
         self.token_ids_by_hash: dict[str, str] = {}
@@ -100,7 +111,9 @@ class InMemoryPersonalAccessTokenRepository(PersonalAccessTokenRepository):
             self.tokens_by_id[token_id] = token.model_copy(update={"revoked_at": datetime.now(UTC)})
 
 
-class InMemoryAuditEventRepository(AuditEventRepository):
+class InMemoryTestAuditEventRepository(AuditEventRepository):
+    """Process-local audit-event repository for tests and contracts only."""
+
     def __init__(self) -> None:
         self.events: list[AuditEvent] = []
 
@@ -109,11 +122,13 @@ class InMemoryAuditEventRepository(AuditEventRepository):
         return event
 
 
-class InMemoryAutomationWriteRepository(AutomationWriteRepository):
+class InMemoryTestAutomationWriteRepository(AutomationWriteRepository):
+    """Snapshot-based atomic-write test double for repository contract verification."""
+
     def __init__(
         self,
-        records: InMemoryRecordRepository,
-        audits: InMemoryAuditEventRepository,
+        records: InMemoryTestRecordRepository,
+        audits: InMemoryTestAuditEventRepository,
     ) -> None:
         self.records = records
         self.audits = audits

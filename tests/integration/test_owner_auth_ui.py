@@ -4,8 +4,8 @@ from urllib.parse import urlencode
 import pytest
 from fastapi.testclient import TestClient
 
-from app.adapters.memory.auth import InMemoryOwnerAuthRepository
-from app.adapters.memory.repository import InMemoryRecordRepository
+from app.adapters.memory.auth import InMemoryTestOwnerAuthRepository
+from app.adapters.memory.repository import InMemoryTestRecordRepository
 from app.auth.dependencies import get_owner_auth_repository
 from app.auth.service import authentication_attempt_limiter, issue_operator_credential
 from app.dependencies import get_record_repository
@@ -16,18 +16,18 @@ PASSWORD = "correct horse battery staple"
 
 
 @pytest.fixture
-def auth_repo() -> InMemoryOwnerAuthRepository:
-    return InMemoryOwnerAuthRepository()
+def auth_repo() -> InMemoryTestOwnerAuthRepository:
+    return InMemoryTestOwnerAuthRepository()
 
 
 @pytest.fixture
 def client(
-    auth_repo: InMemoryOwnerAuthRepository, monkeypatch: pytest.MonkeyPatch
+    auth_repo: InMemoryTestOwnerAuthRepository, monkeypatch: pytest.MonkeyPatch
 ) -> Iterator[TestClient]:
     monkeypatch.setattr(settings, "app_env", "local")
     monkeypatch.setattr(settings, "auth_mode", "local")
     app.dependency_overrides[get_owner_auth_repository] = lambda: auth_repo
-    record_repo = InMemoryRecordRepository()
+    record_repo = InMemoryTestRecordRepository()
     app.dependency_overrides[get_record_repository] = lambda: record_repo
     authentication_attempt_limiter.clear()
     try:
@@ -41,7 +41,7 @@ def form_headers(origin: str = "http://testserver") -> dict[str, str]:
     return {"Origin": origin, "Content-Type": "application/x-www-form-urlencoded"}
 
 
-def setup_owner(client: TestClient, repo: InMemoryOwnerAuthRepository) -> None:
+def setup_owner(client: TestClient, repo: InMemoryTestOwnerAuthRepository) -> None:
     credential = issue_operator_credential(repo, "bootstrap", settings)
     response = client.post(
         "/setup",
@@ -60,7 +60,7 @@ def setup_owner(client: TestClient, repo: InMemoryOwnerAuthRepository) -> None:
 
 
 def test_setup_login_logout_and_cookie_security(
-    client: TestClient, auth_repo: InMemoryOwnerAuthRepository
+    client: TestClient, auth_repo: InMemoryTestOwnerAuthRepository
 ) -> None:
     setup_owner(client, auth_repo)
     cookie = client.cookies.get(settings.session_cookie_name)
@@ -110,7 +110,7 @@ def test_production_session_cookie_is_secure(monkeypatch: pytest.MonkeyPatch) ->
 
 
 def test_setup_and_login_require_same_origin(
-    client: TestClient, auth_repo: InMemoryOwnerAuthRepository
+    client: TestClient, auth_repo: InMemoryTestOwnerAuthRepository
 ) -> None:
     credential = issue_operator_credential(auth_repo, "bootstrap", settings)
     payload = urlencode(
@@ -141,7 +141,7 @@ def test_authentication_form_body_limit(client: TestClient) -> None:
 
 
 def test_authenticated_write_rejects_missing_csrf(
-    client: TestClient, auth_repo: InMemoryOwnerAuthRepository
+    client: TestClient, auth_repo: InMemoryTestOwnerAuthRepository
 ) -> None:
     setup_owner(client, auth_repo)
     response = client.post(
@@ -155,7 +155,7 @@ def test_authenticated_write_rejects_missing_csrf(
 
 
 def test_cookie_authenticated_json_writes_require_origin_and_csrf_header(
-    client: TestClient, auth_repo: InMemoryOwnerAuthRepository
+    client: TestClient, auth_repo: InMemoryTestOwnerAuthRepository
 ) -> None:
     setup_owner(client, auth_repo)
     payload = {
@@ -227,7 +227,7 @@ def test_cookie_authenticated_json_writes_require_origin_and_csrf_header(
 
 
 def test_password_change_keeps_current_session_and_revokes_other_session(
-    client: TestClient, auth_repo: InMemoryOwnerAuthRepository
+    client: TestClient, auth_repo: InMemoryTestOwnerAuthRepository
 ) -> None:
     setup_owner(client, auth_repo)
     other = TestClient(app, base_url="http://testserver")
@@ -258,7 +258,7 @@ def test_password_change_keeps_current_session_and_revokes_other_session(
 
 
 def test_recovery_changes_password_and_revokes_every_session(
-    client: TestClient, auth_repo: InMemoryOwnerAuthRepository
+    client: TestClient, auth_repo: InMemoryTestOwnerAuthRepository
 ) -> None:
     setup_owner(client, auth_repo)
     credential = issue_operator_credential(auth_repo, "recovery", settings)

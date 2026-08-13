@@ -1,4 +1,4 @@
-"""Run a non-production Cloud Run smoke check for a dev LLM-token rotation."""
+"""Run a non-production Cloud Run smoke check for dev personal-access-token rotation."""
 
 from __future__ import annotations
 
@@ -167,11 +167,11 @@ def run_smoke(
         token_repository = MongoPersonalAccessTokenRepository(database, ensure_indexes=False)
         raw_token = raw_token_factory()
         token = smoke_token(validated_run_id, raw_token, unique_suffix_factory())
-        if database.llm_api_tokens.find_one({"_id": token.id}, {"_id": 1}) is not None:
+        if database.personal_access_tokens.find_one({"_id": token.id}, {"_id": 1}) is not None:
             raise SmokeValidationError("generated token ID already exists")
         token_repository.save(token)
         token_saved = True
-        print("PASS llm-token-saved")
+        print("PASS pat-saved")
 
         identity_token = metadata_identity_token(http_client, service_url)
         platform_headers = {"X-Serverless-Authorization": f"Bearer {identity_token}"}
@@ -193,11 +193,11 @@ def run_smoke(
         )
 
         token_repository.revoke(token.id)
-        print("PASS llm-token-revoked")
+        print("PASS pat-revoked")
         expect_status(
             http_client.get(records_url, params={"space": SMOKE_SPACE}, headers=headers),
             401,
-            "llm-token-rejected",
+            "pat-rejected",
         )
         return 0
     except Exception as error:

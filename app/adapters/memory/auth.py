@@ -11,8 +11,8 @@ from app.domain.models import (
 )
 
 
-class InMemoryOwnerAuthRepository:
-    """Test/local-process implementation of the owner-auth storage contract."""
+class InMemoryTestOwnerAuthRepository:
+    """Process-local owner-auth repository for tests and contract verification only."""
 
     def __init__(self) -> None:
         self._owner: OwnerCredential | None = None

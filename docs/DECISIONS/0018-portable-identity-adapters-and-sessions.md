@@ -42,8 +42,10 @@ attribution, audit, migration, and rollback evidence. No retirement is decided b
 The bearer-token primitive becomes a provider-neutral personal access token (PAT) for scripts and
 legacy clients. PATs remain hashed at rest and require an explicit actor, owner, operation scope,
 Space scope, and revocation state. A PAT is a credential, not a Connection or access grant; those
-separate concepts arrive in a later milestone. The existing Action routes and physical token
-collection remain compatibility surfaces until a verified migration replaces them.
+separate concepts arrive in a later milestone. The existing Action routes remain compatibility
+surfaces, but the physical PAT collection and index use `personal_access_tokens` without a legacy
+alias or automatic migration. Because MatrixedMind has no active users, existing pre-use PATs must
+be reissued after a clean database reset or a separately approved migration.
 
 Before real owner identities are enabled, Page persistence must qualify reads, lists, updates, and
 uniqueness by owner. Record mutation, revision creation, and required audit recording must also

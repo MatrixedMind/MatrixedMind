@@ -2,8 +2,8 @@ from datetime import UTC, datetime
 from uuid import uuid4
 
 from app.adapters.memory.repository import (
-    InMemoryAuditEventRepository,
-    InMemoryRecordRepository,
+    InMemoryTestAuditEventRepository,
+    InMemoryTestRecordRepository,
 )
 from app.domain.models import Record, RecordRevision
 from app.domain.ports import AutomationWriteRepository
@@ -11,8 +11,8 @@ from app.domain.ports import AutomationWriteRepository
 
 def assert_automation_write_repository_contract(
     writes: AutomationWriteRepository,
-    records: InMemoryRecordRepository,
-    audits: InMemoryAuditEventRepository,
+    records: InMemoryTestRecordRepository,
+    audits: InMemoryTestAuditEventRepository,
 ) -> None:
     created = writes.upsert_record_with_audit(
         _automation_record("# Created"),

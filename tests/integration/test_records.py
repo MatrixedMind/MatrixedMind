@@ -4,8 +4,8 @@ from datetime import UTC, datetime, timedelta
 import pytest
 from fastapi.testclient import TestClient
 
-from app.adapters.memory.auth import InMemoryOwnerAuthRepository
-from app.adapters.memory.repository import InMemoryRecordRepository
+from app.adapters.memory.auth import InMemoryTestOwnerAuthRepository
+from app.adapters.memory.repository import InMemoryTestRecordRepository
 from app.auth.dependencies import get_owner_auth_repository
 from app.dependencies import get_record_repository
 from app.domain.models import Record
@@ -14,14 +14,14 @@ from app.settings import settings
 
 
 @pytest.fixture
-def repo() -> InMemoryRecordRepository:
-    return InMemoryRecordRepository()
+def repo() -> InMemoryTestRecordRepository:
+    return InMemoryTestRecordRepository()
 
 
 @pytest.fixture
-def client(repo: InMemoryRecordRepository) -> Iterator[TestClient]:
+def client(repo: InMemoryTestRecordRepository) -> Iterator[TestClient]:
     app.dependency_overrides[get_record_repository] = lambda: repo
-    app.dependency_overrides[get_owner_auth_repository] = InMemoryOwnerAuthRepository
+    app.dependency_overrides[get_owner_auth_repository] = InMemoryTestOwnerAuthRepository
     original_app_env = settings.app_env
     original_auth_mode = settings.auth_mode
     settings.app_env = "test"
@@ -74,7 +74,7 @@ def test_source_offer_is_public_without_exposing_protected_content(
 
 def test_read_and_list_filter_private_records_owned_by_another_user(
     client: TestClient,
-    repo: InMemoryRecordRepository,
+    repo: InMemoryTestRecordRepository,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     repo.create(

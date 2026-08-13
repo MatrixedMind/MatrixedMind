@@ -55,11 +55,17 @@ not the parent domain. Image uploads and object storage are not part of this set
 SHA so the hosted link targets the matching source tree. Do not set a moving branch name as the
 deployed source revision.
 
-Local owner authentication does not use `APP_SECRET_KEY` or `LLM_TOKEN_PEPPER`: opaque browser
-sessions, CSRF tokens, bootstrap credentials, and recovery credentials are random values stored
-only by SHA-256 hash. The current hosted Terraform still provisions both legacy secrets. Removing
-their live Secret Manager resources and IAM/environment wiring requires a separately reviewed cloud
-change; do not add either value to local configuration.
+Local owner authentication does not use `APP_SECRET_KEY`: opaque browser sessions, CSRF tokens,
+bootstrap credentials, and recovery credentials are random values stored only by SHA-256 hash.
+The current hosted Terraform still provisions that legacy secret. Removing its live Secret Manager
+resource and IAM/environment wiring requires a separately reviewed cloud change; do not add it to
+local configuration. Personal access tokens are separate high-entropy credentials stored in the
+`personal_access_tokens` collection by one-way hash.
+
+Milestone 13 intentionally renamed the pre-use token storage boundary rather than retaining a
+compatibility alias. MatrixedMind does not read the former collection; start with a clean database
+or reissue every PAT into `personal_access_tokens`. Existing token records are not migrated
+automatically.
 
 ## Local owner setup and recovery
 

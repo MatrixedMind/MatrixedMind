@@ -109,17 +109,6 @@ variable "app_secret_key_version" {
   }
 }
 
-variable "llm_token_pepper_version" {
-  description = "Explicit production Secret Manager version for LLM_TOKEN_PEPPER."
-  type        = string
-  default     = "1"
-
-  validation {
-    condition     = can(regex("^[1-9][0-9]*$", var.llm_token_pepper_version))
-    error_message = "llm_token_pepper_version must be an explicit positive numeric version."
-  }
-}
-
 variable "markdown_image_source_allowlist" {
   description = "Optional comma-separated exact or wildcard hosts allowed for rendered HTTPS Markdown images."
   type        = string

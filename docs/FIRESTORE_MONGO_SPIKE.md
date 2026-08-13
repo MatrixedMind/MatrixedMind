@@ -40,7 +40,7 @@ The dev root at `infra/terraform/envs/dev` manages:
 - The Firestore Enterprise database with MongoDB-compatible data access.
 - A Cloud Run runtime service account with `roles/datastore.user`.
 - A separate compatibility-test service account with `roles/datastore.user`.
-- MongoDB-compatible indexes for records, LLM tokens, and audit events.
+- MongoDB-compatible indexes for records, personal access tokens, and audit events.
 - An optional Cloud Run service using the passwordless OIDC URI.
 - An optional Cloud Run Job that executes the compatibility suite in GCP.
 

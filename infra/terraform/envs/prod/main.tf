@@ -34,10 +34,6 @@ locals {
       secret_id = "matrixedmind-prod-app-secret-key"
       version   = var.app_secret_key_version
     }
-    LLM_TOKEN_PEPPER = {
-      secret_id = "matrixedmind-prod-llm-token-pepper"
-      version   = var.llm_token_pepper_version
-    }
   }
 
   firestore_oidc_uri = "mongodb://${google_firestore_database.mongo_compatible.uid}.${google_firestore_database.mongo_compatible.location_id}.firestore.goog:443/${google_firestore_database.mongo_compatible.name}?loadBalanced=true&tls=true&retryWrites=false&authMechanism=MONGODB-OIDC&authMechanismProperties=ENVIRONMENT:gcp,TOKEN_RESOURCE:FIRESTORE"
@@ -224,10 +220,10 @@ resource "google_firestore_index" "records_space_parent" {
   }
 }
 
-resource "google_firestore_index" "llm_token_hash_unique" {
+resource "google_firestore_index" "personal_access_token_hash_unique" {
   project     = var.project_id
   database    = google_firestore_database.mongo_compatible.name
-  collection  = "llm_api_tokens"
+  collection  = "personal_access_tokens"
   api_scope   = "MONGODB_COMPATIBLE_API"
   query_scope = "COLLECTION_GROUP"
   density     = "DENSE"
@@ -342,7 +338,7 @@ module "cloud_run_service" {
     module.artifact_registry,
     google_firestore_index.audit_target,
     google_firestore_index.audit_timestamp,
-    google_firestore_index.llm_token_hash_unique,
+    google_firestore_index.personal_access_token_hash_unique,
     google_firestore_index.records_space_parent,
     google_firestore_index.records_space_slug_unique,
     module.runtime_secrets,

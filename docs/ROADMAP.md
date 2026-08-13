@@ -28,7 +28,7 @@ Milestones 0–12 are complete and verified as their delivery sequence:
 | Milestone | Delivered capability |
 |---|---|
 | 0–4 | FastAPI modular-monolith foundation, record API, validation, repository contracts, and MongoDB adapter. |
-| 5–6 | Server-rendered browser shell, safe Markdown, private/indexing defaults, initial owner boundary, authorization policy, and narrow LLM token boundary. |
+| 5–6 | Server-rendered browser shell, safe Markdown, private/indexing defaults, initial owner boundary, authorization policy, and narrow PAT boundary. |
 | 7–9 | Firestore MongoDB compatibility work, CI, Terraform layout, Cloud Run deployment baseline, and passwordless GCP runtime access. |
 | 10–12 | Narrow Custom GPT Action contract, hosted activation topology, operational hardening, secret-rotation exercise, restore validation, and production-index readiness. |
 
@@ -78,8 +78,8 @@ remains the internal compatibility boundary behind the server-rendered Page UI.
 - Define atomic record, revision, and audit behavior before PATs or later Connections are treated as
   a durable automation boundary. The legacy LLM upsert now commits its owner-qualified record
   create/update, revision, and required audit event through one application-owned unit of work;
-  memory rollback and a short MongoDB session transaction provide equivalent all-or-nothing
-  behavior.
+  the non-durable in-memory test double's rollback and a short MongoDB session transaction provide
+  equivalent all-or-nothing behavior.
 
 ### Verification criteria
 

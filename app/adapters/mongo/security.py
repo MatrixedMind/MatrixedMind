@@ -10,10 +10,12 @@ from app.domain.models import AuditEvent, PersonalAccessToken
 
 class MongoPersonalAccessTokenRepository:
     def __init__(self, db: Database[dict[str, Any]], *, ensure_indexes: bool = True):
-        self.collection = db.llm_api_tokens
+        self.collection = db.personal_access_tokens
         if ensure_indexes:
             self.collection.create_index(
-                [("token_hash", ASCENDING)], unique=True, name="llm_api_tokens_token_hash_unique"
+                [("token_hash", ASCENDING)],
+                unique=True,
+                name="personal_access_tokens_token_hash_unique",
             )
 
     def get_by_hash(self, token_hash: str) -> PersonalAccessToken | None:

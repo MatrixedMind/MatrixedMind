@@ -4,10 +4,10 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.adapters.memory.repository import (
-    InMemoryAuditEventRepository,
-    InMemoryAutomationWriteRepository,
-    InMemoryPersonalAccessTokenRepository,
-    InMemoryRecordRepository,
+    InMemoryTestAuditEventRepository,
+    InMemoryTestAutomationWriteRepository,
+    InMemoryTestPersonalAccessTokenRepository,
+    InMemoryTestRecordRepository,
 )
 from app.auth.dependencies import hash_personal_access_token, personal_access_token_rate_limiter
 from app.dependencies import (
@@ -20,10 +20,10 @@ from app.domain.models import AuditEvent, PersonalAccessToken, Record
 from app.main import app
 from app.settings import settings
 
-RAW_TOKEN = "test-llm-token"
+RAW_TOKEN = "test-personal-access-token"
 
 
-class ToggleAuditEventRepository(InMemoryAuditEventRepository):
+class ToggleAuditEventRepository(InMemoryTestAuditEventRepository):
     fail = False
 
     def append(self, event: AuditEvent) -> AuditEvent:
@@ -34,12 +34,12 @@ class ToggleAuditEventRepository(InMemoryAuditEventRepository):
 
 @pytest.fixture
 def repos() -> tuple[
-    InMemoryRecordRepository,
-    InMemoryPersonalAccessTokenRepository,
+    InMemoryTestRecordRepository,
+    InMemoryTestPersonalAccessTokenRepository,
     ToggleAuditEventRepository,
 ]:
-    records = InMemoryRecordRepository()
-    tokens = InMemoryPersonalAccessTokenRepository()
+    records = InMemoryTestRecordRepository()
+    tokens = InMemoryTestPersonalAccessTokenRepository()
     audits = ToggleAuditEventRepository()
     tokens.save(
         PersonalAccessToken(
@@ -58,8 +58,8 @@ def repos() -> tuple[
 @pytest.fixture
 def client(
     repos: tuple[
-        InMemoryRecordRepository,
-        InMemoryPersonalAccessTokenRepository,
+        InMemoryTestRecordRepository,
+        InMemoryTestPersonalAccessTokenRepository,
         ToggleAuditEventRepository,
     ],
 ) -> Iterator[TestClient]:
@@ -68,7 +68,7 @@ def client(
     app.dependency_overrides[get_personal_access_token_repository] = lambda: tokens
     app.dependency_overrides[get_audit_event_repository] = lambda: audits
     app.dependency_overrides[get_automation_write_repository] = lambda: (
-        InMemoryAutomationWriteRepository(records, audits)
+        InMemoryTestAutomationWriteRepository(records, audits)
     )
     try:
         yield TestClient(app)
@@ -93,8 +93,8 @@ def payload() -> dict[str, object]:
 def test_llm_upsert_defaults_private_and_creates_revision_and_audit(
     client: TestClient,
     repos: tuple[
-        InMemoryRecordRepository,
-        InMemoryPersonalAccessTokenRepository,
+        InMemoryTestRecordRepository,
+        InMemoryTestPersonalAccessTokenRepository,
         ToggleAuditEventRepository,
     ],
 ) -> None:
@@ -125,8 +125,8 @@ def test_llm_upsert_defaults_private_and_creates_revision_and_audit(
 def test_llm_upsert_rolls_back_create_when_audit_fails(
     client: TestClient,
     repos: tuple[
-        InMemoryRecordRepository,
-        InMemoryPersonalAccessTokenRepository,
+        InMemoryTestRecordRepository,
+        InMemoryTestPersonalAccessTokenRepository,
         ToggleAuditEventRepository,
     ],
 ) -> None:
@@ -142,8 +142,8 @@ def test_llm_upsert_rolls_back_create_when_audit_fails(
 def test_llm_upsert_rolls_back_update_and_revision_when_audit_fails(
     client: TestClient,
     repos: tuple[
-        InMemoryRecordRepository,
-        InMemoryPersonalAccessTokenRepository,
+        InMemoryTestRecordRepository,
+        InMemoryTestPersonalAccessTokenRepository,
         ToggleAuditEventRepository,
     ],
 ) -> None:
@@ -187,8 +187,8 @@ def test_llm_read_list_and_space_scope(client: TestClient) -> None:
 def test_llm_cannot_access_another_owner_and_can_create_its_own_same_slug_record(
     client: TestClient,
     repos: tuple[
-        InMemoryRecordRepository,
-        InMemoryPersonalAccessTokenRepository,
+        InMemoryTestRecordRepository,
+        InMemoryTestPersonalAccessTokenRepository,
         ToggleAuditEventRepository,
     ],
 ) -> None:
@@ -220,11 +220,11 @@ def test_llm_cannot_access_another_owner_and_can_create_its_own_same_slug_record
     assert own_record is not None and own_record.owner_id == "dev-user"
 
 
-def test_llm_rejects_missing_invalid_and_revoked_tokens(
+def test_llm_api_rejects_missing_invalid_and_revoked_personal_access_tokens(
     client: TestClient,
     repos: tuple[
-        InMemoryRecordRepository,
-        InMemoryPersonalAccessTokenRepository,
+        InMemoryTestRecordRepository,
+        InMemoryTestPersonalAccessTokenRepository,
         ToggleAuditEventRepository,
     ],
 ) -> None:
@@ -240,11 +240,11 @@ def test_llm_rejects_missing_invalid_and_revoked_tokens(
     assert revoked.json()["detail"] == "Invalid personal access token"
 
 
-def test_llm_enforces_token_scope(
+def test_llm_api_enforces_personal_access_token_scope(
     client: TestClient,
     repos: tuple[
-        InMemoryRecordRepository,
-        InMemoryPersonalAccessTokenRepository,
+        InMemoryTestRecordRepository,
+        InMemoryTestPersonalAccessTokenRepository,
         ToggleAuditEventRepository,
     ],
 ) -> None:

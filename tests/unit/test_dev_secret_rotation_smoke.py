@@ -25,7 +25,7 @@ class FakeResponse:
 def fake_mongo_client() -> MagicMock:
     client = MagicMock()
     database = MagicMock()
-    database.llm_api_tokens.find_one.return_value = None
+    database.personal_access_tokens.find_one.return_value = None
     client.__getitem__.return_value = database
     return client
 
@@ -98,7 +98,7 @@ def test_metadata_request_uses_google_header_and_canonical_audience() -> None:
     )
 
 
-def test_happy_path_uses_separate_llm_and_serverless_authorization_headers(
+def test_happy_path_uses_separate_pat_and_serverless_authorization_headers(
     monkeypatch: pytest.MonkeyPatch, fake_mongo_client: MagicMock, fake_http_client: Mock
 ) -> None:
     configure_env(monkeypatch)
@@ -117,7 +117,7 @@ def test_happy_path_uses_separate_llm_and_serverless_authorization_headers(
                 RUN_ID,
                 mongo_client_factory=lambda _: fake_mongo_client,
                 http_client_factory=lambda: fake_http_client,
-                raw_token_factory=lambda: "raw-llm-token",
+                raw_token_factory=lambda: "raw-personal-access-token",
                 unique_suffix_factory=lambda: UNIQUE_SUFFIX,
             )
             == 0
@@ -131,7 +131,7 @@ def test_happy_path_uses_separate_llm_and_serverless_authorization_headers(
     assert records_call.kwargs == {
         "params": {"space": smoke.SMOKE_SPACE},
         "headers": {
-            "Authorization": "Bearer raw-llm-token",
+            "Authorization": "Bearer raw-personal-access-token",
             "X-Serverless-Authorization": "Bearer identity-token",
         },
     }
@@ -190,7 +190,7 @@ def test_generated_token_id_collision_fails_before_save(
 ) -> None:
     configure_env(monkeypatch)
     repository = Mock()
-    fake_mongo_client[smoke.SOURCE_DATABASE].llm_api_tokens.find_one.return_value = {
+    fake_mongo_client[smoke.SOURCE_DATABASE].personal_access_tokens.find_one.return_value = {
         "_id": TOKEN_ID
     }
 
@@ -224,7 +224,7 @@ def test_post_revocation_requires_401(
 
     with (
         patch.object(smoke, "MongoPersonalAccessTokenRepository", return_value=repository),
-        pytest.raises(smoke.SmokeCheckError, match="llm-token-rejected"),
+        pytest.raises(smoke.SmokeCheckError, match="pat-rejected"),
     ):
         smoke.run_smoke(
             RUN_ID,

@@ -1,9 +1,9 @@
 import pytest
 
 from app.adapters.memory.repository import (
-    InMemoryAuditEventRepository,
-    InMemoryAutomationWriteRepository,
-    InMemoryRecordRepository,
+    InMemoryTestAuditEventRepository,
+    InMemoryTestAutomationWriteRepository,
+    InMemoryTestRecordRepository,
 )
 from app.domain.models import AuditEvent, Record
 from tests.contracts.automation_write_repository_contract import (
@@ -11,33 +11,33 @@ from tests.contracts.automation_write_repository_contract import (
 )
 
 
-class AppendThenFailAuditRepository(InMemoryAuditEventRepository):
+class AppendThenFailAuditRepository(InMemoryTestAuditEventRepository):
     def append(self, event: AuditEvent) -> AuditEvent:
         super().append(event)
         raise RuntimeError("injected audit failure")
 
 
-class WriteThenConflictRecordRepository(InMemoryRecordRepository):
+class WriteThenConflictRecordRepository(InMemoryTestRecordRepository):
     def create(self, record: Record) -> Record:
         super().create(record)
         raise ValueError("injected record conflict")
 
 
 def test_in_memory_automation_write_repository_satisfies_contract() -> None:
-    records = InMemoryRecordRepository()
-    audits = InMemoryAuditEventRepository()
+    records = InMemoryTestRecordRepository()
+    audits = InMemoryTestAuditEventRepository()
 
     assert_automation_write_repository_contract(
-        InMemoryAutomationWriteRepository(records, audits),
+        InMemoryTestAutomationWriteRepository(records, audits),
         records,
         audits,
     )
 
 
 def test_in_memory_automation_write_rolls_back_audit_and_record_on_audit_failure() -> None:
-    records = InMemoryRecordRepository()
+    records = InMemoryTestRecordRepository()
     audits = AppendThenFailAuditRepository()
-    writes = InMemoryAutomationWriteRepository(records, audits)
+    writes = InMemoryTestAutomationWriteRepository(records, audits)
 
     with pytest.raises(RuntimeError, match="injected audit failure"):
         writes.upsert_record_with_audit(
@@ -50,8 +50,8 @@ def test_in_memory_automation_write_rolls_back_audit_and_record_on_audit_failure
 
 def test_in_memory_automation_write_rolls_back_on_record_conflict() -> None:
     records = WriteThenConflictRecordRepository()
-    audits = InMemoryAuditEventRepository()
-    writes = InMemoryAutomationWriteRepository(records, audits)
+    audits = InMemoryTestAuditEventRepository()
+    writes = InMemoryTestAutomationWriteRepository(records, audits)
 
     with pytest.raises(ValueError, match="injected record conflict"):
         writes.upsert_record_with_audit(

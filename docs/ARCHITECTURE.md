@@ -28,11 +28,12 @@ lifecycle.
   same-origin and session-bound CSRF checks. `APP_ENV=test` retains only an explicit test seam.
 - Hashed, scoped, revocable PATs protect `/api/llm/*` independently of browser sessions.
 - Local Docker Compose MongoDB is the ordinary development store. Repository contracts cover the
-  in-memory and MongoDB adapters. Compose runs MongoDB as an authenticated single-node replica set
-  so local transaction behavior matches the automation-write contract.
+  non-durable in-memory test doubles and the supported MongoDB adapter. The in-memory classes are
+  not a selectable self-hosted storage backend. Compose runs MongoDB as an authenticated
+  single-node replica set so local transaction behavior matches the automation-write contract.
 - Terraform and Cloud Run deployment support, Firestore Enterprise MongoDB compatibility, and the
   hosted edge topology are implemented optional hosted infrastructure.
-- The Custom GPT Action contract at `/openapi-llm.json` and its scoped-token API are implemented
+- The Custom GPT Action contract at `/openapi-llm.json` and its PAT-authenticated API are implemented
   legacy/provisional capability. They are not the permanent Connection model and are not yet being
   retired.
 
@@ -78,7 +79,7 @@ and provide shared authentication-attempt limiting for multi-instance operation.
   Action. It defaults writes to private, draft, and noindex, creates revisions and audit events,
   and does not expose general administration or destructive operations. Its upsert returns only
   after an application-owned automation-write unit commits the owner-qualified record mutation,
-  revision, and required audit event together. The in-memory adapter rolls back both stores on
+  revision, and required audit event together. The in-memory test double rolls back both stores on
   failure; MongoDB uses one short session transaction across the existing `records` and
   `audit_events` collections.
 - `/openapi-llm.json` publishes only that legacy/provisional Action contract.

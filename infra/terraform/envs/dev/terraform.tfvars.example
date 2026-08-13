@@ -5,9 +5,8 @@ github_repository = "your-github-owner/your-github-repo"
 enable_cloud_run_service = false
 container_image          = ""
 
-# Cloud Run references explicit versions; create these versions before enabling the service.
-app_secret_key_version    = "1"
-llm_token_pepper_version  = "1"
+# Cloud Run references an explicit version; create it before enabling the service.
+app_secret_key_version = "1"
 
 # Empty allows any safe external HTTPS image host. Use exact hosts or *.domain wildcards to limit it.
 markdown_image_source_allowlist = ""
