@@ -161,6 +161,7 @@ def run_smoke(
     token: LlmApiToken | None = None
     token_repository: Any = None
     token_saved = False
+    primary_error: Exception | None = None
     try:
         database = mongo_client[database_name]
         token_repository = MongoLlmTokenRepository(database, ensure_indexes=False)
@@ -199,12 +200,25 @@ def run_smoke(
             "llm-token-rejected",
         )
         return 0
+    except Exception as error:
+        primary_error = error
+        raise
     finally:
+        cleanup_error: Exception | None = None
         if token_saved and token is not None and token_repository is not None:
             # Repeat after the rejection check; this remains an exact-ID revoke.
-            token_repository.revoke(token.id)
-        http_client.close()
-        mongo_client.close()
+            try:
+                token_repository.revoke(token.id)
+            except Exception as error:
+                cleanup_error = error
+        for close in (http_client.close, mongo_client.close):
+            try:
+                close()
+            except Exception as error:
+                if cleanup_error is None:
+                    cleanup_error = error
+        if primary_error is None and cleanup_error is not None:
+            raise cleanup_error
 
 
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:

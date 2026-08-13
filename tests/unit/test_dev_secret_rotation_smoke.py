@@ -234,3 +234,57 @@ def test_post_revocation_requires_401(
         )
 
     assert repository.revoke.call_count == 2
+
+
+def test_cleanup_failures_do_not_mask_primary_check_failure(
+    monkeypatch: pytest.MonkeyPatch, fake_mongo_client: MagicMock, fake_http_client: Mock
+) -> None:
+    configure_env(monkeypatch)
+    repository = Mock()
+    repository.revoke.side_effect = RuntimeError("cleanup revoke failed")
+    fake_http_client.get.side_effect = [FakeResponse(200, "identity-token"), FakeResponse(503)]
+    fake_http_client.close.side_effect = RuntimeError("HTTP close failed")
+    fake_mongo_client.close.side_effect = RuntimeError("Mongo close failed")
+
+    with (
+        patch.object(smoke, "MongoLlmTokenRepository", return_value=repository),
+        pytest.raises(smoke.SmokeCheckError, match="health"),
+    ):
+        smoke.run_smoke(
+            RUN_ID,
+            mongo_client_factory=lambda _: fake_mongo_client,
+            http_client_factory=lambda: fake_http_client,
+            unique_suffix_factory=lambda: UNIQUE_SUFFIX,
+        )
+
+    repository.revoke.assert_called_once_with(TOKEN_ID)
+    fake_http_client.close.assert_called_once_with()
+    fake_mongo_client.close.assert_called_once_with()
+
+
+def test_cleanup_failure_fails_an_otherwise_successful_run(
+    monkeypatch: pytest.MonkeyPatch, fake_mongo_client: MagicMock, fake_http_client: Mock
+) -> None:
+    configure_env(monkeypatch)
+    repository = Mock()
+    fake_http_client.get.side_effect = [
+        FakeResponse(200, "identity-token"),
+        FakeResponse(200),
+        FakeResponse(200),
+        FakeResponse(200),
+        FakeResponse(401),
+    ]
+    fake_http_client.close.side_effect = RuntimeError("HTTP close failed")
+
+    with (
+        patch.object(smoke, "MongoLlmTokenRepository", return_value=repository),
+        pytest.raises(RuntimeError, match="HTTP close failed"),
+    ):
+        smoke.run_smoke(
+            RUN_ID,
+            mongo_client_factory=lambda _: fake_mongo_client,
+            http_client_factory=lambda: fake_http_client,
+            unique_suffix_factory=lambda: UNIQUE_SUFFIX,
+        )
+
+    fake_mongo_client.close.assert_called_once_with()
