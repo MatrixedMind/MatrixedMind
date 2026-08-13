@@ -394,26 +394,25 @@ approval.
 On 2026-08-12, the approved source phase seeded marker `cloud-mvp-closeout-20260812` in development
 and selected `2026-08-12T21:18:00Z` as the safe whole-minute source timestamp. PITR was enabled and
 the timestamp was later than `earliestVersionTime`. The isolated clone completed successfully and
-all five cloned MongoDB-compatible indexes reported `READY`, but target execution
-`matrixedmind-closeout-target-dxxdb` failed with the sanitized database-operation blocker before
-the marker or repository contract could be verified. The target-conditioned database-access
-binding was removed immediately. The delete-protected clone, target job, and target identity are
-preserved without database access for diagnosis; source resources and the marker remain intact.
-Any diagnostic regrant or retry and all destructive cleanup require separately reviewed approval.
-The approved one-time retry later reproduced the identical sanitized database-operation failure in
-execution `matrixedmind-closeout-target-th7hv`; the exact conditional binding was removed again and
-verified absent. A native `databases ping` was inconclusive because it also did not return for the
-known-good source from the same operator environment. Do not retry unchanged or broaden IAM. The
-next diagnostic must safely classify OIDC authorization, endpoint selection, and driver/server
-errors without emitting the database URI, tokens, or credentials.
-The restore harness implements that boundary with fixed stages (`client-create`, marker operation,
-and `database-ping`) and fixed categories for server selection, network timeout, configuration,
-authorization, other operations, connection, driver, and unexpected errors. It discards exception
-messages before printing. It also discards repository-contract subprocess output, emits only a
-fixed test-failure category, and preserves a primary operation error across best-effort client
-teardown. Treat a new image build or passing unit test as offline evidence only;
-updating or executing the preserved job and restoring target access remain separately approved
-cloud mutations.
+all five cloned MongoDB-compatible indexes reported `READY`. Two early target runs returned only
+sanitized database-operation failures, so access was removed and the target was preserved.
+
+The follow-up diagnostic image emits only fixed stages and categories, suppresses repository-test
+output, and preserves a primary operation error across best-effort client teardown. Execution
+`matrixedmind-closeout-target-q4sgm` classified the failure as
+`marker-read/authorization-failure`. The prior executions had waited only 20 seconds after adding
+the database-specific IAM grant; Firestore IAM changes can remain cached for up to five minutes.
+The next bounded attempt used the same narrow grant, waited the full 300 seconds, and execution
+`matrixedmind-closeout-target-fvwcg` completed successfully at
+`2026-08-13T00:29:38.223107Z`. It proved the exact cloned marker and payload, database ping, and the
+Firestore repository-contract suite without emitting a URI, token, credential, exception message,
+or repository-test output. The target binding was removed immediately and verified absent.
+
+The delete-protected clone and temporary source/target resources remain pending the separately
+approved destructive cleanup. The cleanup must remove the exact source marker, jobs, IAM bindings,
+and service accounts, then rediscover the target, disable its delete protection, capture the current
+ETag, and delete only that target with ETag protection. It must not touch production, the normal
+development service, secret versions, Terraform state, or retained immutable evidence images.
 
 ### Non-production secret-rotation test
 
@@ -460,9 +459,10 @@ repository.
 A bounded production review on 2026-07-31 found 67 billable read units, 33 billable write units,
 6,387 bytes of current data-plus-index storage, and no scanned-document or scanned-index-entry
 units over the preceding seven days. Both environments retain five intentional composite indexes.
-All development indexes were ready; production reported three ready and two still creating even
-though their associated operations reported complete, so their readiness must be rechecked before
-relying on those two query paths. The status check and evidence requirements are tracked in the
+All development indexes were ready; production initially reported three ready and two still
+creating even though their associated operations reported complete. A bounded read-only recheck at
+`2026-08-13T00:32:14Z` reported all five production MongoDB-compatible composite indexes `READY`,
+with no production mutation. Full evidence is tracked in the
 [Cloud MVP verification follow-up register](CLOUD_MVP_VERIFICATION_FOLLOW_UP.md). Current activity
 is too small to justify schema or index changes; keep record bodies and embedded revisions bounded
 and repeat the review after material traffic, query, schema, or retention growth.

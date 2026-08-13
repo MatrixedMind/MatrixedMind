@@ -14,9 +14,9 @@ Milestone 6 is implemented and verified for owner auth boundaries, deterministic
 
 Milestones 0 through 12 have delivered their planned implementation, including Firestore Enterprise
 MongoDB compatibility, the Cloud Run deployment baseline, the narrow ChatGPT Action integration,
-hosted activation, and operational hardening. The development secret-rotation exercise is now
-verified, and the restore source marker and safe PITR timestamp are prepared. Remaining unexecuted
-or conditional Cloud MVP verification is tracked explicitly in the
+hosted activation, and operational hardening. The development secret-rotation exercise, isolated
+restore validation, and production index-readiness recheck are verified. The isolated restore
+resources remain pending separately approved destructive cleanup, tracked explicitly in the
 [Cloud MVP verification follow-up register](CLOUD_MVP_VERIFICATION_FOLLOW_UP.md);
 it is not represented as completed verification. Milestone 13 public project documentation is the
 next product implementation milestone. Import/export remains deferred until after the secure Cloud
@@ -943,7 +943,8 @@ personal knowledge or sustained use.
 - [x] Configure alerting for service health and error rates.
 - [x] Document log review workflow.
 - [x] Validate backup and restore assumptions. Firestore point-in-time recovery is enabled; the
-  isolated restore exercise requires a separate live-mutation approval and remains unexecuted.
+  isolated restore clone preserved its marker and passed ping and repository-contract validation.
+  Separately approved destructive cleanup remains.
 - [x] Configure billing budget alerts.
 - [x] Document the non-production secret-rotation procedure.
 - [x] Tune rate limits based on deployed LLM API behavior. Retain 60 requests per 60 seconds: the
@@ -982,12 +983,12 @@ personal knowledge or sustained use.
 - [x] Alerts fire in a controlled test or documented manual check. The documented manual check
   confirmed both enabled policies, their filters, and their generated notification channel in each
   environment without forcing a synthetic incident.
-- [x] Restore procedure is validated or exact blocker is recorded. Creating and deleting the
-  isolated development restore target is a separate live mutation that was not in the approved
-  Milestone 12 plans.
+- [x] Restore procedure is validated. The isolated clone preserved the exact source marker and
+  passed database ping and the repository-contract suite. Deleting the isolated development target
+  remains a separate live mutation.
 - [x] Billing budget alerts are configured.
-- The development secret-rotation exercise is verified. The isolated restore clone/validation and
-  production-index readiness recheck remain required closeout work in the
+- [x] The development secret-rotation exercise, isolated restore validation, and production-index
+  readiness recheck are verified. Temporary restore-resource cleanup remains in the
   [Cloud MVP verification follow-up register](CLOUD_MVP_VERIFICATION_FOLLOW_UP.md).
 - [x] Firestore cost review is documented.
 - [x] New TOML files parse successfully.
@@ -1013,18 +1014,14 @@ for both roots report no changes. Read-only impersonation smokes succeeded in bo
 the shared-edge project remains excluded. A separately approved 2026-08-12 closeout phase rotated
 the development app secret to numeric version 2, deployed and verified ready revision
 `matrixedmind-dev-00013-br6`, passed the bounded scoped-LLM smoke, seeded the restore marker, and
-selected safe source timestamp `2026-08-12T21:18:00Z`. The isolated restore clone completed and
-its five indexes are ready, but the contained target-validation job failed before marker or
-repository-contract proof; target database access was removed and the delete-protected clone was
-preserved. Restore validation and the production composite-index readiness recheck remain
-incomplete; their status and acceptance criteria are in the
+selected safe source timestamp `2026-08-12T21:18:00Z`. The isolated restore clone completed, its
+five indexes are ready, and diagnostic execution `matrixedmind-closeout-target-fvwcg` proved the
+exact cloned marker, database ping, and Firestore repository contract after allowing the documented
+five-minute IAM cache interval. The exact target-conditioned access was removed immediately and
+verified absent. A bounded read-only production check at `2026-08-13T00:32:14Z` reported all five
+MongoDB-compatible composite indexes ready. The delete-protected clone and temporary source/target
+resources remain only for the separately approved cleanup recorded in the
 [Cloud MVP verification follow-up register](CLOUD_MVP_VERIFICATION_FOLLOW_UP.md).
-The separately approved one-time target retry reproduced the same sanitized database-operation
-failure, so target access was removed again and unchanged retries are stopped pending a safer,
-more diagnostic execution plan.
-The harness now has tested fixed stage/category diagnostics with explicit secret-text
-non-disclosure, and its linux/amd64 image passes locally; no registry publication, job update, or
-live diagnostic execution has yet been approved.
 
 ### Done when
 

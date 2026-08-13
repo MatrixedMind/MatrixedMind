@@ -3,14 +3,14 @@
 ## Purpose and status
 
 MatrixedMind's Milestones 0 through 12 delivered their planned implementation and documented
-operational controls. This register is the single source of truth for the remaining Cloud MVP
-verification work that was intentionally not executed or remains conditional. Transferring an item
-here does **not** mark it verified.
+operational controls. This register is the single source of truth for Cloud MVP verification and
+its remaining cleanup. Transferring an item here does **not** mark it verified.
 
 Milestone 13, [Public project documentation](ROADMAP.md#milestone-13-public-project-documentation),
 is the next product implementation milestone. The required items below do not block starting or
-implementing Milestone 13. They do constrain Cloud MVP closeout and the stated higher-sensitivity
-or optional-feature uses until their own acceptance criteria are met.
+implementing Milestone 13. The validated restore clears the higher-sensitivity recovery blocker;
+the isolated resources still require their separately approved destructive cleanup before Cloud
+MVP closeout is complete.
 
 Follow the detailed operational procedures in [OPERATIONS.md](OPERATIONS.md). Before any live cloud
 mutation, use the [cloud mutation approval gate](OPERATIONS.md#cloud-mutation-approval-gate): present
@@ -76,11 +76,12 @@ No prior secret version was disabled.
 
 ### 3. Isolated development restore exercise (Milestone 12)
 
-**Status:** Isolated clone completed on 2026-08-12, but target validation failed before the marker
-and repository contract could be verified. Target access is removed and the clone is preserved.
+**Status:** Isolated clone validation completed on 2026-08-13. Target access is removed and the
+delete-protected clone is preserved pending separately approved cleanup.
 
-**Blocks:** Higher-sensitivity data use, treating MatrixedMind as durable personal infrastructure,
-and Cloud MVP verification closeout. It does not block Milestone 13.
+**Blocks:** Only Cloud MVP closeout and temporary-resource hygiene until cleanup. Successful marker,
+ping, and repository-contract validation clear this item's higher-sensitivity recovery blocker. It
+does not block Milestone 13.
 
 **Acceptance criteria:** Restore approved test data from a recorded source timestamp into the
 isolated development target, run repository-contract and readiness checks, preserve evidence, and
@@ -104,39 +105,33 @@ and the source `earliestVersionTime` was `2026-08-05T21:19:00Z`. Clone operation
 `2026-08-12T22:55:31.924744Z`, creating delete-protected target
 `matrixedmind-dev-restore-validation-20260812-2118` from that exact snapshot. The target is
 Enterprise, MongoDB-compatible, and all five cloned MongoDB-compatible composite indexes reported
-`READY`; PITR was not inherited. Execution `matrixedmind-closeout-target-dxxdb` then exited 1 at
-`2026-08-12T23:08:43.824392Z` with the intentionally sanitized blocker `database operation could
-not be completed`, so neither the cloned marker nor the repository contract is verified. The exact
-target-conditioned `roles/datastore.user` binding was removed. The delete-protected clone, target
-job, and target service account are preserved without database access for diagnosis; the source
-marker and source-only resources remain intact. No database deletion or other cleanup occurred.
-An explicitly approved one-time diagnostic retry reconfirmed the completed clone, all five ready
-indexes, exact private target URI, pinned image digest, job identity and arguments, and absent
-target access. Google's native MongoDB-compatible `databases ping` did not return within 60 seconds
-for either the target or the known-good source under the same operator environment, so it could
-not distinguish clone readiness. No IAM denial for the validator was visible to the read-only
-observer. After the exact conditional binding was restored, execution
-`matrixedmind-closeout-target-th7hv` reproduced the same sanitized database-operation failure and
-exited 1 at `2026-08-12T23:35:56.228796Z`. The binding was immediately removed again and verified
-absent. No further retry or permission broadening is authorized; diagnosis now requires a reviewed
-plan that can distinguish OIDC authorization, endpoint selection, and driver/server failures
-without exposing the URI, token, or credential material.
-The follow-up harness now emits only a fixed operation stage and fixed exception category, such as
-`marker-read/authorization-failure` or `marker-read/server-selection-timeout`; it never renders the
-underlying exception text. Unit tests cover every emitted category and explicit URI/token
-non-disclosure. Repository-contract test output is discarded and represented only as
-`repository-contract/test-failure`; client teardown cannot mask an earlier classified failure.
-The linux/amd64 image tagged `a0f4c35` was built and passed its 27 focused tests locally. This is
-not live evidence: publishing that immutable image, updating the job, regranting target access, and
-executing the diagnostic still require a separate audited approval.
+`READY`; PITR was not inherited. The first two target executions failed with intentionally
+sanitized database-operation evidence and each exact target-conditioned `roles/datastore.user`
+grant was removed immediately afterward.
+
+The diagnostic image tagged `a0f4c35` then passed 27 focused tests locally and was published by
+immutable digest. Its first live execution, `matrixedmind-closeout-target-q4sgm`, classified the
+failure as `marker-read/authorization-failure`. The prior runs had allowed only 20 seconds for the
+new conditional IAM grant, shorter than Firestore's documented IAM cache interval of up to five
+minutes. The second bounded attempt restored the same database-specific grant without broadening
+access, waited the full 300 seconds, and ran execution `matrixedmind-closeout-target-fvwcg`.
+That execution completed successfully at `2026-08-13T00:29:38.223107Z`, proving the exact cloned
+marker and payload, database ping, and Firestore repository-contract suite. The binding was removed
+immediately and verified absent. Logs contained only the successful container exit, and no URI,
+token, credential, repository-test output, or exception text was emitted.
+
+The delete-protected clone, source marker, source and target jobs, and temporary identities remain
+only for the separately approved cleanup. The normal development service, production, Terraform
+state, and secret versions were not changed by validation. A fresh normal locked development plan
+at `2026-08-13T00:38:08Z` reported zero managed or output changes. Its scope guard accepted only
+refresh drift: IAM ETags from the temporary binding cycle, Firestore timing metadata, Artifact
+Registry update time, and the workflow-owned Cloud Run image and deployment metadata.
 
 ### 4. Production Firestore composite-index readiness recheck (Milestone 12)
 
-**Status:** Pending read-only recheck. At the 2026-07-31 cost review, two of five production
-composite indexes reported `CREATING` even though their associated operations reported complete.
+**Status:** Completed on 2026-08-13. All five production composite indexes are ready.
 
-**Blocks:** Reliance on the two affected production query paths and Cloud MVP verification closeout.
-It does not block Milestone 13 or higher-sensitivity data use on its own.
+**Blocks:** Nothing. The production query-path readiness requirement is verified.
 
 **Acceptance criteria:** Perform a bounded read-only production index-status check; confirm both
 indexes are ready before relying on their query paths, or record their current state and the
@@ -145,6 +140,11 @@ operational response if either remains unavailable.
 **Approval and evidence:** No mutation is authorized or needed for the status check. Record the
 UTC check time, sanitized index identifiers or count, readiness result, and any follow-up decision.
 See [OPERATIONS.md](OPERATIONS.md#cost-and-connectivity-review).
+
+**Evidence:** A bounded read-only check of project `matrixedmind-prod` and database
+`matrixedmind-prod` at `2026-08-13T00:32:14Z` reported five total MongoDB-compatible composite
+indexes: five `READY`, zero `CREATING`, and zero in any other state. No production mutation was
+performed.
 
 ## Conditional optional-feature work
 

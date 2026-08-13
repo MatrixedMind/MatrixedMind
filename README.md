@@ -42,8 +42,9 @@ MatrixedMind is still an early, pre-MVP project, but its core is taking shape. T
 The interface is currently functional rather than polished, and production sign-in is not finished.
 This is not yet a service intended for general use or sensitive personal data.
 
-Milestone 13, public project documentation, is the next product implementation step. Remaining
-Cloud MVP verification work is explicit in the
+Milestone 13, public project documentation, is the next product implementation step. The restore
+and production-index verification passed; Cloud MVP closeout remains pending separately approved
+temporary-resource cleanup in the
 [Cloud MVP verification follow-up register](docs/CLOUD_MVP_VERIFICATION_FOLLOW_UP.md).
 
 ## Where is it going?
