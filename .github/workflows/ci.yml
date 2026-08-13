@@ -49,7 +49,9 @@ jobs:
         run: uv sync --locked
 
       - name: Start transaction-capable MongoDB
-        run: docker compose up --wait mongo-replica-init
+        run: |
+          docker compose up -d mongo-replica-init
+          docker compose wait mongo-replica-init
 
       - name: Check lint
         run: uv run ruff check .
