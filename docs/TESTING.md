@@ -65,7 +65,9 @@ must not mask the primary classified failure. A passing harness unit test does n
 approved execution against an isolated restore target. On 2026-08-13, execution
 `matrixedmind-closeout-target-fvwcg` passed the exact cloned-marker read, database ping, and full
 Firestore repository-contract suite after the database-specific IAM grant received the documented
-five-minute propagation interval. The grant was removed immediately afterward.
+five-minute propagation interval. The grant was removed immediately afterward. Separately approved
+cleanup then removed the exact source marker, temporary jobs/IAM/identities, and isolated target;
+the source database and normal development service remained intact.
 
 ## API tests
 
@@ -94,9 +96,9 @@ A live plan or apply must not be used as a substitute for the cloud-mutation app
 approved development and production applies were followed by fresh normal locked no-change plans.
 A documented manual check verified each enabled alert policy and generated notification channel,
 and keyless observer impersonation read bounded Cloud Run, Logging, and Monitoring state in both
-environments. The non-production secret rotation, isolated restore validation, and production
-composite-index readiness recheck are complete; separately approved restore-resource cleanup is
-tracked in the [Cloud MVP verification follow-up register](CLOUD_MVP_VERIFICATION_FOLLOW_UP.md).
+environments. The non-production secret rotation, isolated restore validation and cleanup, and
+production composite-index readiness recheck are complete, with evidence in the
+[Cloud MVP verification follow-up register](CLOUD_MVP_VERIFICATION_FOLLOW_UP.md).
 
 The Cloud Run module has offline mocked Terraform tests for its exclusive `private`, `direct`, and
 `external_load_balancer` invocation modes, application-project backend ownership, explicit

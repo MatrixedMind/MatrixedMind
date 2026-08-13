@@ -408,11 +408,15 @@ The next bounded attempt used the same narrow grant, waited the full 300 seconds
 Firestore repository-contract suite without emitting a URI, token, credential, exception message,
 or repository-test output. The target binding was removed immediately and verified absent.
 
-The delete-protected clone and temporary source/target resources remain pending the separately
-approved destructive cleanup. The cleanup must remove the exact source marker, jobs, IAM bindings,
-and service accounts, then rediscover the target, disable its delete protection, capture the current
-ETag, and delete only that target with ETag protection. It must not touch production, the normal
-development service, secret versions, Terraform state, or retained immutable evidence images.
+The separately approved cleanup completed on 2026-08-13. Execution
+`matrixedmind-closeout-source-dhldm` deleted exactly the one source marker. Both temporary jobs,
+their exact IAM bindings, and both temporary service accounts were removed and verified absent.
+The isolated target was deleted at `2026-08-13T01:02:34.067558Z`, and the deleted-database record
+preserves its expected previous ID.
+The source database remains present and delete-protected; the normal development service remains on
+ready revision `matrixedmind-dev-00013-br6` with 100% traffic. Production still reports all five
+MongoDB-compatible composite indexes ready. A fresh normal locked development plan reported zero
+managed or output changes, and Terraform state remained at serial 18.
 
 ### Non-production secret-rotation test
 

@@ -3,14 +3,13 @@
 ## Purpose and status
 
 MatrixedMind's Milestones 0 through 12 delivered their planned implementation and documented
-operational controls. This register is the single source of truth for Cloud MVP verification and
-its remaining cleanup. Transferring an item here does **not** mark it verified.
+operational controls. This register is the evidence record for Cloud MVP verification and cleanup.
+Transferring an item here does **not** mark it verified.
 
 Milestone 13, [Public project documentation](ROADMAP.md#milestone-13-public-project-documentation),
-is the next product implementation milestone. The required items below do not block starting or
-implementing Milestone 13. The validated restore clears the higher-sensitivity recovery blocker;
-the isolated resources still require their separately approved destructive cleanup before Cloud
-MVP closeout is complete.
+is the next product implementation milestone. All four required closeout items below now meet their
+acceptance criteria. The conditional Action API allowlist item remains not applicable while that
+optional feature is disabled.
 
 Follow the detailed operational procedures in [OPERATIONS.md](OPERATIONS.md). Before any live cloud
 mutation, use the [cloud mutation approval gate](OPERATIONS.md#cloud-mutation-approval-gate): present
@@ -76,12 +75,9 @@ No prior secret version was disabled.
 
 ### 3. Isolated development restore exercise (Milestone 12)
 
-**Status:** Isolated clone validation completed on 2026-08-13. Target access is removed and the
-delete-protected clone is preserved pending separately approved cleanup.
+**Status:** Completed in development on 2026-08-13, including separately approved cleanup.
 
-**Blocks:** Only Cloud MVP closeout and temporary-resource hygiene until cleanup. Successful marker,
-ping, and repository-contract validation clear this item's higher-sensitivity recovery blocker. It
-does not block Milestone 13.
+**Blocks:** Nothing. The restore and cleanup acceptance criteria are verified.
 
 **Acceptance criteria:** Restore approved test data from a recorded source timestamp into the
 isolated development target, run repository-contract and readiness checks, preserve evidence, and
@@ -120,12 +116,17 @@ marker and payload, database ping, and Firestore repository-contract suite. The 
 immediately and verified absent. Logs contained only the successful container exit, and no URI,
 token, credential, repository-test output, or exception text was emitted.
 
-The delete-protected clone, source marker, source and target jobs, and temporary identities remain
-only for the separately approved cleanup. The normal development service, production, Terraform
-state, and secret versions were not changed by validation. A fresh normal locked development plan
-at `2026-08-13T00:38:08Z` reported zero managed or output changes. Its scope guard accepted only
-refresh drift: IAM ETags from the temporary binding cycle, Firestore timing metadata, Artifact
-Registry update time, and the workflow-owned Cloud Run image and deployment metadata.
+Separately approved cleanup execution `matrixedmind-closeout-source-dhldm` completed at
+`2026-08-13T00:57:50.160429Z` and removed exactly the one source marker. The two temporary jobs,
+their exact IAM bindings, and service accounts `mm-dev-closeout-source` and
+`mm-dev-closeout-target` were removed and verified absent. The exact isolated target was deleted at
+`2026-08-13T01:02:34.067558Z`; its deleted-database record retains the expected previous ID. The
+source database remains present and delete-protected. The normal development service remains on
+ready revision `matrixedmind-dev-00013-br6` with 100% traffic and its expected immutable image, and
+production still reports all five MongoDB-compatible composite indexes `READY`.
+
+A fresh normal locked development plan at `2026-08-13T01:04:16Z` reported zero managed or output
+changes, and Terraform state remains at serial 18.
 
 ### 4. Production Firestore composite-index readiness recheck (Milestone 12)
 
@@ -169,6 +170,7 @@ approved and denied request results, refresh owner/process, and rollback plan. S
 
 ## Completion rule
 
-Required closeout work is complete only when all four required items have recorded evidence meeting
-their acceptance criteria. Conditional item 5 remains not applicable unless an operator elects to
-enable that feature; if enabled, it must be completed before the feature is relied upon.
+All four required closeout items have recorded evidence meeting their acceptance criteria, so the
+Cloud MVP verification closeout is complete. Conditional item 5 remains not applicable unless an
+operator elects to enable that feature; if enabled, it must be completed before the feature is
+relied upon.

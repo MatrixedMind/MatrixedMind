@@ -15,12 +15,11 @@ Milestone 6 is implemented and verified for owner auth boundaries, deterministic
 Milestones 0 through 12 have delivered their planned implementation, including Firestore Enterprise
 MongoDB compatibility, the Cloud Run deployment baseline, the narrow ChatGPT Action integration,
 hosted activation, and operational hardening. The development secret-rotation exercise, isolated
-restore validation, and production index-readiness recheck are verified. The isolated restore
-resources remain pending separately approved destructive cleanup, tracked explicitly in the
-[Cloud MVP verification follow-up register](CLOUD_MVP_VERIFICATION_FOLLOW_UP.md);
-it is not represented as completed verification. Milestone 13 public project documentation is the
-next product implementation milestone. Import/export remains deferred until after the secure Cloud
-MVP path unless recovery needs pull it forward.
+restore validation and cleanup, and production index-readiness recheck are verified. The required
+Cloud MVP closeout is complete, with evidence in the
+[Cloud MVP verification follow-up register](CLOUD_MVP_VERIFICATION_FOLLOW_UP.md). Milestone 13
+public project documentation is the next product implementation milestone. Import/export remains
+deferred until after the secure Cloud MVP path unless recovery needs pull it forward.
 
 The repo already contains provisional pieces of later milestones, including an auth dependency placeholder and server-rendered pages. Treat that code as material to harden, not as permission to skip milestone verification.
 
@@ -944,7 +943,7 @@ personal knowledge or sustained use.
 - [x] Document log review workflow.
 - [x] Validate backup and restore assumptions. Firestore point-in-time recovery is enabled; the
   isolated restore clone preserved its marker and passed ping and repository-contract validation.
-  Separately approved destructive cleanup remains.
+  Separately approved destructive cleanup removed the marker and all temporary resources.
 - [x] Configure billing budget alerts.
 - [x] Document the non-production secret-rotation procedure.
 - [x] Tune rate limits based on deployed LLM API behavior. Retain 60 requests per 60 seconds: the
@@ -984,11 +983,11 @@ personal knowledge or sustained use.
   confirmed both enabled policies, their filters, and their generated notification channel in each
   environment without forcing a synthetic incident.
 - [x] Restore procedure is validated. The isolated clone preserved the exact source marker and
-  passed database ping and the repository-contract suite. Deleting the isolated development target
-  remains a separate live mutation.
+  passed database ping and the repository-contract suite. Separately approved cleanup then removed
+  the exact marker, temporary access resources, and isolated target.
 - [x] Billing budget alerts are configured.
-- [x] The development secret-rotation exercise, isolated restore validation, and production-index
-  readiness recheck are verified. Temporary restore-resource cleanup remains in the
+- [x] The development secret-rotation exercise, isolated restore validation and cleanup, and
+  production-index readiness recheck are verified. Evidence is recorded in the
   [Cloud MVP verification follow-up register](CLOUD_MVP_VERIFICATION_FOLLOW_UP.md).
 - [x] Firestore cost review is documented.
 - [x] New TOML files parse successfully.
@@ -1019,8 +1018,10 @@ five indexes are ready, and diagnostic execution `matrixedmind-closeout-target-f
 exact cloned marker, database ping, and Firestore repository contract after allowing the documented
 five-minute IAM cache interval. The exact target-conditioned access was removed immediately and
 verified absent. A bounded read-only production check at `2026-08-13T00:32:14Z` reported all five
-MongoDB-compatible composite indexes ready. The delete-protected clone and temporary source/target
-resources remain only for the separately approved cleanup recorded in the
+MongoDB-compatible composite indexes ready. Separately approved cleanup removed exactly the source
+marker, both temporary jobs, their IAM and identities, and the isolated target. The source database
+and normal development service remain intact, and a fresh locked Terraform plan reports zero
+managed changes. Full evidence is in the
 [Cloud MVP verification follow-up register](CLOUD_MVP_VERIFICATION_FOLLOW_UP.md).
 
 ### Done when
