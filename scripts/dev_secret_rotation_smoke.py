@@ -14,9 +14,9 @@ from urllib.parse import parse_qs, urlparse
 import httpx
 from pymongo import MongoClient
 
-from app.adapters.mongo.security import MongoLlmTokenRepository
-from app.auth.dependencies import hash_llm_token, issue_llm_token
-from app.domain.models import LlmApiToken
+from app.adapters.mongo.security import MongoPersonalAccessTokenRepository
+from app.auth.dependencies import hash_personal_access_token, issue_personal_access_token
+from app.domain.models import PersonalAccessToken
 
 FIRESTORE_MONGO_URI_ENV = "FIRESTORE_MONGO_URI"
 DEV_SERVICE_URL_ENV = "DEV_SERVICE_URL"
@@ -130,13 +130,13 @@ def metadata_identity_token(http_client: Any, audience: str) -> str:
     return token
 
 
-def smoke_token(run_id: str, raw_token: str, unique_suffix: str) -> LlmApiToken:
+def smoke_token(run_id: str, raw_token: str, unique_suffix: str) -> PersonalAccessToken:
     if not UNIQUE_SUFFIX_PATTERN.fullmatch(unique_suffix):
         raise SmokeValidationError("generated token suffix is invalid")
-    return LlmApiToken(
+    return PersonalAccessToken(
         id=f"closeout-smoke-{run_id}-{unique_suffix}",
         name=f"nonproduction-closeout-smoke-{run_id}-{unique_suffix}",
-        token_hash=hash_llm_token(raw_token),
+        token_hash=hash_personal_access_token(raw_token),
         scopes=frozenset({"records:read"}),
         allowed_spaces=frozenset({SMOKE_SPACE}),
         owner_id=f"nonproduction-smoke-owner-{run_id}",
@@ -149,7 +149,7 @@ def run_smoke(
     *,
     mongo_client_factory: Callable[[str], Any] = create_mongo_client,
     http_client_factory: Callable[[], Any] = create_http_client,
-    raw_token_factory: Callable[[], str] = issue_llm_token,
+    raw_token_factory: Callable[[], str] = issue_personal_access_token,
     unique_suffix_factory: Callable[[], str] = lambda: secrets.token_hex(8),
 ) -> int:
     """Run the bounded smoke test and return zero only after revocation is proven."""
@@ -158,13 +158,13 @@ def run_smoke(
     service_url = dev_service_url()
     mongo_client = mongo_client_factory(mongo_uri)
     http_client = http_client_factory()
-    token: LlmApiToken | None = None
+    token: PersonalAccessToken | None = None
     token_repository: Any = None
     token_saved = False
     primary_error: Exception | None = None
     try:
         database = mongo_client[database_name]
-        token_repository = MongoLlmTokenRepository(database, ensure_indexes=False)
+        token_repository = MongoPersonalAccessTokenRepository(database, ensure_indexes=False)
         raw_token = raw_token_factory()
         token = smoke_token(validated_run_id, raw_token, unique_suffix_factory())
         if database.llm_api_tokens.find_one({"_id": token.id}, {"_id": 1}) is not None:

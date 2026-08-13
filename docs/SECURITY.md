@@ -24,11 +24,12 @@ capability.
 
 Cloud Run may allow public unauthenticated invocation at the platform layer only when MatrixedMind enforces app-level authentication and authorization for all sensitive routes. Public platform reachability is acceptable for the MVP only because ChatGPT Custom GPT Actions need an HTTPS endpoint they can call.
 
-## LLM API tokens
+## Personal access tokens
 
-The LLM API must use tokens that are separate from browser owner authentication and separate from the normal/internal API.
+The legacy LLM API uses MatrixedMind personal access tokens that are separate from browser owner
+authentication and the normal/internal API.
 
-LLM API tokens must be:
+Personal access tokens must be:
 
 - Scoped to allowed operations.
 - Scoped to allowed spaces.
@@ -38,7 +39,7 @@ LLM API tokens must be:
 - Protected by rate limits.
 - Protected by body size limits.
 
-Do not store plaintext LLM tokens in GitHub, docs, Terraform variables, `.env.example`, logs, or Codex output.
+Do not store plaintext personal access tokens in GitHub, docs, Terraform variables, `.env.example`, logs, or Codex output.
 
 The LLM-facing API must be separate from the internal/general API. Do not expose full record CRUD to ChatGPT.
 

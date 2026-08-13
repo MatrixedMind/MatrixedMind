@@ -8,7 +8,8 @@ from app.domain.models import Record
 from tests.contracts.record_repository_contract import assert_record_repository_contract
 
 LOCAL_MONGO_URI = (
-    "mongodb://matrixed_mind:matrixed_mind@localhost:27017/matrixed_mind?authSource=admin"
+    "mongodb://matrixed_mind:matrixed_mind@localhost:27017/matrixed_mind"
+    "?authSource=admin&replicaSet=rs0&directConnection=true&retryWrites=false"
 )
 
 
@@ -80,6 +81,7 @@ def test_mongo_repository_update_creates_revision(repo: MongoRecordRepository) -
     assert created.id is not None
 
     updated = repo.update(
+        "owner",
         created.id,
         Record(
             space="personal",
@@ -88,8 +90,9 @@ def test_mongo_repository_update_creates_revision(repo: MongoRecordRepository) -
             body_markdown="# Updated",
             owner_id="owner",
         ),
+        actor_id="updated-by-owner",
     )
-    fetched = repo.get_by_slug("personal", "revision-test")
+    fetched = repo.get_by_slug("owner", "personal", "revision-test")
 
     assert fetched == updated
     assert fetched is not None
@@ -130,8 +133,8 @@ def test_mongo_repository_lists_by_space_and_parent(repo: MongoRecordRepository)
         )
     )
 
-    assert repo.list_children("personal", None) == [root]
-    assert repo.list_children("personal", root.id) == [child]
+    assert repo.list_children("owner", "personal", None) == [root]
+    assert repo.list_children("owner", "personal", root.id) == [child]
 
 
 def test_mongo_repository_update_missing_record_raises_key_error(
@@ -139,6 +142,7 @@ def test_mongo_repository_update_missing_record_raises_key_error(
 ) -> None:
     with pytest.raises(KeyError, match="record not found"):
         repo.update(
+            "owner",
             "64b7f25f9f9a9f9a9f9a9f9a",
             Record(
                 space="personal",
@@ -147,4 +151,5 @@ def test_mongo_repository_update_missing_record_raises_key_error(
                 body_markdown="# Missing",
                 owner_id="owner",
             ),
+            actor_id="owner",
         )

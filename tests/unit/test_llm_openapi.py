@@ -46,7 +46,7 @@ def test_llm_openapi_requires_bearer_auth_for_every_operation() -> None:
             "type": "http",
             "scheme": "bearer",
             "bearerFormat": "API key",
-            "description": "Scoped MatrixedMind LLM token.",
+            "description": "Scoped MatrixedMind personal access token.",
         }
     }
     for path_item in schema["paths"].values():

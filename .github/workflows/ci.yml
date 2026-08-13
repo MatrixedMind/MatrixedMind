@@ -30,19 +30,6 @@ jobs:
     name: Python quality
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    services:
-      mongo:
-        image: mongo:8
-        env:
-          MONGO_INITDB_ROOT_USERNAME: matrixed_mind
-          MONGO_INITDB_ROOT_PASSWORD: matrixed_mind
-        ports:
-          - 27017:27017
-        options: >-
-          --health-cmd "mongosh --quiet mongodb://matrixed_mind:matrixed_mind@localhost:27017/admin?authSource=admin --eval 'db.adminCommand(\"ping\")'"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 10
 
     steps:
       - name: Check out repository
@@ -60,6 +47,9 @@ jobs:
 
       - name: Sync locked dependencies
         run: uv sync --locked
+
+      - name: Start transaction-capable MongoDB
+        run: docker compose up --wait mongo-replica-init
 
       - name: Check lint
         run: uv run ruff check .

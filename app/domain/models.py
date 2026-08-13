@@ -1,7 +1,7 @@
 from datetime import UTC, datetime
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from app.domain.policy import RecordVisibility
 from app.domain.validation import validate_markdown, validate_path, validate_slug, validate_title
@@ -148,6 +148,80 @@ class User(BaseModel):
         return validate_title(value)
 
 
+class OwnerCredential(BaseModel):
+    owner_id: str
+    display_name: str
+    password_hash: str
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    password_changed_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+    @field_validator("owner_id", "password_hash")
+    @classmethod
+    def validate_required_value(cls, value: str) -> str:
+        if not value.strip() or "\x00" in value:
+            raise ValueError("credential value must not be empty")
+        return value
+
+    @field_validator("display_name")
+    @classmethod
+    def validate_owner_display_name(cls, value: str) -> str:
+        return validate_title(value)
+
+
+class BrowserSession(BaseModel):
+    id: str
+    owner_id: str
+    token_hash: str
+    csrf_token_hash: str
+    created_at: datetime
+    last_seen_at: datetime
+    rotated_at: datetime
+    absolute_expires_at: datetime
+    revoked_at: datetime | None = None
+
+    @field_validator("id", "owner_id", "token_hash", "csrf_token_hash")
+    @classmethod
+    def validate_session_value(cls, value: str) -> str:
+        if not value.strip() or "\x00" in value:
+            raise ValueError("session value must not be empty")
+        return value
+
+    @model_validator(mode="after")
+    def validate_session_timeline(self) -> "BrowserSession":
+        if self.last_seen_at < self.created_at or self.rotated_at < self.created_at:
+            raise ValueError("session activity cannot precede creation")
+        if self.absolute_expires_at <= self.created_at:
+            raise ValueError("session expiration must follow creation")
+        return self
+
+
+OneTimeCredentialPurpose = Literal["bootstrap", "recovery"]
+
+
+class OneTimeCredential(BaseModel):
+    id: str
+    purpose: OneTimeCredentialPurpose
+    token_hash: str
+    created_at: datetime
+    expires_at: datetime
+    consumed_at: datetime | None = None
+
+    @field_validator("id", "token_hash")
+    @classmethod
+    def validate_one_time_value(cls, value: str) -> str:
+        if not value.strip() or "\x00" in value:
+            raise ValueError("one-time credential value must not be empty")
+        return value
+
+    @model_validator(mode="after")
+    def validate_one_time_timeline(self) -> "OneTimeCredential":
+        if self.expires_at <= self.created_at:
+            raise ValueError("one-time credential expiration must follow creation")
+        if self.consumed_at is not None and self.consumed_at < self.created_at:
+            raise ValueError("one-time credential consumption cannot precede creation")
+        return self
+
+
 class Membership(BaseModel):
     user_id: str
     space: str
@@ -166,17 +240,17 @@ class Membership(BaseModel):
         return validate_slug(value)
 
 
-LlmTokenScope = Literal["records:read", "records:write"]
+PersonalAccessTokenScope = Literal["records:read", "records:write"]
 
 
-class LlmApiToken(BaseModel):
+class PersonalAccessToken(BaseModel):
     id: str
     name: str
     token_hash: str
-    scopes: frozenset[LlmTokenScope]
+    scopes: frozenset[PersonalAccessTokenScope]
     allowed_spaces: frozenset[str]
     owner_id: str
-    actor_id: str = "llm:chatgpt"
+    actor_id: str
     revoked_at: datetime | None = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 

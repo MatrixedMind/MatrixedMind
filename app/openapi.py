@@ -31,7 +31,7 @@ def build_llm_openapi_schema(app: FastAPI, *, server_url: str) -> dict[str, Any]
             "type": "http",
             "scheme": "bearer",
             "bearerFormat": "API key",
-            "description": "Scoped MatrixedMind LLM token.",
+            "description": "Scoped MatrixedMind personal access token.",
         }
     }
     for path_item in schema["paths"].values():

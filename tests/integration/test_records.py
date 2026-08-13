@@ -4,7 +4,9 @@ from datetime import UTC, datetime, timedelta
 import pytest
 from fastapi.testclient import TestClient
 
+from app.adapters.memory.auth import InMemoryOwnerAuthRepository
 from app.adapters.memory.repository import InMemoryRecordRepository
+from app.auth.dependencies import get_owner_auth_repository
 from app.dependencies import get_record_repository
 from app.domain.models import Record
 from app.main import app
@@ -19,9 +21,16 @@ def repo() -> InMemoryRecordRepository:
 @pytest.fixture
 def client(repo: InMemoryRecordRepository) -> Iterator[TestClient]:
     app.dependency_overrides[get_record_repository] = lambda: repo
+    app.dependency_overrides[get_owner_auth_repository] = InMemoryOwnerAuthRepository
+    original_app_env = settings.app_env
+    original_auth_mode = settings.auth_mode
+    settings.app_env = "test"
+    settings.auth_mode = "test"
     try:
-        yield TestClient(app)
+        yield TestClient(app, headers={"X-Test-User-Id": "owner"})
     finally:
+        settings.app_env = original_app_env
+        settings.auth_mode = original_auth_mode
         app.dependency_overrides.clear()
 
 
@@ -39,9 +48,9 @@ def test_protected_routes_require_identity_outside_dev_mode(
     client: TestClient,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(settings, "auth_mode", "test")
-    assert client.get("/").status_code == 401
-    assert client.post("/api/records/", json=record_payload()).status_code == 401
+    unauthenticated = TestClient(app)
+    assert unauthenticated.get("/", follow_redirects=False).status_code == 303
+    assert unauthenticated.post("/api/records/", json=record_payload()).status_code == 401
     assert client.get("/", headers={"X-Test-User-Id": "owner"}).status_code == 200
 
 
@@ -84,6 +93,37 @@ def test_read_and_list_filter_private_records_owned_by_another_user(
         == 404
     )
     assert client.get("/api/records/test", headers=headers).json() == []
+
+
+def test_owners_can_reuse_space_and_slug_without_cross_owner_updates(
+    client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(settings, "auth_mode", "test")
+    owner_headers = {"X-Test-User-Id": "owner"}
+    other_headers = {"X-Test-User-Id": "other-owner"}
+
+    assert (
+        client.post("/api/records/", json=record_payload(), headers=owner_headers).status_code
+        == 201
+    )
+    assert (
+        client.post("/api/records/", json=record_payload(), headers=other_headers).status_code
+        == 201
+    )
+    assert (
+        client.put(
+            "/api/records/test/hello-world",
+            json={"title": "Other Owner Update"},
+            headers=other_headers,
+        ).status_code
+        == 200
+    )
+
+    owner = client.get("/api/records/test/hello-world", headers=owner_headers)
+    other = client.get("/api/records/test/hello-world", headers=other_headers)
+    assert owner.json()["title"] == "Hello World"
+    assert other.json()["title"] == "Other Owner Update"
 
 
 def test_create_and_get_record(client: TestClient) -> None:
@@ -268,8 +308,8 @@ def test_index_html_returns_200_and_lists_default_records(client: TestClient) ->
     assert response.status_code == 200
     assert "<title>MatrixedMind</title>" in response.text
     assert '<meta name="robots" content="noindex,nofollow,noarchive">' in response.text
-    assert '<a href="/">MatrixedMind</a>' in response.text
-    assert '<a href="/records/new">New page</a>' in response.text
+    assert '<a class="brand" href="/">MatrixedMind</a>' in response.text
+    assert '<a class="button" href="/records/new">New Page</a>' in response.text
     assert '<a href="/default/hello-world">Hello World</a>' in response.text
 
 
@@ -466,7 +506,7 @@ def test_view_record_html(client: TestClient) -> None:
     assert response.status_code == 200
     assert "<title>Hello World</title>" in response.text
     assert '<meta name="robots" content="noindex,nofollow,noarchive">' in response.text
-    assert '<a href="/">MatrixedMind</a>' in response.text
+    assert '<a class="brand" href="/">MatrixedMind</a>' in response.text
     assert '<a href="/">Home</a>' in response.text
     assert '<a href="/test/hello-world/edit">Edit</a>' in response.text
     assert '<a href="/records/new">New page</a>' in response.text

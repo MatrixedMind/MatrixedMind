@@ -6,6 +6,7 @@
         <div role="alert">{{ error }}</div>
     {% endif %}
     <form method="post" action="{{ form_action }}">
+        <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
         <div>
             <label for="space">Space</label>
             <input id="space" name="space" type="text" value="{{ record.space if record else 'default' }}" required>
@@ -26,7 +27,7 @@
             <label for="tags">Tags</label>
             <input id="tags" name="tags" type="text" value="{{ tags_value }}">
         </div>
-        <button type="submit">Save</button>
+        <button type="submit">Save Page</button>
         <a href="{{ cancel_url }}">Cancel</a>
     </form>
 {% endblock %}

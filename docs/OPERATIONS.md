@@ -191,6 +191,11 @@ gcloud secrets versions add matrixedmind-dev-app-secret-key --data-file=-
 gcloud secrets versions add matrixedmind-dev-llm-token-pepper --data-file=-
 ```
 
+`LLM_TOKEN_PEPPER` is retained here only because the currently deployed Terraform contract still
+provisions and injects it. The application no longer consumes it: personal access tokens are
+high-entropy random credentials stored by one-way hash. Removing the secret, IAM binding, version
+input, and Cloud Run environment reference is a separate reviewed infrastructure migration.
+
 Build and push the first immutable image:
 
 ```bash
@@ -442,11 +447,11 @@ the database URI, response bodies, or authorization headers. Remove the temporar
 bindings after evidence is captured; retain the revoked token record as the non-production audit
 artifact.
 
-The current `APP_SECRET_KEY` setting is a required nonblank production secret but does not yet
-drive user-session behavior. Rotating it validates numeric Secret Manager versioning, Cloud Run
-revision wiring, startup, authenticated health/readiness, persistence, and the independent scoped
-LLM boundary; it does not prove secret-dependent session semantics. Do not claim more until a
-production identity/session implementation consumes this setting.
+`APP_SECRET_KEY` remains in the currently deployed Terraform contract but is no longer an
+application setting. MatrixedMind browser sessions use random opaque credentials persisted only by
+hash, so rotating this legacy secret does not rotate or invalidate browser sessions. Removing its
+Secret Manager resource, IAM binding, version input, and Cloud Run environment reference is a
+separate reviewed infrastructure migration.
 
 The development rotation exercise completed on 2026-08-12. Secret version 2 is active on ready
 revision `matrixedmind-dev-00013-br6`, rollback version 1 remains enabled, authenticated health and

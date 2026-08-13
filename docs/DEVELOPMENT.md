@@ -25,14 +25,22 @@ Required local values:
 
 ```text
 APP_ENV=local
-AUTH_MODE=dev
+AUTH_MODE=local
+IDENTITY_PROVIDER=local
+SESSION_INACTIVITY_SECONDS=2592000
+SESSION_ABSOLUTE_SECONDS=7776000
+SESSION_ROTATION_SECONDS=28800
+OPERATOR_CREDENTIAL_TTL_SECONDS=900
+AUTH_ATTEMPT_LIMIT=5
+AUTH_ATTEMPT_WINDOW_SECONDS=900
+AUTH_FORM_BODY_LIMIT_BYTES=16384
 LLM_REQUEST_BODY_LIMIT_BYTES=65536
 LLM_RATE_LIMIT_REQUESTS=60
 LLM_RATE_LIMIT_WINDOW_SECONDS=60
 LLM_API_SERVER_URL=
 MARKDOWN_IMAGE_SOURCE_ALLOWLIST=
 MONGO_ENSURE_INDEXES=true
-MONGO_URI=mongodb://matrixed_mind:matrixed_mind@localhost:27017/matrixed_mind?authSource=admin
+MONGO_URI=mongodb://matrixed_mind:matrixed_mind@localhost:27017/matrixed_mind?authSource=admin&replicaSet=rs0&directConnection=true&retryWrites=false
 SOURCE_REPOSITORY_URL=https://github.com/MatrixedMind/MatrixedMind
 SOURCE_REVISION=local
 ```
@@ -47,9 +55,59 @@ not the parent domain. Image uploads and object storage are not part of this set
 SHA so the hosted link targets the matching source tree. Do not set a moving branch name as the
 deployed source revision.
 
-`APP_SECRET_KEY` and `LLM_TOKEN_PEPPER` are required only when `APP_ENV=production`. The Cloud Run
-service reads them from explicit Secret Manager versions. Do not add real values to `.env`,
-`.env.example`, Terraform variable files, or GitHub configuration.
+Local owner authentication does not use `APP_SECRET_KEY` or `LLM_TOKEN_PEPPER`: opaque browser
+sessions, CSRF tokens, bootstrap credentials, and recovery credentials are random values stored
+only by SHA-256 hash. The current hosted Terraform still provisions both legacy secrets. Removing
+their live Secret Manager resources and IAM/environment wiring requires a separately reviewed cloud
+change; do not add either value to local configuration.
+
+## Local owner setup and recovery
+
+`AUTH_MODE=local` is the normal local and production path. `AUTH_MODE=test` accepts an explicit
+`X-Test-User-Id` only when `APP_ENV=test`; it is not a local-development shortcut. The only
+implemented `IDENTITY_PROVIDER` is `local`. Firebase and OIDC are reserved adapter discriminants
+and are rejected until their optional adapters exist, so clean local startup imports no provider
+package and needs no provider or GCP configuration.
+
+Start MongoDB, then issue the first-use credential from the same local environment as the app:
+
+```bash
+uv run python -m app.auth.cli bootstrap
+```
+
+The command prints one random credential once. It stores only a hash, expires after 15 minutes by
+default, and cannot be used after successful setup. Open `/setup` and paste it into the form; never
+put it in a URL, shell history argument, log, or configuration file. There is no default password
+and setup closes permanently once an owner exists.
+
+For operator-controlled recovery, run:
+
+```bash
+uv run python -m app.auth.cli recovery
+```
+
+Paste the printed credential into `/recovery`. A successful recovery atomically consumes the
+credential, changes the password, and revokes every browser session. Normal password change at
+`/settings/password` atomically changes the password and revokes every other session while leaving
+the current browser signed in. Sign-out revokes the current session.
+
+Session defaults are 30 days of inactivity, 90 days absolute lifetime, and opaque-token rotation
+after eight hours of active use without re-login. `SESSION_INACTIVITY_SECONDS`,
+`SESSION_ABSOLUTE_SECONDS`, `SESSION_ROTATION_SECONDS`, and
+`OPERATOR_CREDENTIAL_TTL_SECONDS` configure those intervals. Session and CSRF cookies are
+`HttpOnly`, `SameSite=Lax`, scoped to `/`, and `Secure` in production. Browser writes require a
+session-bound CSRF token; credential forms require a strict same-origin `Origin` or `Referer`.
+Login, setup, and recovery also share configurable per-process/per-client attempt limits (five
+attempts per 15 minutes by default). Multi-instance hosted activation should add a shared edge or
+datastore limiter before horizontal scaling.
+Authentication form bodies are capped by `AUTH_FORM_BODY_LIMIT_BYTES` (16 KiB by default), and
+authenticated or credential HTML responses use `Cache-Control: no-store`.
+
+The current hosted Terraform still injects the historical `AUTH_MODE=production`, while this
+application accepts `AUTH_MODE=local` or the test-only mode. Do not deploy this image to the hosted
+services until Milestone 14 aligns that setting through an approved plan. Hosted activation also
+requires the owner-qualified index/data migration, Firestore transaction coverage, a canonical
+trusted HTTPS browser origin, and shared authentication-attempt limiting listed in the roadmap.
 
 Production also requires `LLM_API_SERVER_URL`: the canonical public HTTPS origin that
 `/openapi-llm.json` advertises to a Custom GPT Action. Leave it empty locally to derive the current
@@ -67,8 +125,18 @@ not index-administration permission.
 When running through Docker Compose, the `api` service uses the same database credentials with the Compose service host:
 
 ```text
-MONGO_URI=mongodb://matrixed_mind:matrixed_mind@mongo:27017/matrixed_mind?authSource=admin
+MONGO_URI=mongodb://matrixed_mind:matrixed_mind@mongo:27017/matrixed_mind?authSource=admin&replicaSet=rs0&directConnection=true&retryWrites=false
 ```
+
+Compose initializes an authenticated single-node `rs0` replica set and persists its generated
+internal key in the `mongo_keyfile` named volume. This enables the same short record-and-audit
+transactions used by the legacy automation upsert. On an existing checkout, `docker compose up`
+recreates the changed MongoDB service and initializes replica-set metadata in the existing
+`mongo_data` volume; it does not migrate or delete application documents. Do not use
+`docker compose down -v` when preserving local data. Host-side clients use `directConnection=true`
+because the replica member advertises its Compose hostname. Compose publishes MongoDB only on the
+host loopback interface; the checked-in development credentials must not be used for a networked
+or production database.
 
 ## Local app
 
@@ -117,7 +185,9 @@ GET /api/records/{space}/{slug}
 PUT /api/records/{space}/{slug}
 ```
 
-Browser and internal record routes use the owner auth dependency. `AUTH_MODE=dev` supplies the deterministic local `dev-user`; test mode requires `X-Test-User-Id`; production requires managed runtime secrets and still fails closed until a real verified identity implementation is configured.
+Browser and internal record routes use the local owner credential and opaque browser session.
+Unauthenticated browser requests redirect to `/login`; internal record API requests return 401.
+Only `APP_ENV=test` with `AUTH_MODE=test` enables the explicit `X-Test-User-Id` test seam.
 
 The separate ChatGPT Action boundary is:
 
@@ -130,8 +200,9 @@ GET /api/llm/records?space={space}
 
 The schema route is public and contains only the three LLM record operations. The record routes
 require `Authorization: Bearer <token>`. Provision tokens through application code using
-`issue_llm_token()`, bind every `LlmApiToken` to an explicit `owner_id`, and persist only
-`hash_llm_token(raw_token)`; there is intentionally no public token-administration endpoint. See
+`issue_personal_access_token()`, bind every `PersonalAccessToken` to explicit `owner_id` and
+`actor_id` values, and persist only `hash_personal_access_token(raw_token)`; there is intentionally
+no public token-administration endpoint. See
 [`CHATGPT_ACTION.md`](CHATGPT_ACTION.md) for Action configuration, manual verification, and token
 rotation or revocation.
 

@@ -111,7 +111,7 @@ def test_happy_path_uses_separate_llm_and_serverless_authorization_headers(
         FakeResponse(401),
     ]
 
-    with patch.object(smoke, "MongoLlmTokenRepository", return_value=repository):
+    with patch.object(smoke, "MongoPersonalAccessTokenRepository", return_value=repository):
         assert (
             smoke.run_smoke(
                 RUN_ID,
@@ -149,7 +149,7 @@ def test_non_200_check_revokes_saved_token_on_failure(
     fake_http_client.get.side_effect = [FakeResponse(200, "identity-token"), FakeResponse(503)]
 
     with (
-        patch.object(smoke, "MongoLlmTokenRepository", return_value=repository),
+        patch.object(smoke, "MongoPersonalAccessTokenRepository", return_value=repository),
         pytest.raises(smoke.SmokeCheckError, match="health"),
     ):
         smoke.run_smoke(
@@ -172,7 +172,7 @@ def test_save_failure_does_not_attempt_revocation(
     repository.save.side_effect = RuntimeError("save failed")
 
     with (
-        patch.object(smoke, "MongoLlmTokenRepository", return_value=repository),
+        patch.object(smoke, "MongoPersonalAccessTokenRepository", return_value=repository),
         pytest.raises(RuntimeError, match="save failed"),
     ):
         smoke.run_smoke(
@@ -195,7 +195,7 @@ def test_generated_token_id_collision_fails_before_save(
     }
 
     with (
-        patch.object(smoke, "MongoLlmTokenRepository", return_value=repository),
+        patch.object(smoke, "MongoPersonalAccessTokenRepository", return_value=repository),
         pytest.raises(smoke.SmokeValidationError, match="already exists"),
     ):
         smoke.run_smoke(
@@ -223,7 +223,7 @@ def test_post_revocation_requires_401(
     ]
 
     with (
-        patch.object(smoke, "MongoLlmTokenRepository", return_value=repository),
+        patch.object(smoke, "MongoPersonalAccessTokenRepository", return_value=repository),
         pytest.raises(smoke.SmokeCheckError, match="llm-token-rejected"),
     ):
         smoke.run_smoke(
@@ -247,7 +247,7 @@ def test_cleanup_failures_do_not_mask_primary_check_failure(
     fake_mongo_client.close.side_effect = RuntimeError("Mongo close failed")
 
     with (
-        patch.object(smoke, "MongoLlmTokenRepository", return_value=repository),
+        patch.object(smoke, "MongoPersonalAccessTokenRepository", return_value=repository),
         pytest.raises(smoke.SmokeCheckError, match="health"),
     ):
         smoke.run_smoke(
@@ -277,7 +277,7 @@ def test_cleanup_failure_fails_an_otherwise_successful_run(
     fake_http_client.close.side_effect = RuntimeError("HTTP close failed")
 
     with (
-        patch.object(smoke, "MongoLlmTokenRepository", return_value=repository),
+        patch.object(smoke, "MongoPersonalAccessTokenRepository", return_value=repository),
         pytest.raises(RuntimeError, match="HTTP close failed"),
     ):
         smoke.run_smoke(

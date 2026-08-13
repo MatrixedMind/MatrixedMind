@@ -61,7 +61,9 @@ def test_firestore_update_one_set_behavior(
 
     replacement = _record("update-set")
     replacement.title = "Updated through set"
-    updated = firestore_repo.update(created.id, replacement, actor_id="firestore-spike-actor")
+    updated = firestore_repo.update(
+        "firestore-spike-owner", created.id, replacement, actor_id="firestore-spike-actor"
+    )
 
     assert updated.title == "Updated through set"
     assert updated.updated_by == "firestore-spike-actor"
@@ -76,7 +78,10 @@ def test_firestore_sorting_is_deterministic(
     second = firestore_repo.create(_record("second", created_at=now + timedelta(seconds=1)))
     first = firestore_repo.create(_record("first", created_at=now))
 
-    assert firestore_repo.list_children("firestore-spike", None) == [first, second]
+    assert firestore_repo.list_children("firestore-spike-owner", "firestore-spike", None) == [
+        first,
+        second,
+    ]
 
 
 def test_firestore_readiness_ping(

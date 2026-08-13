@@ -14,7 +14,7 @@ authentication configured in the GPT editor. See the official
 - A deployed HTTPS MatrixedMind service that ChatGPT can reach.
 - App-level LLM authentication enabled even if Cloud Run permits unauthenticated platform-level
   invocation.
-- A dedicated LLM token with only `records:read` and `records:write` scopes and an explicit list of
+- A dedicated MatrixedMind personal access token (PAT) with only `records:read` and `records:write` scopes and an explicit list of
   allowed spaces.
 - The raw token captured once at issuance. MatrixedMind stores only its SHA-256 hash.
 
@@ -49,7 +49,7 @@ The schema's `servers` entry must contain the same HTTPS origin as `MATRIXEDMIND
 2. In the Action section, import
    `https://YOUR_MATRIXEDMIND_DOMAIN/openapi-llm.json` or paste its returned JSON.
 3. Open the Action authentication settings and select **API Key**.
-4. Configure the key as a bearer credential and enter the raw MatrixedMind LLM token.
+4. Configure the key as a bearer credential and enter the raw MatrixedMind PAT.
 5. Confirm that the editor discovers only `upsertPrivateDraftRecord`,
    `getPrivateDraftRecord`, and `listPrivateDraftRecords`.
 6. Keep the GPT private while the Cloud MVP is being validated.
@@ -86,8 +86,9 @@ statuses, and exact blocker for any failed step.
 ## Token rotation and revocation
 
 There is intentionally no public token-administration endpoint. Issue and persist tokens only from
-an owner-controlled administrative context using `issue_llm_token()`, `hash_llm_token()`, and the
-configured `LlmTokenRepository`. Each token record must have:
+an owner-controlled administrative context using `issue_personal_access_token()`,
+`hash_personal_access_token()`, and the configured `PersonalAccessTokenRepository`. Each token
+record must have:
 
 - a unique ID and descriptive name;
 - the synthetic actor ID, normally `llm:chatgpt`;
@@ -98,11 +99,11 @@ configured `LlmTokenRepository`. Each token record must have:
 
 To rotate safely:
 
-1. Issue a new high-entropy raw token with `issue_llm_token()`.
-2. Persist a new `LlmApiToken` containing `hash_llm_token(raw_token)` and the same or narrower owner,
+1. Issue a new high-entropy raw token with `issue_personal_access_token()`.
+2. Persist a new `PersonalAccessToken` containing `hash_personal_access_token(raw_token)` and the same or narrower owner,
    scopes, and spaces.
 3. Replace the credential in the GPT editor and test read and upsert with the new token.
-4. Revoke the old token by ID with `LlmTokenRepository.revoke(old_token_id)`.
+4. Revoke the old token by ID with `PersonalAccessTokenRepository.revoke(old_token_id)`.
 5. Confirm the old token returns `401` and the new token still succeeds.
 6. Remove any temporary plaintext copy of the new token.
 

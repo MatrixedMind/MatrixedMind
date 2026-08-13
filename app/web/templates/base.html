@@ -5,13 +5,23 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="robots" content="{{ robots_content | default('noindex,nofollow,noarchive') }}">
     <title>{% block title %}{{ title }}{% endblock %}</title>
+    <link rel="stylesheet" href="/static/matrixedmind.css">
 </head>
 <body>
-    <header>
-        <a href="/">MatrixedMind</a>
+    <header class="site-header">
+        <a class="brand" href="/">MatrixedMind</a>
         <nav aria-label="Primary navigation">
-            <a href="/">Home</a>
-            <a href="/records/new">New page</a>
+            {% if request.state.browser_session %}
+                <a href="/">Mind</a>
+                <a href="/records/new">New Page</a>
+                <a href="/settings/password">Password</a>
+                <form class="inline-form" method="post" action="/logout">
+                    <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+                    <button class="link-button" type="submit">Sign out</button>
+                </form>
+            {% else %}
+                <a href="/login">Sign in</a>
+            {% endif %}
         </nav>
     </header>
     <main>

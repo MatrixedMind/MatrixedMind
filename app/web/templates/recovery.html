@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <section class="auth-panel" aria-labelledby="recovery-heading">
+        <p class="eyebrow">Local recovery</p>
+        <h1 id="recovery-heading">Recover the owner credential</h1>
+        <p>Recovery changes the password and signs out every browser session.</p>
+        {% if error %}<div class="alert" role="alert">{{ error }}</div>{% endif %}
+        <form method="post" action="/recovery">
+            <label for="operator_credential">Recovery credential</label>
+            <input id="operator_credential" name="operator_credential" type="password" autocomplete="one-time-code" required>
+            <label for="password">New password</label>
+            <input id="password" name="password" type="password" minlength="12" maxlength="1024" autocomplete="new-password" required>
+            <label for="password_confirmation">Confirm new password</label>
+            <input id="password_confirmation" name="password_confirmation" type="password" minlength="12" maxlength="1024" autocomplete="new-password" required>
+            <button type="submit">Reset password</button>
+        </form>
+    </section>
+{% endblock %}

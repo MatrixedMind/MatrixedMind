@@ -26,12 +26,16 @@ controlled boundaries, but it should not own the data or decide what becomes pub
 
 MatrixedMind is still an early, pre-MVP project, but its core is taking shape. Today it can:
 
-- Create, view, edit, and list Markdown-based records through a basic web interface or JSON API.
-- Organize records into spaces, paths, and tags.
-- Keep revisions when records change, with additional audit records for AI-assisted writes.
+- Set up a local owner credential, sign in, rotate durable browser sessions, recover access, and
+  change the owner password without requiring Google, Firebase, or another identity provider.
+- Create, view, edit, and list Markdown-based Pages through a responsive server-rendered interface
+  or JSON API.
+- Organize Pages into Spaces, paths, and tags.
+- Keep revisions when Pages change, with atomic audit records for AI-assisted writes.
 - Keep new content private and hidden from search-engine indexing by default.
 - Separate one owner's records from another owner's records.
-- Accept narrowly scoped, authenticated AI-assisted reads and writes through a dedicated API.
+- Accept narrowly scoped, authenticated AI-assisted reads and writes through a dedicated personal
+  access token API retained for Custom GPT Action compatibility.
 - Render externally hosted HTTPS Markdown images through the sanitizer, with optional source-host
   allowlists and no upload or object-storage coupling.
 - Show an AGPLv3 source offer whose deployment build can link to the exact corresponding Git commit.
@@ -39,20 +43,23 @@ MatrixedMind is still an early, pre-MVP project, but its core is taking shape. T
 - Run through its selected Cloud Run deployment mode, backed by Google Cloud's hosted Firestore
   database using MongoDB compatibility, managed secrets, and automated deployment checks.
 
-The interface is currently functional rather than polished, and production sign-in is not finished.
-This is not yet a service intended for general use or sensitive personal data.
+The portable owner-login and UI foundation now works locally. Optional Google sign-in and hosted
+activation are still planned, so this is not yet a service intended for general use or sensitive
+personal data.
 
-Milestone 13, public project documentation, is the next product implementation step. The required
-Cloud MVP verification and temporary-resource cleanup are complete; evidence is recorded in the
-[Cloud MVP verification follow-up register](docs/CLOUD_MVP_VERIFICATION_FOLLOW_UP.md).
+Milestone 13, portable owner authentication and UI foundation, is the current product milestone.
+The required Cloud MVP verification and temporary-resource cleanup are complete; evidence is
+recorded in the [Cloud MVP verification follow-up register](docs/CLOUD_MVP_VERIFICATION_FOLLOW_UP.md).
 
 ## Where is it going?
 
 The roadmap is working toward a secure personal cloud version of MatrixedMind that is genuinely
 useful day to day. Planned capabilities include:
 
-- A limited ChatGPT Action that can create, update, and retrieve private draft notes only within
-  explicitly allowed spaces.
+- Optional Google sign-in for the hosted Instance while retaining local authentication as the
+  provider-free baseline.
+- Connections and grants that let ChatGPT, MCP clients, and other AI providers capture and retrieve
+  only explicitly authorized context from your Mind.
 - Stable links between pages, so reorganizing or renaming a page does not break its connections.
 - Backlinks and safer connections across different spaces.
 - Granular sharing controls, with public publishing remaining an explicit choice rather than a

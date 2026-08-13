@@ -3,7 +3,15 @@ from datetime import UTC, datetime
 import pytest
 from pydantic import ValidationError
 
-from app.domain.models import LlmApiToken, Membership, Record, RecordRevision, Space, Tag, User
+from app.domain.models import (
+    Membership,
+    PersonalAccessToken,
+    Record,
+    RecordRevision,
+    Space,
+    Tag,
+    User,
+)
 
 
 def test_record_validates_and_normalizes_core_fields() -> None:
@@ -40,17 +48,27 @@ def test_record_rejects_invalid_slug_and_markdown() -> None:
         )
 
 
-def test_record_and_llm_token_require_explicit_owners() -> None:
+def test_record_and_personal_access_token_require_explicit_owners_and_actor() -> None:
     with pytest.raises(ValidationError, match="owner_id"):
         Record(space="personal", slug="note", title="Note", body_markdown="# Note")
 
     with pytest.raises(ValidationError, match="owner_id"):
-        LlmApiToken(
+        PersonalAccessToken(
             id="token-1",
             name="ChatGPT",
             token_hash="hash",
             scopes=frozenset({"records:read"}),
             allowed_spaces=frozenset({"personal"}),
+        )
+
+    with pytest.raises(ValidationError, match="actor_id"):
+        PersonalAccessToken(
+            id="token-1",
+            name="API credential",
+            token_hash="hash",
+            scopes=frozenset({"records:read"}),
+            allowed_spaces=frozenset({"personal"}),
+            owner_id="owner",
         )
 
 

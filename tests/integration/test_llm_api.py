@@ -5,39 +5,51 @@ from fastapi.testclient import TestClient
 
 from app.adapters.memory.repository import (
     InMemoryAuditEventRepository,
-    InMemoryLlmTokenRepository,
+    InMemoryAutomationWriteRepository,
+    InMemoryPersonalAccessTokenRepository,
     InMemoryRecordRepository,
 )
-from app.auth.dependencies import hash_llm_token, llm_rate_limiter
+from app.auth.dependencies import hash_personal_access_token, personal_access_token_rate_limiter
 from app.dependencies import (
     get_audit_event_repository,
-    get_llm_token_repository,
+    get_automation_write_repository,
+    get_personal_access_token_repository,
     get_record_repository,
 )
-from app.domain.models import LlmApiToken, Record
+from app.domain.models import AuditEvent, PersonalAccessToken, Record
 from app.main import app
 from app.settings import settings
 
 RAW_TOKEN = "test-llm-token"
 
 
+class ToggleAuditEventRepository(InMemoryAuditEventRepository):
+    fail = False
+
+    def append(self, event: AuditEvent) -> AuditEvent:
+        if self.fail:
+            raise RuntimeError("injected audit failure")
+        return super().append(event)
+
+
 @pytest.fixture
 def repos() -> tuple[
     InMemoryRecordRepository,
-    InMemoryLlmTokenRepository,
-    InMemoryAuditEventRepository,
+    InMemoryPersonalAccessTokenRepository,
+    ToggleAuditEventRepository,
 ]:
     records = InMemoryRecordRepository()
-    tokens = InMemoryLlmTokenRepository()
-    audits = InMemoryAuditEventRepository()
+    tokens = InMemoryPersonalAccessTokenRepository()
+    audits = ToggleAuditEventRepository()
     tokens.save(
-        LlmApiToken(
+        PersonalAccessToken(
             id="token-1",
             name="ChatGPT",
-            token_hash=hash_llm_token(RAW_TOKEN),
+            token_hash=hash_personal_access_token(RAW_TOKEN),
             scopes=frozenset({"records:read", "records:write"}),
             allowed_spaces=frozenset({"personal"}),
             owner_id="dev-user",
+            actor_id="llm:chatgpt",
         )
     )
     return records, tokens, audits
@@ -47,14 +59,17 @@ def repos() -> tuple[
 def client(
     repos: tuple[
         InMemoryRecordRepository,
-        InMemoryLlmTokenRepository,
-        InMemoryAuditEventRepository,
+        InMemoryPersonalAccessTokenRepository,
+        ToggleAuditEventRepository,
     ],
 ) -> Iterator[TestClient]:
     records, tokens, audits = repos
     app.dependency_overrides[get_record_repository] = lambda: records
-    app.dependency_overrides[get_llm_token_repository] = lambda: tokens
+    app.dependency_overrides[get_personal_access_token_repository] = lambda: tokens
     app.dependency_overrides[get_audit_event_repository] = lambda: audits
+    app.dependency_overrides[get_automation_write_repository] = lambda: (
+        InMemoryAutomationWriteRepository(records, audits)
+    )
     try:
         yield TestClient(app)
     finally:
@@ -79,8 +94,8 @@ def test_llm_upsert_defaults_private_and_creates_revision_and_audit(
     client: TestClient,
     repos: tuple[
         InMemoryRecordRepository,
-        InMemoryLlmTokenRepository,
-        InMemoryAuditEventRepository,
+        InMemoryPersonalAccessTokenRepository,
+        ToggleAuditEventRepository,
     ],
 ) -> None:
     response = client.post("/api/llm/records/upsert", json=payload(), headers=auth_headers())
@@ -90,7 +105,7 @@ def test_llm_upsert_defaults_private_and_creates_revision_and_audit(
     assert data["draft"] is True
     assert data["index_after"] is None
     assert data["created_by"] == "llm:chatgpt"
-    record = repos[0].get_by_slug("personal", "from-chatgpt")
+    record = repos[0].get_by_slug("dev-user", "personal", "from-chatgpt")
     assert record is not None
     assert record.revisions[0].author_id == "llm:chatgpt"
     assert repos[2].events[0].action == "record.created"
@@ -101,10 +116,53 @@ def test_llm_upsert_defaults_private_and_creates_revision_and_audit(
         headers=auth_headers(),
     )
     assert update.status_code == 200
-    record = repos[0].get_by_slug("personal", "from-chatgpt")
+    record = repos[0].get_by_slug("dev-user", "personal", "from-chatgpt")
     assert record is not None
     assert len(record.revisions) == 2
     assert repos[2].events[-1].action == "record.updated"
+
+
+def test_llm_upsert_rolls_back_create_when_audit_fails(
+    client: TestClient,
+    repos: tuple[
+        InMemoryRecordRepository,
+        InMemoryPersonalAccessTokenRepository,
+        ToggleAuditEventRepository,
+    ],
+) -> None:
+    repos[2].fail = True
+
+    with pytest.raises(RuntimeError, match="injected audit failure"):
+        client.post("/api/llm/records/upsert", json=payload(), headers=auth_headers())
+
+    assert repos[0].get_by_slug("dev-user", "personal", "from-chatgpt") is None
+    assert repos[2].events == []
+
+
+def test_llm_upsert_rolls_back_update_and_revision_when_audit_fails(
+    client: TestClient,
+    repos: tuple[
+        InMemoryRecordRepository,
+        InMemoryPersonalAccessTokenRepository,
+        ToggleAuditEventRepository,
+    ],
+) -> None:
+    created = client.post("/api/llm/records/upsert", json=payload(), headers=auth_headers())
+    assert created.status_code == 200
+    before = repos[0].get_by_slug("dev-user", "personal", "from-chatgpt")
+    assert before is not None
+
+    repos[2].fail = True
+    with pytest.raises(RuntimeError, match="injected audit failure"):
+        client.post(
+            "/api/llm/records/upsert",
+            json={**payload(), "body_markdown": "# Must roll back"},
+            headers=auth_headers(),
+        )
+
+    after = repos[0].get_by_slug("dev-user", "personal", "from-chatgpt")
+    assert after == before
+    assert len(repos[2].events) == 1
 
 
 def test_llm_read_list_and_space_scope(client: TestClient) -> None:
@@ -126,12 +184,12 @@ def test_llm_read_list_and_space_scope(client: TestClient) -> None:
     )
 
 
-def test_llm_cannot_access_or_overwrite_another_owners_record(
+def test_llm_cannot_access_another_owner_and_can_create_its_own_same_slug_record(
     client: TestClient,
     repos: tuple[
         InMemoryRecordRepository,
-        InMemoryLlmTokenRepository,
-        InMemoryAuditEventRepository,
+        InMemoryPersonalAccessTokenRepository,
+        ToggleAuditEventRepository,
     ],
 ) -> None:
     repos[0].create(
@@ -150,23 +208,24 @@ def test_llm_cannot_access_or_overwrite_another_owners_record(
     )
     assert client.get("/api/llm/records?space=personal", headers=auth_headers()).json() == []
 
-    overwrite = client.post(
+    create_own_record = client.post(
         "/api/llm/records/upsert",
         json={**payload(), "slug": "other-owner"},
         headers=auth_headers(),
     )
-    assert overwrite.status_code == 404
-    record = repos[0].get_by_slug("personal", "other-owner")
-    assert record is not None
-    assert record.title == "Other Owner"
+    assert create_own_record.status_code == 200
+    other_record = repos[0].get_by_slug("other-user", "personal", "other-owner")
+    own_record = repos[0].get_by_slug("dev-user", "personal", "other-owner")
+    assert other_record is not None and other_record.title == "Other Owner"
+    assert own_record is not None and own_record.owner_id == "dev-user"
 
 
 def test_llm_rejects_missing_invalid_and_revoked_tokens(
     client: TestClient,
     repos: tuple[
         InMemoryRecordRepository,
-        InMemoryLlmTokenRepository,
-        InMemoryAuditEventRepository,
+        InMemoryPersonalAccessTokenRepository,
+        ToggleAuditEventRepository,
     ],
 ) -> None:
     assert client.get("/api/llm/records?space=personal").status_code == 401
@@ -182,11 +241,11 @@ def test_llm_enforces_token_scope(
     client: TestClient,
     repos: tuple[
         InMemoryRecordRepository,
-        InMemoryLlmTokenRepository,
-        InMemoryAuditEventRepository,
+        InMemoryPersonalAccessTokenRepository,
+        ToggleAuditEventRepository,
     ],
 ) -> None:
-    token = repos[1].get_by_hash(hash_llm_token(RAW_TOKEN))
+    token = repos[1].get_by_hash(hash_personal_access_token(RAW_TOKEN))
     assert token is not None
     repos[1].save(token.model_copy(update={"scopes": frozenset({"records:read"})}))
     response = client.post("/api/llm/records/upsert", json=payload(), headers=auth_headers())
@@ -213,10 +272,10 @@ def test_llm_enforces_body_size_and_rate_limits(
 
     monkeypatch.setattr(settings, "llm_request_body_limit_bytes", 65_536)
     monkeypatch.setattr(settings, "llm_rate_limit_requests", 1)
-    llm_rate_limiter._requests.clear()
+    personal_access_token_rate_limiter._requests.clear()
     assert client.get("/api/llm/records?space=personal", headers=auth_headers()).status_code == 200
     assert client.get("/api/llm/records?space=personal", headers=auth_headers()).status_code == 429
-    llm_rate_limiter._requests.clear()
+    personal_access_token_rate_limiter._requests.clear()
 
 
 @pytest.mark.parametrize(
