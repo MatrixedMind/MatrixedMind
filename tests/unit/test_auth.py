@@ -1,78 +1,51 @@
-import pytest
-from fastapi import HTTPException
+from datetime import UTC, datetime, timedelta
 
-from app.auth.dependencies import get_current_user, hash_llm_token, issue_llm_token
+import pytest
+from starlette.requests import Request
+
+import app.auth.dependencies as auth_dependencies
+from app.auth.dependencies import (
+    hash_personal_access_token,
+    issue_personal_access_token,
+    require_browser_csrf,
+)
 from app.settings import Settings, settings
 
 
-@pytest.mark.anyio
-async def test_dev_auth_returns_deterministic_user(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(settings, "auth_mode", "dev")
-    user = await get_current_user()
-    assert user.id == "dev-user"
+def test_local_auth_is_the_default() -> None:
+    configured = Settings(_env_file=None)
+    assert configured.auth_mode == "local"
+    assert configured.identity_provider == "local"
 
 
-@pytest.mark.anyio
-async def test_test_auth_requires_explicit_identity(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(settings, "auth_mode", "test")
-    with pytest.raises(HTTPException) as exc_info:
-        await get_current_user()
-    assert exc_info.value.status_code == 401
+def test_test_auth_is_confined_to_test_environment() -> None:
+    with pytest.raises(ValueError, match="AUTH_MODE=test requires APP_ENV=test"):
+        Settings(app_env="local", auth_mode="test")
+    assert Settings(app_env="test", auth_mode="test").auth_mode == "test"
 
 
 def test_production_settings_fail_closed() -> None:
-    with pytest.raises(ValueError, match="requires AUTH_MODE=production"):
-        Settings(app_env="production", auth_mode="dev")
-
-
-def test_production_settings_require_managed_runtime_secrets() -> None:
-    with pytest.raises(ValueError, match="requires managed runtime secrets"):
-        Settings(app_env="production", auth_mode="production")
-
-
-@pytest.mark.parametrize(
-    ("app_secret_key", "llm_token_pepper"),
-    [
-        ("", "llm-pepper"),
-        ("   ", "llm-pepper"),
-        ("app-secret", ""),
-        ("app-secret", "\t"),
-    ],
-)
-def test_production_settings_reject_blank_managed_runtime_secrets(
-    app_secret_key: str,
-    llm_token_pepper: str,
-) -> None:
-    with pytest.raises(ValueError, match="requires managed runtime secrets"):
-        Settings(
-            app_env="production",
-            auth_mode="production",
-            app_secret_key=app_secret_key,
-            llm_token_pepper=llm_token_pepper,
-        )
-
-
-def test_production_settings_accept_managed_runtime_secrets() -> None:
-    production = Settings(
-        app_env="production",
-        auth_mode="production",
-        app_secret_key="app-secret",
-        llm_token_pepper="llm-pepper",
-        llm_api_server_url="https://matrixedmind.example",
-    )
-
-    assert production.app_secret_key is not None
-    assert production.llm_token_pepper is not None
+    with pytest.raises(ValueError, match="AUTH_MODE=local"):
+        Settings(app_env="production", auth_mode="test", llm_api_server_url="https://example.com")
 
 
 def test_production_settings_require_llm_api_server_url() -> None:
     with pytest.raises(ValueError, match="requires LLM_API_SERVER_URL"):
-        Settings(
-            app_env="production",
-            auth_mode="production",
-            app_secret_key="app-secret",
-            llm_token_pepper="llm-pepper",
-        )
+        Settings(app_env="production", auth_mode="local")
+
+
+def test_production_settings_accept_local_auth_without_app_secret() -> None:
+    production = Settings(
+        app_env="production",
+        auth_mode="local",
+        llm_api_server_url="https://matrixedmind.example",
+    )
+    assert production.auth_mode == "local"
+
+
+def test_optional_identity_provider_is_fail_closed_until_adapter_exists() -> None:
+    with pytest.raises(ValueError, match="only the local identity provider"):
+        Settings(identity_provider="oidc")
 
 
 @pytest.mark.parametrize(
@@ -115,7 +88,6 @@ def test_settings_accept_exact_and_wildcard_image_sources() -> None:
     configured = Settings(
         markdown_image_source_allowlist="images.example.com, *.usercontent.example"
     )
-
     assert configured.markdown_image_source_allowlist == (
         "images.example.com, *.usercontent.example"
     )
@@ -145,12 +117,29 @@ def test_source_offer_points_to_the_exact_deployed_revision() -> None:
         source_repository_url="https://example.com/owner/repository/",
         source_revision=revision,
     )
-
     assert configured.source_offer_url == f"https://example.com/owner/repository/tree/{revision}"
 
 
-def test_issued_llm_token_is_only_represented_by_hash() -> None:
-    raw_token = issue_llm_token()
-    token_hash = hash_llm_token(raw_token)
+def test_issued_personal_access_token_is_only_represented_by_hash() -> None:
+    raw_token = issue_personal_access_token()
+    token_hash = hash_personal_access_token(raw_token)
     assert raw_token != token_hash
     assert len(token_hash) == 64
+
+
+def test_test_identity_csrf_bypass_handles_leap_day(monkeypatch: pytest.MonkeyPatch) -> None:
+    leap_day = datetime(2028, 2, 29, tzinfo=UTC)
+    monkeypatch.setattr(settings, "auth_mode", "test")
+    monkeypatch.setattr(auth_dependencies, "utc_now", lambda: leap_day)
+    request = Request(
+        {
+            "type": "http",
+            "method": "POST",
+            "path": "/api/records/",
+            "headers": [(b"x-test-user-id", b"owner")],
+        }
+    )
+
+    session = require_browser_csrf(request, None)
+
+    assert session.absolute_expires_at == leap_day + timedelta(days=365)

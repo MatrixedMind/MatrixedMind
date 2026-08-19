@@ -101,7 +101,7 @@ The current MongoDB adapter stores revisions embedded in the record document. Be
 records
 record_revisions
 audit_events
-llm_api_tokens
+personal_access_tokens
 ```
 
 The intended cloud write path is:
@@ -143,7 +143,7 @@ LLM writes must be attributed to a synthetic actor such as `llm:chatgpt`.
 
 Every LLM write must create a revision and an audit event.
 
-LLM API tokens must be:
+Personal access tokens for the LLM API must be:
 
 - Scoped to allowed operations.
 - Scoped to allowed spaces.
@@ -182,9 +182,9 @@ The owner still must provide:
 
 - The GCP project and billing link.
 - Local or CI credentials allowed to run Terraform.
-- Application secret values, added as Secret Manager versions outside Git. No Firestore password is required.
+- The application secret value, added as a Secret Manager version outside Git. No Firestore password is required.
 - The first pushed container image before enabling Cloud Run in Terraform.
-- Application image and numbered runtime secret versions before enabling the Cloud Run application service.
+- Application image and the numbered runtime secret version before enabling the Cloud Run application service.
 - The decision to change the production `cloud_run_invocation_mode` from `private`, and only after
   app-level auth, the narrowly scoped public platform-invocation configuration, and the separate
   edge attachment are ready. In the hosted organization, Domain Restricted Sharing means this uses
@@ -204,7 +204,7 @@ browser route reached MatrixedMind's fail-closed production auth and returned `4
 ## ChatGPT Custom GPT Action Setup Checklist
 
 - Expose the LLM-only OpenAPI schema at `/openapi-llm.json`.
-- Create a scoped LLM token for ChatGPT and store only its hash in MatrixedMind.
+- Create a scoped personal access token for ChatGPT and store only its hash in MatrixedMind.
 - Configure the Custom GPT Action to use API key authentication.
 - Restrict the action schema to the LLM endpoints only.
 - Verify ChatGPT can create or update a private draft record in the allowed space.
@@ -224,12 +224,12 @@ The cloud MVP is done when:
 3. Runtime secrets are pulled from Secret Manager.
 4. The app uses Firestore Enterprise MongoDB compatibility as the cloud database, or the roadmap explicitly falls back to MongoDB Atlas.
 5. Browser routes require owner auth.
-6. `/api/llm/*` requires a scoped LLM token.
+6. `/api/llm/*` requires a scoped personal access token.
 7. ChatGPT can create or update a private draft record.
 8. Every LLM write creates a revision.
 9. Every LLM write records an audit event.
 10. The LLM cannot delete, publish, change sharing, change indexing, change auth, or write outside its allowed space.
-11. The LLM token can be revoked.
+11. The personal access token can be revoked.
 12. CI runs before deployment.
 13. The README or deployment runbook explains the manual setup steps.
 14. Billing budget alerts are configured.

@@ -25,7 +25,7 @@ class FakeResponse:
 def fake_mongo_client() -> MagicMock:
     client = MagicMock()
     database = MagicMock()
-    database.llm_api_tokens.find_one.return_value = None
+    database.personal_access_tokens.find_one.return_value = None
     client.__getitem__.return_value = database
     return client
 
@@ -98,7 +98,7 @@ def test_metadata_request_uses_google_header_and_canonical_audience() -> None:
     )
 
 
-def test_happy_path_uses_separate_llm_and_serverless_authorization_headers(
+def test_happy_path_uses_separate_pat_and_serverless_authorization_headers(
     monkeypatch: pytest.MonkeyPatch, fake_mongo_client: MagicMock, fake_http_client: Mock
 ) -> None:
     configure_env(monkeypatch)
@@ -111,13 +111,13 @@ def test_happy_path_uses_separate_llm_and_serverless_authorization_headers(
         FakeResponse(401),
     ]
 
-    with patch.object(smoke, "MongoLlmTokenRepository", return_value=repository):
+    with patch.object(smoke, "MongoPersonalAccessTokenRepository", return_value=repository):
         assert (
             smoke.run_smoke(
                 RUN_ID,
                 mongo_client_factory=lambda _: fake_mongo_client,
                 http_client_factory=lambda: fake_http_client,
-                raw_token_factory=lambda: "raw-llm-token",
+                raw_token_factory=lambda: "raw-personal-access-token",
                 unique_suffix_factory=lambda: UNIQUE_SUFFIX,
             )
             == 0
@@ -131,7 +131,7 @@ def test_happy_path_uses_separate_llm_and_serverless_authorization_headers(
     assert records_call.kwargs == {
         "params": {"space": smoke.SMOKE_SPACE},
         "headers": {
-            "Authorization": "Bearer raw-llm-token",
+            "Authorization": "Bearer raw-personal-access-token",
             "X-Serverless-Authorization": "Bearer identity-token",
         },
     }
@@ -149,7 +149,7 @@ def test_non_200_check_revokes_saved_token_on_failure(
     fake_http_client.get.side_effect = [FakeResponse(200, "identity-token"), FakeResponse(503)]
 
     with (
-        patch.object(smoke, "MongoLlmTokenRepository", return_value=repository),
+        patch.object(smoke, "MongoPersonalAccessTokenRepository", return_value=repository),
         pytest.raises(smoke.SmokeCheckError, match="health"),
     ):
         smoke.run_smoke(
@@ -172,7 +172,7 @@ def test_save_failure_does_not_attempt_revocation(
     repository.save.side_effect = RuntimeError("save failed")
 
     with (
-        patch.object(smoke, "MongoLlmTokenRepository", return_value=repository),
+        patch.object(smoke, "MongoPersonalAccessTokenRepository", return_value=repository),
         pytest.raises(RuntimeError, match="save failed"),
     ):
         smoke.run_smoke(
@@ -190,12 +190,12 @@ def test_generated_token_id_collision_fails_before_save(
 ) -> None:
     configure_env(monkeypatch)
     repository = Mock()
-    fake_mongo_client[smoke.SOURCE_DATABASE].llm_api_tokens.find_one.return_value = {
+    fake_mongo_client[smoke.SOURCE_DATABASE].personal_access_tokens.find_one.return_value = {
         "_id": TOKEN_ID
     }
 
     with (
-        patch.object(smoke, "MongoLlmTokenRepository", return_value=repository),
+        patch.object(smoke, "MongoPersonalAccessTokenRepository", return_value=repository),
         pytest.raises(smoke.SmokeValidationError, match="already exists"),
     ):
         smoke.run_smoke(
@@ -223,8 +223,8 @@ def test_post_revocation_requires_401(
     ]
 
     with (
-        patch.object(smoke, "MongoLlmTokenRepository", return_value=repository),
-        pytest.raises(smoke.SmokeCheckError, match="llm-token-rejected"),
+        patch.object(smoke, "MongoPersonalAccessTokenRepository", return_value=repository),
+        pytest.raises(smoke.SmokeCheckError, match="pat-rejected"),
     ):
         smoke.run_smoke(
             RUN_ID,
@@ -247,7 +247,7 @@ def test_cleanup_failures_do_not_mask_primary_check_failure(
     fake_mongo_client.close.side_effect = RuntimeError("Mongo close failed")
 
     with (
-        patch.object(smoke, "MongoLlmTokenRepository", return_value=repository),
+        patch.object(smoke, "MongoPersonalAccessTokenRepository", return_value=repository),
         pytest.raises(smoke.SmokeCheckError, match="health"),
     ):
         smoke.run_smoke(
@@ -277,7 +277,7 @@ def test_cleanup_failure_fails_an_otherwise_successful_run(
     fake_http_client.close.side_effect = RuntimeError("HTTP close failed")
 
     with (
-        patch.object(smoke, "MongoLlmTokenRepository", return_value=repository),
+        patch.object(smoke, "MongoPersonalAccessTokenRepository", return_value=repository),
         pytest.raises(RuntimeError, match="HTTP close failed"),
     ):
         smoke.run_smoke(

@@ -27,15 +27,15 @@ def build_llm_openapi_schema(app: FastAPI, *, server_url: str) -> dict[str, Any]
     schema["servers"] = [{"url": server_url.rstrip("/")}]
     components = schema.setdefault("components", {})
     components["securitySchemes"] = {
-        "LlmBearerToken": {
+        "PersonalAccessToken": {
             "type": "http",
             "scheme": "bearer",
             "bearerFormat": "API key",
-            "description": "Scoped MatrixedMind LLM token.",
+            "description": "Scoped MatrixedMind personal access token.",
         }
     }
     for path_item in schema["paths"].values():
         for method, operation in path_item.items():
             if method in HTTP_METHODS and isinstance(operation, dict):
-                operation["security"] = [{"LlmBearerToken": []}]
+                operation["security"] = [{"PersonalAccessToken": []}]
     return schema

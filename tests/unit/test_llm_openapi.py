@@ -42,17 +42,17 @@ def test_llm_openapi_requires_bearer_auth_for_every_operation() -> None:
     schema = TestClient(app).get("/openapi-llm.json").json()
 
     assert schema["components"]["securitySchemes"] == {
-        "LlmBearerToken": {
+        "PersonalAccessToken": {
             "type": "http",
             "scheme": "bearer",
             "bearerFormat": "API key",
-            "description": "Scoped MatrixedMind LLM token.",
+            "description": "Scoped MatrixedMind personal access token.",
         }
     }
     for path_item in schema["paths"].values():
         for method, operation in path_item.items():
             if method in HTTP_METHODS and isinstance(operation, dict):
-                assert operation["security"] == [{"LlmBearerToken": []}]
+                assert operation["security"] == [{"PersonalAccessToken": []}]
 
 
 def test_llm_openapi_request_schema_forbids_privileged_fields() -> None:

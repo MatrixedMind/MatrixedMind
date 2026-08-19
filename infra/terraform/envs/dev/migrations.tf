@@ -9,18 +9,8 @@ moved {
 }
 
 moved {
-  from = google_secret_manager_secret.runtime["matrixedmind-dev-llm-token-pepper"]
-  to   = module.runtime_secrets.google_secret_manager_secret.this["LLM_TOKEN_PEPPER"]
-}
-
-moved {
   from = google_secret_manager_secret_iam_member.runtime_secret_accessor["matrixedmind-dev-app-secret-key"]
   to   = module.runtime_secrets.google_secret_manager_secret_iam_member.accessor["APP_SECRET_KEY"]
-}
-
-moved {
-  from = google_secret_manager_secret_iam_member.runtime_secret_accessor["matrixedmind-dev-llm-token-pepper"]
-  to   = module.runtime_secrets.google_secret_manager_secret_iam_member.accessor["LLM_TOKEN_PEPPER"]
 }
 
 moved {

@@ -8,6 +8,11 @@ A milestone is verified only when its listed commands and manual checks pass, or
 
 Use fast tests for domain models, services, parsing, validation, and repository contracts. Unit tests should not require Docker or cloud credentials.
 
+`app.adapters.memory` contains non-durable, process-local test doubles for fast tests and shared
+repository contract verification. Their linear collections and snapshot rollback are intentionally
+simple and inspectable; they are not selectable runtime storage, do not persist across restarts,
+and are not a supported alternative to MongoDB for a self-hosted Instance.
+
 Expected checks:
 
 ```bash
@@ -21,13 +26,28 @@ Use integration tests for local MongoDB behavior, route behavior that crosses ap
 Expected checks:
 
 ```bash
-docker compose up -d mongo
+docker compose up --wait mongo-replica-init
 uv run pytest tests/integration
 ```
 
-MongoDB-backed tests use the local Compose service and the settings from `.env` or the safe defaults in `app/settings.py`; no seed data is required. If `tests/integration` cannot connect, first check that `docker compose ps` shows the `mongo` service as running, then verify that any local `MONGODB_URI` override points at the Compose MongoDB instance.
+MongoDB-backed tests use the local Compose authenticated single-node replica set and the settings
+from `.env` or the safe defaults in `app/settings.py`; no seed data is required. The one-shot
+`mongo-replica-init` service must complete successfully before transaction tests run. If
+`tests/integration` cannot connect, first check that `docker compose ps` shows `mongo` as healthy
+and `mongo-replica-init` as exited successfully, then verify that any local `MONGO_URI` override
+includes `replicaSet=rs0`, `directConnection=true`, and `retryWrites=false`.
 
-Current integration coverage includes a MongoDB ping test, MongoDB repository contract coverage, MongoDB duplicate/missing-record/revision behavior, and FastAPI route tests using in-memory adapters. Route tests cover owner protection, record CRUD, server-rendered flows, crawler metadata, scoped LLM create/update/read/list behavior, private defaults, revision and audit attribution, token revocation, forbidden capabilities, body limits, and rate limits. Unit tests cover the LLM-only OpenAPI allowlist and bearer security contract, authorization principal precedence, required ownership, and bounded streaming that stops consuming a request after it crosses the configured body limit.
+Current integration coverage includes a MongoDB ping test, MongoDB repository contract coverage,
+MongoDB duplicate/missing-record/revision behavior, the transaction-backed automation write, and
+FastAPI route tests using in-memory test doubles. Route and unit tests prove successful legacy LLM
+creates and updates write exactly one required audit event and that audit failures or record
+conflicts leave neither a partial record mutation nor a partial audit. Other route coverage
+includes owner protection, record CRUD, server-rendered flows, crawler metadata, scoped LLM
+create/update/read/list behavior, private defaults, revision and audit attribution, token
+revocation, forbidden capabilities, body limits, and rate limits. Unit tests cover the LLM-only
+OpenAPI allowlist and bearer security contract, authorization principal precedence, required
+ownership, and bounded streaming that stops consuming a request after it crosses the configured
+body limit.
 
 Rendering tests cover approved external HTTPS images, exact and wildcard source allowlists, unsafe
 schemes and authorities, raw-HTML policy parity, stripped event/style attributes, and preservation
@@ -94,6 +114,19 @@ email channel is wired into both policies and the budget. A delivery destination
 and remains absent from version control, though it is retained in Terraform state.
 A live plan or apply must not be used as a substitute for the cloud-mutation approval gate. The
 approved development and production applies were followed by fresh normal locked no-change plans.
+A backend-free local check can still reuse an existing root's `.terraform` backend metadata.
+When a root has previously used its remote backend, give that root a separate temporary
+`TF_DATA_DIR`; `-backend=false` alone is not isolation. For example:
+
+```bash
+MATRIXEDMIND_DEV_TF_DATA_DIR="$(mktemp -d "${TMPDIR:-/tmp}/matrixedmind-dev-static.XXXXXX")"
+TF_DATA_DIR="$MATRIXEDMIND_DEV_TF_DATA_DIR" \
+  terraform -chdir=infra/terraform/envs/dev init -backend=false -input=false
+TF_DATA_DIR="$MATRIXEDMIND_DEV_TF_DATA_DIR" \
+  terraform -chdir=infra/terraform/envs/dev validate
+```
+
+This static check does not create a live plan, access Terraform state, or authorize an apply.
 A documented manual check verified each enabled alert policy and generated notification channel,
 and keyless observer impersonation read bounded Cloud Run, Logging, and Monitoring state in both
 environments. The non-production secret rotation, isolated restore validation and cleanup, and
@@ -144,7 +177,7 @@ uv sync --locked
 uv run ruff check .
 uv run ruff format --check .
 uv run mypy app
-docker compose up -d mongo
+docker compose up --wait mongo-replica-init
 uv run pytest
 docker build -t matrixedmind:local .
 terraform fmt -check -recursive infra/
@@ -169,3 +202,19 @@ Every bug fix should add a test that fails before the fix and passes after it un
 ## Documentation consistency
 
 When behavior changes, update the relevant documentation in the same change. At minimum, route changes should update `docs/ARCHITECTURE.md` or `docs/DEVELOPMENT.md`, verification changes should update `docs/TESTING.md`, and milestone status changes should update `docs/ROADMAP.md`.
+## Owner authentication and UI
+
+Focused local verification for the portable owner-auth slice is:
+
+```bash
+uv run pytest tests/unit/test_owner_auth.py tests/integration/test_owner_auth_ui.py tests/unit/test_auth.py
+```
+
+The unit coverage checks password boundaries and malformed values (including null bytes and
+oversized input), Argon2id hashes, one-time bootstrap/recovery expiry and consumption, atomic
+credential transitions, session inactivity/absolute expiry/rotation, constant-time CSRF checks,
+and attempt limiting. The integration coverage checks setup, login, logout, recovery/password
+flows, cookie attributes, same-origin and CSRF denials, protected-route redirects, security
+headers, canonical product terms, and provider-free startup. Mongo transaction integration tests
+require the documented single-node replica set; an ordinary standalone MongoDB process cannot
+validate atomic auth transitions.

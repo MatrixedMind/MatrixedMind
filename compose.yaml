@@ -7,31 +7,80 @@ services:
     env_file:
       - .env.example
     environment:
-      MONGO_URI: mongodb://matrixed_mind:matrixed_mind@mongo:27017/matrixed_mind?authSource=admin
+      MONGO_URI: mongodb://matrixed_mind:matrixed_mind@mongo:27017/matrixed_mind?authSource=admin&replicaSet=rs0&directConnection=true&retryWrites=false
       APP_ENV: local
     volumes:
       - ./app:/app/app
     ports:
       - "8000:8000"
     depends_on:
-      mongo:
-        condition: service_healthy
+      mongo-replica-init:
+        condition: service_completed_successfully
+
+  mongo-keyfile-init:
+    image: mongo:8
+    restart: "no"
+    user: "0:0"
+    entrypoint: ["/bin/bash", "-c"]
+    command:
+      - |
+        if [ ! -s /keyfile/keyfile ]; then
+          umask 077
+          openssl rand -base64 756 > /keyfile/keyfile
+          chown 999:999 /keyfile/keyfile
+        fi
+        chmod 400 /keyfile/keyfile
+    volumes:
+      - mongo_keyfile:/keyfile
 
   mongo:
     image: mongo:8
     restart: unless-stopped
+    command: ["mongod", "--replSet", "rs0", "--keyFile", "/etc/mongo-keyfile/keyfile", "--bind_ip_all"]
     environment:
       MONGO_INITDB_ROOT_USERNAME: matrixed_mind
       MONGO_INITDB_ROOT_PASSWORD: matrixed_mind
+    depends_on:
+      mongo-keyfile-init:
+        condition: service_completed_successfully
     ports:
-      - "27017:27017"
+      - "127.0.0.1:27017:27017"
     volumes:
       - mongo_data:/data/db
+      - mongo_keyfile:/etc/mongo-keyfile:ro
     healthcheck:
       test: ["CMD", "mongosh", "--quiet", "mongodb://matrixed_mind:matrixed_mind@localhost:27017/admin?authSource=admin", "--eval", "db.adminCommand('ping')"]
       interval: 10s
       timeout: 5s
       retries: 10
 
+  mongo-replica-init:
+    image: mongo:8
+    restart: "no"
+    depends_on:
+      mongo:
+        condition: service_healthy
+    command:
+      - mongosh
+      - --quiet
+      - mongodb://matrixed_mind:matrixed_mind@mongo:27017/admin?authSource=admin&directConnection=true
+      - --eval
+      - |
+        try {
+          rs.status();
+        } catch (error) {
+          rs.initiate({_id: "rs0", members: [{_id: 0, host: "mongo:27017"}]});
+        }
+        for (let attempt = 0; attempt < 60; attempt += 1) {
+          try {
+            if (rs.status().myState === 1) quit(0);
+          } catch (error) {
+            // Election is still in progress.
+          }
+          sleep(500);
+        }
+        quit(1);
+
 volumes:
   mongo_data:
+  mongo_keyfile:

@@ -7,7 +7,7 @@ from fastapi.templating import Jinja2Templates
 from pydantic import ValidationError
 
 from app.api.schemas.records import RecordCreate, RecordUpdate
-from app.auth.dependencies import CurrentUserDep
+from app.auth.dependencies import CurrentUserDep, require_browser_csrf, require_same_origin
 from app.dependencies import RecordRepoDep
 from app.domain.models import Record
 from app.domain.policy import (
@@ -15,12 +15,13 @@ from app.domain.policy import (
     default_crawler_metadata,
     next_index_after_for_create,
     next_index_after_for_update,
-    owner_can_discover_record,
 )
 from app.rendering import render_safe_markdown
 from app.settings import settings
+from app.web.routes.auth import router as auth_router
 
 router = APIRouter()
+router.include_router(auth_router)
 templates = Jinja2Templates(directory="app/web/templates")
 templates.env.globals["source_offer_url"] = settings.source_offer_url
 
@@ -95,13 +96,7 @@ def detail_redirect(record: Record) -> RedirectResponse:
 @router.get("/", response_class=HTMLResponse)
 def index(request: Request, repo: RecordRepoDep, user: CurrentUserDep) -> Response:
     # Just list some records from the default space for now
-    records = [
-        record
-        for record in repo.list_children("default", None)
-        if owner_can_discover_record(
-            owner_id=record.owner_id, visibility=record.visibility, user_id=user.id
-        )
-    ]
+    records = [record for record in repo.list_children(user.id, "default", None)]
     crawler_metadata = default_crawler_metadata()
     return templates.TemplateResponse(
         request=request,
@@ -145,7 +140,9 @@ async def create_record_from_form(
     repo: RecordRepoDep,
     user: CurrentUserDep,
 ) -> Response:
+    require_same_origin(request)
     form_data = await parse_urlencoded_form(request)
+    require_browser_csrf(request, form_data.get("csrf_token"))
     record_values: dict[str, object] = {
         "space": form_data.get("space", ""),
         "slug": form_data.get("slug", ""),
@@ -169,7 +166,7 @@ async def create_record_from_form(
             status_code=status.HTTP_400_BAD_REQUEST,
         )
 
-    if repo.get_by_slug(record_in.space, record_in.slug):
+    if repo.get_by_slug(user.id, record_in.space, record_in.slug):
         return render_editor(
             request,
             title="New Page",
@@ -203,10 +200,8 @@ def edit_record(
     repo: RecordRepoDep,
     user: CurrentUserDep,
 ) -> Response:
-    record = repo.get_by_slug(space, slug)
-    if not record or not owner_can_discover_record(
-        owner_id=record.owner_id, visibility=record.visibility, user_id=user.id
-    ):
+    record = repo.get_by_slug(user.id, space, slug)
+    if not record:
         raise HTTPException(status_code=404, detail="Record not found")
 
     return render_editor(
@@ -228,8 +223,9 @@ async def update_record_from_form(
     repo: RecordRepoDep,
     user: CurrentUserDep,
 ) -> Response:
-    existing = repo.get_by_slug(space, slug)
-    if not existing or existing.owner_id != user.id:
+    require_same_origin(request)
+    existing = repo.get_by_slug(user.id, space, slug)
+    if not existing:
         raise HTTPException(status_code=404, detail="Record not found")
     if existing.id is None:
         raise HTTPException(
@@ -238,6 +234,7 @@ async def update_record_from_form(
         )
 
     form_data = await parse_urlencoded_form(request)
+    require_browser_csrf(request, form_data.get("csrf_token"))
     update_values: dict[str, object] = {
         "space": form_data.get("space", ""),
         "slug": form_data.get("slug", ""),
@@ -263,7 +260,7 @@ async def update_record_from_form(
 
     next_space = record_in.space or existing.space
     next_slug = record_in.slug or existing.slug
-    duplicate = repo.get_by_slug(next_space, next_slug)
+    duplicate = repo.get_by_slug(user.id, next_space, next_slug)
     if duplicate is not None and duplicate.id != existing.id:
         return render_editor(
             request,
@@ -293,7 +290,7 @@ async def update_record_from_form(
 
     updated = existing.model_copy(update=update_data)
     try:
-        record = repo.update(existing.id, updated, actor_id=user.id)
+        record = repo.update(user.id, existing.id, updated, actor_id=user.id)
     except KeyError as exc:
         raise HTTPException(status_code=404, detail="Record not found") from exc
     except ValueError as exc:
@@ -320,10 +317,8 @@ def view_record(
     repo: RecordRepoDep,
     user: CurrentUserDep,
 ) -> Response:
-    record = repo.get_by_slug(space, slug)
-    if not record or not owner_can_discover_record(
-        owner_id=record.owner_id, visibility=record.visibility, user_id=user.id
-    ):
+    record = repo.get_by_slug(user.id, space, slug)
+    if not record:
         raise HTTPException(status_code=404, detail="Record not found")
 
     content_html = render_safe_markdown(

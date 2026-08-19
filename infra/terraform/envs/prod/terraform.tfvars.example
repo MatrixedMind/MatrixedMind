@@ -1,12 +1,11 @@
 project_id        = "your-production-project-id"
 github_repository = "your-github-owner/your-github-repo"
 
-# Apply the production foundation first. Enable only after an immutable image and both numbered
-# secret versions exist.
+# Apply the production foundation first. Enable only after an immutable image and the numbered
+# secret version exist.
 enable_cloud_run_service = false
 container_image          = ""
 app_secret_key_version   = "1"
-llm_token_pepper_version = "1"
 
 # Empty allows any safe external HTTPS image host. Use exact hosts or *.domain wildcards to limit it.
 markdown_image_source_allowlist = ""

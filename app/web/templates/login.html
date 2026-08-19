@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <section class="auth-panel" aria-labelledby="login-heading">
+        <p class="eyebrow">Owner access</p>
+        <h1 id="login-heading">Sign in to your Mind</h1>
+        {% if error %}<div class="alert" role="alert">{{ error }}</div>{% endif %}
+        <form method="post" action="/login">
+            <label for="password">Owner password</label>
+            <input id="password" name="password" type="password" autocomplete="current-password" required autofocus>
+            <button type="submit">Sign in</button>
+        </form>
+        <p class="help"><a href="/recovery">Use an operator-issued recovery credential</a></p>
+    </section>
+{% endblock %}

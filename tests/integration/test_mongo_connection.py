@@ -2,7 +2,8 @@ from app.adapters.mongo.connection import MongoConnection
 from app.settings import settings
 
 LOCAL_MONGO_URI = (
-    "mongodb://matrixed_mind:matrixed_mind@localhost:27017/matrixed_mind?authSource=admin"
+    "mongodb://matrixed_mind:matrixed_mind@localhost:27017/matrixed_mind"
+    "?authSource=admin&replicaSet=rs0&directConnection=true&retryWrites=false"
 )
 
 

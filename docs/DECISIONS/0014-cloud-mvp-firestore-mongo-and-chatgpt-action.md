@@ -26,7 +26,8 @@ Cloud Run may allow unauthenticated invocation at the platform layer so ChatGPT 
 
 Keep the LLM-facing API separate from the internal/general API.
 
-LLM tokens must be scoped, revocable, hashed at rest, and limited to allowed spaces and allowed operations.
+Personal access tokens must be scoped, revocable, hashed at rest, and limited to allowed spaces
+and allowed operations.
 
 LLM writes must default to private, draft, and noindex.
 
@@ -59,7 +60,7 @@ Defer MCP, OAuth, multi-user sharing, import/export, custom domain, and public p
 - Repository contract tests pass against Firestore Enterprise MongoDB compatibility before cloud deployment is unblocked.
 - Tests verify unique index behavior, `ObjectId` handling, duplicate-key behavior, `update_one` with `$set`, sorting, and readiness checks against Firestore compatibility.
 - Browser routes require owner auth before public Cloud Run invocation is allowed.
-- `/api/llm/*` requires scoped LLM tokens.
+- `/api/llm/*` requires scoped personal access tokens.
 - LLM tests prove allowed create/update/read behavior inside allowed spaces.
 - LLM tests prove delete, publish, visibility changes, indexing changes, sharing changes, auth changes, admin actions, bulk import, and writes outside allowed spaces are forbidden.
 - Every LLM write creates a revision and an audit event.

@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <section class="auth-panel" aria-labelledby="setup-heading">
+        <p class="eyebrow">First use</p>
+        <h1 id="setup-heading">Set up this Instance</h1>
+        <p>Enter the one-time bootstrap credential printed by the local operator. It is never accepted in a URL.</p>
+        {% if error %}<div class="alert" role="alert">{{ error }}</div>{% endif %}
+        <form method="post" action="/setup">
+            <label for="operator_credential">Bootstrap credential</label>
+            <input id="operator_credential" name="operator_credential" type="password" autocomplete="one-time-code" required>
+            <label for="display_name">Owner name</label>
+            <input id="display_name" name="display_name" type="text" maxlength="200" autocomplete="name" required>
+            <label for="password">New password</label>
+            <input id="password" name="password" type="password" minlength="12" maxlength="1024" autocomplete="new-password" required>
+            <label for="password_confirmation">Confirm new password</label>
+            <input id="password_confirmation" name="password_confirmation" type="password" minlength="12" maxlength="1024" autocomplete="new-password" required>
+            <button type="submit">Create owner credential</button>
+        </form>
+    </section>
+{% endblock %}

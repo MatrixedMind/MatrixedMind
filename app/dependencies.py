@@ -4,9 +4,17 @@ from typing import Annotated
 from fastapi import Depends
 
 from app.adapters.mongo.connection import MongoConnection
-from app.adapters.mongo.repository import MongoRecordRepository
-from app.adapters.mongo.security import MongoAuditEventRepository, MongoLlmTokenRepository
-from app.domain.ports import AuditEventRepository, LlmTokenRepository, RecordRepository
+from app.adapters.mongo.repository import MongoAutomationWriteRepository, MongoRecordRepository
+from app.adapters.mongo.security import (
+    MongoAuditEventRepository,
+    MongoPersonalAccessTokenRepository,
+)
+from app.domain.ports import (
+    AuditEventRepository,
+    AutomationWriteRepository,
+    PersonalAccessTokenRepository,
+    RecordRepository,
+)
 from app.settings import settings
 
 
@@ -28,8 +36,8 @@ RecordRepoDep = Annotated[RecordRepository, Depends(get_record_repository)]
 
 
 @lru_cache(maxsize=1)
-def get_llm_token_repository() -> LlmTokenRepository:
-    return MongoLlmTokenRepository(
+def get_personal_access_token_repository() -> PersonalAccessTokenRepository:
+    return MongoPersonalAccessTokenRepository(
         MongoConnection.get_db(), ensure_indexes=settings.mongo_ensure_indexes
     )
 
@@ -41,5 +49,19 @@ def get_audit_event_repository() -> AuditEventRepository:
     )
 
 
-LlmTokenRepoDep = Annotated[LlmTokenRepository, Depends(get_llm_token_repository)]
+PersonalAccessTokenRepoDep = Annotated[
+    PersonalAccessTokenRepository, Depends(get_personal_access_token_repository)
+]
 AuditEventRepoDep = Annotated[AuditEventRepository, Depends(get_audit_event_repository)]
+
+
+@lru_cache(maxsize=1)
+def get_automation_write_repository() -> AutomationWriteRepository:
+    return MongoAutomationWriteRepository(
+        MongoConnection.get_db(), ensure_indexes=settings.mongo_ensure_indexes
+    )
+
+
+AutomationWriteRepoDep = Annotated[
+    AutomationWriteRepository, Depends(get_automation_write_repository)
+]
