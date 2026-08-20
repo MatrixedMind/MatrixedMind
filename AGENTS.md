@@ -18,12 +18,18 @@ Always refer to the app as MatrixedMind.
 1. `docs/ROADMAP.md` describes product direction, release/milestone scope, and sequencing.
 2. **GitHub Milestones** group issues into releasable capabilities.
 3. **GitHub Issues** are the normal unit of actionable implementation work.
-4. `docs/DECISIONS/` records accepted architecture decisions and long-lived contracts.
-5. **Repository documentation** (`docs/ARCHITECTURE.md`, `docs/DEVELOPMENT.md`, `docs/TESTING.md`, `docs/OPERATIONS.md`) and `AGENTS.md` define general engineering contracts and architecture boundaries.
-6. **Implementation-time context:** Issue-specific prepared context, generated or refreshed against a known `main` commit SHA.
-7. `README.md` is only a short project index plus accurate current-status summary.
+4. **Goal branches** are temporary integration boundaries used only when multiple issues must land
+   together.
+5. **Task branches and pull requests** are the normal implementation and review boundary.
+6. `docs/DECISIONS/` records accepted architecture decisions and long-lived contracts.
+7. **Repository documentation** (`docs/ARCHITECTURE.md`, `docs/DEVELOPMENT.md`, `docs/TESTING.md`, `docs/OPERATIONS.md`) and `AGENTS.md` define general engineering contracts and architecture boundaries.
+8. **Implementation-time context:** Issue-specific prepared context, generated or refreshed against a known `main` commit SHA.
+9. `README.md` is only a short project index plus accurate current-status summary.
 
 Do not duplicate large amounts of information across these layers.
+
+GitHub Milestones and goal branches are not synonymous. One milestone may use multiple goal
+branches, direct-to-`main` issue branches, or both.
 
 ## Context lifecycle and preparation model
 
@@ -46,6 +52,45 @@ Prefer issues that:
 
 Do not artificially split work when atomic behavior requires multiple files or components to change together.
 
+## Branch and pull-request model
+
+### Goal branches and aggregate pull requests
+
+- Name a goal branch `goal/<short-goal-name>` and create it from an up-to-date `main`.
+- Use one only for a bounded, coherent integration goal whose issue-level changes should be
+  reviewed, validated, migrated, rolled out, reverted, or landed together. Material dependencies,
+  shared-contract changes, unsafe intermediate states, and goal-level acceptance criteria are
+  valid reasons. A shared GitHub Milestone alone is not.
+- Keep goal branches short-lived; they are not permanent development branches.
+- Create the aggregate `goal/<goal> -> main` pull request as a draft early. Use it as the
+  integration dashboard for the goal, milestone when applicable, included issues and task PRs,
+  dependencies, acceptance criteria, verification, and blockers.
+- Keep the aggregate PR in Draft while planned task work remains. Mark it Ready for Review only
+  after all intended task PRs are integrated, blockers are resolved, goal-level verification
+  passes, and no planned implementation commits remain.
+
+### Task and fix branches
+
+- Name an issue branch `task/<issue-number>-<short-name>`.
+- If the issue belongs to a goal, branch from the current goal branch and target that same goal
+  branch with the task PR. Do not branch from `main` and casually retarget the PR later.
+- If the issue is independently mergeable, branch from an up-to-date `main` and target `main`
+  directly. Do not create a goal branch merely for ceremony.
+- Name a standalone bug-fix branch `fix/<issue-number>-<short-name>` and normally target `main`.
+  Urgent fixes must not wait behind unrelated goals. Use a narrow goal or hotfix integration branch
+  only when multiple coordinated fixes genuinely must land atomically.
+- Before creating any task or fix branch, identify its exact base, fetch the current remote state,
+  update that base safely, and create the branch from that exact base.
+- Keep one issue and its bounded scope per task PR. Leave the PR in Draft while planned
+  implementation commits remain; mark it Ready for Review only when issue-level verification
+  passes and its scope is complete.
+
+When merge authorization is granted, prefer squash-merging task PRs into their goal branch so each
+issue becomes one meaningful task-level commit. Prefer preserving those task-level commits when the
+completed goal PR is merged into `main`; do not squash the entire goal into one opaque commit. A
+green PR does not itself grant merge authority, and this workflow does not authorize changing
+repository merge settings.
+
 ## Implementation agent discovery and execution
 
 - An implementation agent normally receives:
@@ -66,15 +111,41 @@ Do not artificially split work when atomic behavior requires multiple files or c
 
 ## Required workflow
 
-1. Before starting work for a new pull request, fetch `origin`, switch to `main`, fast-forward it with `git pull --ff-only origin main`, and create a fresh branch from the updated `main`.
+1. Before starting work for a new pull request, determine whether the explicit base is a goal branch
+   or `main`. Fetch `origin`, safely update that base, and create the fresh task or fix branch from
+   that exact base.
 2. Inspect the assigned GitHub Issue and verify that context is ready (`context:ready`). If the issue is in `context:needed` or `context:stale`, context must be prepared or refreshed before implementation begins.
 3. Identify all issue dependencies, risk labels (`risk:security`, `risk:data`, `risk:cloud`), and confirm any required owner decisions (`owner-decision` or `blocked`) are resolved before starting implementation.
-4. Make small, reviewable changes strictly within the issue scope.
-5. Add or update tests with implementation changes.
-6. Update documentation in the same change when code changes behavior, routes, settings, commands, architecture boundaries, milestone status, or verification expectations.
-7. Commit files before running pre-commit/lint checks if operating in an agent environment that requires a committed state.
-8. Run the verification commands specified in the issue and required quality gates.
-9. Report failures exactly, including IDE, type, lint, test, Docker, and Terraform errors.
+4. Confirm the task PR will target the same branch from which the task branch was created.
+5. Make small, reviewable changes strictly within the issue scope.
+6. Add or update tests with implementation changes.
+7. Update documentation in the same change when code changes behavior, routes, settings, commands, architecture boundaries, milestone status, or verification expectations.
+8. Commit files before running pre-commit/lint checks if operating in an agent environment that requires a committed state.
+9. Run the verification commands specified in the issue and required quality gates.
+10. Report failures exactly, including IDE, type, lint, test, Docker, and Terraform errors.
+
+## GitHub and Git tooling
+
+Use the configured GitHub MCP server for every GitHub service read or mutation: Issues, comments,
+relationships, labels, Milestones when exposed, PR creation and metadata, PR comments and reviews,
+review threads, Actions state and logs, repository metadata, and other GitHub-side state.
+
+- Use already exposed GitHub MCP capabilities first. When another capability is required, use the
+  server's dynamic discovery controls, inspect the relevant toolset when useful, and enable only
+  the task-specific toolset such as `issues`, `labels`, `pull_requests`, `actions`, or `projects`.
+  Never enable `all` merely for convenience, and do not ask the owner to toggle tools when dynamic
+  discovery can expose them.
+- Do not use the `gh` CLI, direct `api.github.com` calls, handwritten REST or GraphQL requests,
+  `curl`, or browser/GUI operations for GitHub service operations. If the MCP server or dynamic
+  discovery does not expose a required operation, report the missing capability and exact
+  operation; request an explicit exception only when the task cannot otherwise proceed.
+- Use normal local `git` or IDE Git tooling for working-tree and repository-history operations and
+  Git transport: status, diff, log, fetch, pull, branch creation/switching, permitted merge or
+  rebase, staging, commits, explicitly required tags, push, and remote-ref synchronization.
+- Do not use GitHub MCP repository-file mutation as a substitute for local commits and `git push`.
+
+The boundary is: repository history, working tree, and Git transport use `git`; GitHub application
+and service state uses GitHub MCP.
 
 ## Decision triage
 
@@ -126,16 +197,18 @@ mutation plan and request approval once. Do not interrupt separately for each ro
   request. The skill recommends changes and issue candidates but performs no repository or GitHub
   write. GitHub issue creation requires explicit approval unless the owner later grants narrow
   standing authorization.
-- After an issue or milestone is complete, validated, and ready for review, publish its intended
-  commits, push its branch, and create or convert its PR against the default branch as ready for
-  review; verify it is non-draft before the Copilot loop. These publication steps are standing
-  authorization for MatrixedMind implementation work; do not merge or perform unrelated
-  remote/cloud mutations without their separate authorization.
+- After an issue is complete and validated, publish its intended commits, push its branch, and use
+  GitHub MCP to create or update the task PR against its explicit goal-branch or `main` base as
+  Ready for Review. For a goal, publish the aggregate PR as a draft early and mark it Ready only at
+  completed integration. These publication steps are standing authorization for MatrixedMind
+  implementation work; do not merge or perform unrelated remote/cloud mutations without separate
+  authorization.
 - Before classifying an external-command failure as authentication or credentials, distinguish
   sandbox or network denial, local credential retrieval, remote authentication, authorization,
-  and Git transport. Treat `gh auth status`, `gh api`, `gh repo`, `git fetch`, `git push`, and
-  `git ls-remote` as inconclusive without network access. When network or `.git` writes are
-  restricted, request the narrow elevation needed for the preflight or publication command.
+  GitHub MCP availability, and Git transport. Treat restricted-sandbox MCP results, `git fetch`,
+  `git push`, and `git ls-remote` as inconclusive without network access. When network or `.git`
+  writes are restricted, request the narrow elevation needed for the preflight or publication
+  command.
 - Allow at most one unchanged retry of a failed external command; a further retry requires a
   changed hypothesis, credential state, permission level, or execution environment. Never ask
   for reauthentication based only on a restricted-sandbox failure, and never print tokens,

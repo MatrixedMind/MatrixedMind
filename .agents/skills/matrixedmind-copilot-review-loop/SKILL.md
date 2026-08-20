@@ -7,14 +7,21 @@ description: Run the bounded post-push GitHub Copilot review loop for a Matrixed
 
 ## Resolve and wait
 
-1. Verify the PR is ready for review and non-draft before beginning the loop. If an existing
-   milestone PR is a draft, mark it ready under the milestone publication standing authorization;
-   otherwise stop with an exact blocker.
-2. Resolve the repository, PR number and URL, current head SHA, and Copilot review configuration. Determine whether automatic Copilot review includes new pushes.
-3. Before treating thread-aware `gh` or GraphQL failures as authentication or authorization,
+1. Verify the PR is ready for review and non-draft before beginning the loop. If a task PR is still
+   Draft, confirm its issue scope and verification are complete before marking it Ready under the
+   publication standing authorization. If an aggregate goal PR is Draft, confirm every intended
+   task PR is integrated, blockers are resolved, goal verification passes, and no planned
+   implementation commits remain before marking it Ready. Otherwise preserve the intentional Draft
+   state and stop with the unmet readiness criteria.
+2. Resolve the repository, PR number and URL, current head SHA, and Copilot review configuration
+   through GitHub MCP. Determine whether automatic Copilot review includes new pushes.
+3. Use the already exposed GitHub MCP capabilities first. If necessary, use dynamic discovery to
+   inspect and enable only the task-specific `pull_requests` or `actions` toolset; never enable
+   `all` for convenience. Before treating an MCP failure as authentication or authorization,
    inspect the effective sandbox and network restrictions. Treat restricted-sandbox results as
    inconclusive; use at most one narrowly elevated network-capable verification before declaring
-   a blocker, without printing credentials.
+   a blocker, without printing credentials. Do not fall back to the `gh` CLI, direct REST or
+   GraphQL calls, or browser/GUI GitHub operations.
 4. Use event-driven or non-model waiting where available. Do not spend repeated model turns polling
    unchanged GitHub state. When a thread-heartbeat monitor is necessary, make its first check about
    two minutes after each push and subsequent checks every minute, retrieve only deltas, and keep one
@@ -27,7 +34,12 @@ description: Run the bounded post-push GitHub Copilot review loop for a Matrixed
 
 ## Read and classify feedback
 
-- Use the installed `github:gh-address-comments` workflow when available; otherwise use an equivalent thread-aware GitHub GraphQL query. Retrieve unresolved and outdated state, file and line anchors, surrounding diff context, author, timestamps, and associated commit when available. Do not treat flat top-level comments as complete thread state.
+- Use the installed `github:gh-address-comments` workflow when available; otherwise use a
+  thread-aware capability exposed through GitHub MCP. Retrieve unresolved and outdated state, file
+  and line anchors, surrounding diff context, author, timestamps, and associated commit when
+  available. Do not treat flat top-level comments as complete thread state. If GitHub MCP does not
+  expose the required review-thread operation, report that exact missing capability instead of
+  bypassing MCP.
 - Classify every Copilot comment as legitimate and actionable, legitimate but explanation-only, already addressed or outdated, duplicate, ambiguous or requiring a product decision, or incorrect or inapplicable.
 - Before changing code, inspect the implementation, tests, documentation, and surrounding diff. Verify dependency or provider claims against locked versions and authoritative documentation; reject speculative style-only feedback without material impact; identify conflicts with roadmap decisions, ADRs, security invariants, and other comments.
 
