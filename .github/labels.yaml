@@ -1,0 +1,50 @@
+# MatrixedMind GitHub Labels Taxonomy
+# Auditable and reproducible label definitions for issue-centered development.
+
+- name: "context:needed"
+  color: "FBCA04"
+  description: "implementation context has not yet been prepared."
+  category: "context-lifecycle"
+  details: "Applied to new implementation issues until required implementation context has been assembled."
+
+- name: "context:ready"
+  color: "0E8A16"
+  description: "the issue contains sufficient current implementation context to begin work."
+  category: "context-lifecycle"
+  details: "Applied when an issue has sufficient, verified, and up-to-date context prepared against a known main commit SHA."
+
+- name: "context:stale"
+  color: "F9D0C4"
+  description: "previously prepared implementation context may no longer match current main."
+  category: "context-lifecycle"
+  details: "Applied when main branch changes invalidate or make stale previously prepared context, requiring a context refresh before work begins."
+
+- name: "risk:security"
+  color: "B60205"
+  description: "Security, authentication, credentials, identity, permissions, or trust-boundary implications."
+  category: "risk"
+  details: "Security, authentication, authorization, credentials, identity, permissions, or trust-boundary implications."
+
+- name: "risk:data"
+  color: "8A2BE2"
+  description: "Migration, persistence, integrity, destructive-data, recovery, or rollback implications."
+  category: "risk"
+  details: "Migration, persistence, integrity, destructive-data, ownership migration, recovery, or rollback implications."
+
+- name: "risk:cloud"
+  color: "1D76DB"
+  description: "live cloud infrastructure, IAM, Terraform state, hosted resources, or external cloud mutations."
+  category: "risk"
+  details: "Live cloud infrastructure, IAM, Terraform state, hosted resources, or external cloud mutations requiring cloud change control."
+
+- name: "blocked"
+  color: "6A737D"
+  description: "work cannot proceed because of a known dependency or unresolved blocker."
+  category: "workflow-state"
+  details: "Work cannot proceed due to an external blocker, pending dependency, or uncompleted prerequisite issue."
+
+- name: "owner-decision"
+  color: "5319E7"
+  description: "Owner must make a product, security, spending, data-safety, or similarly material decision."
+  category: "workflow-state"
+  details: "The MatrixedMind owner must make a product, security, spending, data-safety, irreversible-action, or similarly material decision."

@@ -6,39 +6,75 @@ Always refer to the app as MatrixedMind.
 
 ## Codex task naming
 
-When a task's primary work is implementation or verification for a roadmap milestone, rename the
-current Codex task as soon as the milestone is identified.
-
-Use the exact format:
-
-`Milestone {number} - {milestone title}`
-
-Take the title from the corresponding heading in `docs/ROADMAP.md`, excluding the `Milestone {number}:` prefix.
-
-For standalone work that is not implementing or verifying a roadmap milestone, use a concise
-descriptive task title instead, such as `Documentation update - hosted activation decisions`.
+- When a task's primary work is implementation or verification for a specific GitHub Issue, name the current task:
+  `Issue #{number} - {issue title}`
+- When a task's primary work is milestone planning, issue decomposition, coordination, integration, verification, or closeout:
+  `Milestone {number} - {milestone title}`
+  Take the title from the corresponding heading in `docs/ROADMAP.md`, excluding the `Milestone {number}:` prefix.
+- For standalone work that is neither an issue implementation nor milestone coordination, use a concise descriptive task title instead, such as `Documentation update - hosted activation decisions`.
 
 ## Source of truth
 
-- `docs/ROADMAP.md` is the canonical working plan until the app is real.
-- `README.md` is only a short project index for now.
-- `docs/ARCHITECTURE.md` explains the intended system shape.
-- `docs/DEVELOPMENT.md` contains local setup and quality commands.
-- `docs/TESTING.md` defines what verification means.
-- `docs/DECISIONS/` records accepted architecture decisions.
+1. `docs/ROADMAP.md` describes product direction, release/milestone scope, and sequencing.
+2. **GitHub Milestones** group issues into releasable capabilities.
+3. **GitHub Issues** are the normal unit of actionable implementation work.
+4. `docs/DECISIONS/` records accepted architecture decisions and long-lived contracts.
+5. **Repository documentation** (`docs/ARCHITECTURE.md`, `docs/DEVELOPMENT.md`, `docs/TESTING.md`, `docs/OPERATIONS.md`) and `AGENTS.md` define general engineering contracts and architecture boundaries.
+6. **Implementation-time context:** Issue-specific prepared context, generated or refreshed against a known `main` commit SHA.
+7. `README.md` is only a short project index plus accurate current-status summary.
+
+Do not duplicate large amounts of information across these layers.
+
+## Context lifecycle and preparation model
+
+- **Lifecycle:** `context:needed` → context preparation → `context:ready` → implementation.
+- If implementation context was prepared against an older repository state and relevant code or contracts have changed materially:
+  `context:ready` → `context:stale` → regenerate context → `context:ready`.
+- The context-preparation process records the `main` commit SHA against which the context was prepared.
+- The GitHub Issue remains the durable task specification; generated context is implementation-time material that may be refreshed when the repository changes.
+
+## Issue granularity and scope boundaries
+
+A normal implementation issue should be small enough that the implementation agent does not need to maintain a complete mental model of the entire milestone.
+
+Prefer issues that:
+- have one coherent objective;
+- have explicit boundaries (`Scope` and `Out of scope`);
+- have independently verifiable acceptance criteria;
+- can normally produce one reviewable PR (or only when clearly justified, a very small set of tightly coupled issues);
+- minimize cross-cutting changes.
+
+Do not artificially split work when atomic behavior requires multiple files or components to change together.
+
+## Implementation agent discovery and execution
+
+- An implementation agent normally receives:
+  - `AGENTS.md`;
+  - one assigned GitHub Issue;
+  - issue-specific prepared context (`context:ready`).
+- Agents should not automatically reread the entire roadmap, every ADR, all project documentation, or the entire repository for every issue.
+- Repository discovery must be targeted to the assigned issue:
+  1. Known file or exact repository path → read that file directly.
+  2. GitHub state → GitHub MCP.
+  3. Symbols, code relationships, usages, tests, or IDE intelligence → PyCharm MCP.
+  4. Simple text lookup → targeted search.
+  5. Broad repository exploration → only when narrower approaches are insufficient.
+- Prefer existing prepared context and targeted PyCharm MCP lookups over broad rediscovery.
+- If issue context is insufficient, perform or request a targeted lookup before broadening exploration.
+- Do not implement neighboring issues merely because related work is discovered.
+- Findings outside issue scope should normally be reported and optionally proposed as a separate issue, not implemented opportunistically.
 
 ## Required workflow
 
 1. Before starting work for a new pull request, fetch `origin`, switch to `main`, fast-forward it with `git pull --ff-only origin main`, and create a fresh branch from the updated `main`.
-2. Read `docs/ROADMAP.md`.
-3. Work only on the current milestone unless instructed otherwise.
-4. Identify all milestone tasks marked as human intervention or decision tasks and confirm they are resolved (or explicitly blocked) before starting AI-agent implementation tasks.
-5. Make small, reviewable changes.
-6. Add or update tests with implementation changes.
-7. Update documentation in the same change when code changes behavior, routes, settings, commands, architecture boundaries, milestone status, or verification expectations.
-8. Commit files before running pre-commit/lint checks if operating in an agent environment that requires a committed state.
-9. Run the verification commands listed in the milestone.
-10. Report failures exactly, including IDE, type, lint, test, Docker, and Terraform errors.
+2. Inspect the assigned GitHub Issue and verify that context is ready (`context:ready`). If the issue is in `context:needed` or `context:stale`, context must be prepared or refreshed before implementation begins.
+3. Identify all issue dependencies, risk labels (`risk:security`, `risk:data`, `risk:cloud`), and confirm any required owner decisions (`owner-decision` or `blocked`) are resolved before starting implementation.
+4. Make small, reviewable changes strictly within the issue scope.
+5. Add or update tests with implementation changes.
+6. Update documentation in the same change when code changes behavior, routes, settings, commands, architecture boundaries, milestone status, or verification expectations.
+7. Commit files before running pre-commit/lint checks if operating in an agent environment that requires a committed state.
+8. Run the verification commands specified in the issue and required quality gates.
+9. Report failures exactly, including IDE, type, lint, test, Docker, and Terraform errors.
 
 ## Decision triage
 
@@ -75,24 +111,26 @@ mutation plan and request approval once. Do not interrupt separately for each ro
 
 ## Codex workflow routing
 
-- Require `matrixedmind-milestone-coordinator` for milestone implementation, milestone
-  verification, and other coordinated multi-agent deliverables.
+- Require `matrixedmind-milestone-coordinator` for milestone planning, issue decomposition,
+  dependency management, owner-decision identification, integration, milestone-wide validation, and
+  closeout. Individual implementation tasks are delegated to bounded, issue-scoped agents rather
+  than retaining long implementation contexts across the entire milestone.
 - Require `matrixedmind-cloud-change-control` for Terraform plan or apply review, drift
   reconciliation, IAM or resource mutation, imports or state moves, identity transitions,
   recovery exercises, and secret rotation. Its explicit approval gate applies before any live
   mutation; do not duplicate its procedure here.
-- Require `matrixedmind-copilot-review-loop` after a milestone PR is pushed or when Copilot
-  review feedback must be addressed.
+- Require `matrixedmind-copilot-review-loop` after an issue or milestone PR is pushed or when
+  Copilot review feedback must be addressed.
 - Invoke `matrixedmind-improve-process` at coordinator closeout only for a nonempty process-event
   ledger, a recurring review theme, unresolved process debt, or an owner process-improvement
   request. The skill recommends changes and issue candidates but performs no repository or GitHub
   write. GitHub issue creation requires explicit approval unless the owner later grants narrow
   standing authorization.
-- After a milestone is complete, validated, and ready for review, publish its intended commits,
-  push its branch, and create or convert its PR against the default branch as ready for review;
-  verify it is non-draft before the Copilot loop. These publication steps are standing
-  authorization for MatrixedMind milestone work; do not merge or perform unrelated remote/cloud
-  mutations without their separate authorization.
+- After an issue or milestone is complete, validated, and ready for review, publish its intended
+  commits, push its branch, and create or convert its PR against the default branch as ready for
+  review; verify it is non-draft before the Copilot loop. These publication steps are standing
+  authorization for MatrixedMind implementation work; do not merge or perform unrelated
+  remote/cloud mutations without their separate authorization.
 - Before classifying an external-command failure as authentication or credentials, distinguish
   sandbox or network denial, local credential retrieval, remote authentication, authorization,
   and Git transport. Treat `gh auth status`, `gh api`, `gh repo`, `git fetch`, `git push`, and

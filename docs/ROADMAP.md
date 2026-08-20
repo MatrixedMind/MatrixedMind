@@ -18,8 +18,12 @@ hosted/GCP support are optional adapters and dependency groups, not requirements
 Instance. Do not use git submodules. Extract a component only when it has an independent lifecycle
 and the operational benefit exceeds the added boundary.
 
-Durable user guidance, contracts, and accepted decisions belong in this repository. Use GitHub
-Issues for unresolved decisions and actionable work.
+Durable user guidance, contracts, and accepted decisions belong in this repository. Roadmap
+milestones describe product direction, release scope, and sequencing. GitHub Milestones group issues
+into releasable capabilities. Actionable implementation work belongs in bounded, independently
+reviewable GitHub Issues that collectively satisfy a milestone. Accepted architectural decisions
+belong in ADRs under `docs/DECISIONS/`, while unresolved decisions and actionable implementation
+tasks belong in GitHub Issues.
 
 ## Completed foundation: Milestones 0–12
 
@@ -140,9 +144,13 @@ accepted in ADRs 0016 and 0017.
 
 ## Working rules
 
+- Roadmap milestones represent high-level product capabilities and sequencing; actionable
+  implementation work is decomposed into bounded GitHub Issues.
+- Issues within a milestone collectively satisfy the milestone. Verify individual issues thoroughly
+  before integrating, and complete issue-level verification before declaring a milestone complete.
 - Complete and verify one milestone before stacking the next.
 - Add tests and repository documentation whenever behavior or a contract changes.
-- Record accepted architectural decisions in ADRs. Create GitHub Issues for work and decisions that
-  remain unresolved.
+- Record accepted architectural decisions in ADRs under `docs/DECISIONS/`. Create GitHub Issues for
+  actionable work, implementation tasks, and unresolved decisions.
 - Do not extract services, packages, or repositories merely for organization; extract only when an
   independently versioned, deployed, operated, or governed lifecycle is demonstrated.
