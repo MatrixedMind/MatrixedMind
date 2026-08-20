@@ -9,9 +9,29 @@ description: Coordinate implementation or verification of one MatrixedMind roadm
 
 1. Resolve the milestone or coherent pull-request deliverable. Read its `docs/ROADMAP.md` section.
 2. Confirm all required human decisions are resolved or explicitly blocked before implementation.
-3. Establish requirements, acceptance criteria, dependencies, file ownership, and verification.
+3. Establish requirements, acceptance criteria, dependencies, file ownership, verification, and
+   whether the deliverable warrants a short-lived goal branch or independently mergeable issue
+   branches targeting `main`.
 4. Keep the coordinator focused on integration, decisions, dependencies, and concise results. Keep
    raw logs, broad file dumps, and repeated context out of the coordinator task.
+
+## Maintain the correct integration boundary
+
+- Do not equate a GitHub Milestone with a goal branch. One milestone may use several goal branches,
+  direct-to-`main` issues, or both.
+- Create `goal/<short-goal-name>` from an up-to-date `main` only when multiple issues need a shared
+  integration, validation, migration, rollout, revert, or atomic landing boundary. Keep it
+  short-lived.
+- Create the aggregate `goal/<goal> -> main` PR as a draft early and maintain it as the integration
+  dashboard. Keep it Draft while task work remains; mark it Ready only after all intended task PRs
+  are integrated, blockers are resolved, goal verification passes, and no planned implementation
+  commits remain.
+- Require each issue worker to identify its exact base. A task inside a goal branches from and opens
+  its PR to that goal branch. An independently mergeable task branches from and targets `main`.
+  Standalone `fix/<issue-number>-<short-name>` branches normally target `main` and must not wait
+  behind unrelated goals.
+- Prefer squash-merging authorized task PRs into the goal branch and preserving those task-level
+  commits when the authorized goal PR is merged. Passing checks never grants merge authority.
 
 ## Triage owner decisions
 
@@ -103,18 +123,22 @@ delivery work moving and defer synthesis to `matrixedmind-improve-process`.
 
 1. Run the relevant quality gates and review the integrated diff.
 2. Collect concise summaries and close completed subagent threads.
-3. Before GitHub checks, inspect effective sandbox and network restrictions. Report only the
-   presence of `GH_TOKEN`, `GITHUB_TOKEN`, and `GH_CONFIG_DIR`; test local credential retrieval
-   without printing a token. Prove remote API identity with a network-capable `gh api user --jq
-   .login`. Verify Git transport separately because SSH push and API authentication differ.
-4. Treat ordinary sandboxed GitHub failures as inconclusive. Perform at most one narrowly elevated
-   network-capable verification before declaring an authentication blocker. Stop after the same
-   verified external-state failure recurs; do not poll or repeat login instructions.
-5. Prefer the installed GitHub connector for structured repository and PR reads and PR creation;
-   use local `git` for commit and push and `gh` only for gaps.
-6. For milestone work, once all tasks and validation are complete, publish the intended commits,
-   push the branch, and create or convert the PR as ready for review under the repository's standing
-   publication authorization. Verify it is non-draft before invoking
+3. Use GitHub MCP for all GitHub service reads and mutations. Use its already exposed capabilities
+   first, then dynamic discovery to inspect and enable only the task-specific toolset. Never enable
+   `all` for convenience. Do not use the `gh` CLI, direct REST or GraphQL calls, or browser/GUI
+   GitHub operations as a fallback.
+4. If GitHub MCP or dynamic discovery does not expose a required operation, report the missing
+   capability and exact operation. Request an explicit exception only when the task cannot proceed.
+   Treat restricted-sandbox MCP failures as inconclusive and stop after the same verified
+   external-state failure recurs; do not poll or repeat login instructions.
+5. Use local `git` for status, history, branches, commits, fetch/pull/push, and other Git transport.
+   Verify Git transport separately because it differs from GitHub MCP authentication and
+   authorization. Do not substitute GitHub repository-file mutation for local commits and pushes.
+6. For an issue, publish its intended commits, push the branch, and use GitHub MCP to create or
+   update the task PR as Ready for Review against its explicit goal or `main` base once issue-level
+   validation is complete. For a goal, create the aggregate PR as a draft early; once all tasks and
+   goal validation are complete, use GitHub MCP to mark it Ready for Review under the repository's
+   standing publication authorization. Verify it is non-draft before invoking
    `matrixedmind-copilot-review-loop`. Explicit task restrictions override this default.
 7. Do not merge, reply to or resolve review threads, dismiss reviews, create unrelated issues, or
    perform unrelated external or cloud mutations without separate authorization.

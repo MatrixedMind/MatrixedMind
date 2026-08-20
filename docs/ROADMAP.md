@@ -25,6 +25,11 @@ reviewable GitHub Issues that collectively satisfy a milestone. Accepted archite
 belong in ADRs under `docs/DECISIONS/`, while unresolved decisions and actionable implementation
 tasks belong in GitHub Issues.
 
+GitHub Milestones do not map one-to-one to integration branches. A milestone may contain several
+short-lived goal branches, independently mergeable issue branches that target `main`, or both. Goal
+branches are temporary delivery boundaries for intentionally coupled issues, not roadmap units or
+permanent development branches.
+
 ## Completed foundation: Milestones 0–12
 
 Milestones 0–12 are complete and verified as their delivery sequence:
@@ -148,6 +153,9 @@ accepted in ADRs 0016 and 0017.
   implementation work is decomposed into bounded GitHub Issues.
 - Issues within a milestone collectively satisfy the milestone. Verify individual issues thoroughly
   before integrating, and complete issue-level verification before declaring a milestone complete.
+- Use a short-lived goal branch only when issue-level changes intentionally need a shared
+  integration, validation, migration, rollout, or atomic landing boundary. Otherwise merge each
+  independently reviewable issue through its own PR to `main`.
 - Complete and verify one milestone before stacking the next.
 - Add tests and repository documentation whenever behavior or a contract changes.
 - Record accepted architectural decisions in ADRs under `docs/DECISIONS/`. Create GitHub Issues for

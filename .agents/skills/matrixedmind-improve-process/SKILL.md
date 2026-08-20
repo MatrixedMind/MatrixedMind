@@ -55,7 +55,7 @@ evidence; meaningful correctness, security, time, or usage impact; reusable prev
 acceptance criteria; and no equivalent existing issue. Perform a read-only duplicate search before
 promotion. The read-only process reviewer uses a supplied local issue export or sanitized duplicate
 search result. When current repository issue state is required, the coordinator may perform an
-authorized read-only GitHub connector or API search and supply only the result; this does not grant
+authorized read-only GitHub MCP search and supply only the result; this does not grant
 issue-write authority to either role. If no search result is available, keep the item as a local
 recommendation with `duplicate search pending`; do not call it an issue candidate.
 
